@@ -71,15 +71,23 @@ def cmd_ratings(args: argparse.Namespace) -> int:
     return 0
 
 
+def _excluded_seasons(config: CompetitionConfig) -> dict[str, str]:
+    """Seasons the config keeps out of headline backtests, with the reason."""
+    evaluation = config.raw.get("evaluation") or {}
+    excluded = evaluation.get("exclude_seasons") or {}
+    return {str(season): " ".join(str(reason).split()) for season, reason in excluded.items()}
+
+
 def _default_backtest_seasons(config: CompetitionConfig) -> list[str]:
-    """Completed seasons where every strategy can run.
+    """Completed seasons where every strategy can run, minus configured exclusions.
 
     The first season in the data has no predecessor (so promotion is unknown),
     and the second has no earlier promotion to learn a prior from.
     """
     current = Season.parse(config.current_season).start_year
     completed = [s for s in config.seasons if Season.parse(s).start_year < current]
-    return completed[2:]
+    excluded = _excluded_seasons(config)
+    return [season for season in completed[2:] if season not in excluded]
 
 
 def cmd_evaluate(args: argparse.Namespace) -> int:
@@ -92,7 +100,11 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     print(f"=== {config.name}: match-level backtest ===")
     print(f"seasons: {', '.join(seasons)} | refit every {args.refit_days} days | "
           f"half-life {args.half_life or config.model.get('time_decay_half_life_days')} days")
-    print("Each match is forecast from a fit using only results before it.\n")
+    print("Each match is forecast from a fit using only results before it.")
+    if not args.seasons:
+        for season, reason in _excluded_seasons(config).items():
+            print(f"excluded {season}: {reason}")
+    print()
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)

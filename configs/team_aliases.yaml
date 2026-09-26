@@ -20,7 +20,7 @@
 # ---------------------------------------------------------------------------
 
 teams:
-  # --- England: Premier League clubs appearing in 2021-22..2026-27 ---------
+  # --- England: Premier League clubs appearing in 2010-11..2026-27 ---------
   Arsenal: [Arsenal FC]
   Aston Villa: [Villa]
   Bournemouth: [AFC Bournemouth]
@@ -51,7 +51,7 @@ teams:
   West Ham United: [West Ham, West Ham Utd]
   Wolverhampton Wanderers: [Wolves]
 
-  # --- England: Championship clubs appearing in 2021-22..2026-27 ----------
+  # --- England: Championship clubs appearing in 2010-11..2026-27 ----------
   # Loaded as context data so promoted teams arrive with a rating (see the
   # `role: context` source in premier_league.yaml).
   Barnsley: []
@@ -60,13 +60,16 @@ teams:
   Blackpool: []
   Bolton Wanderers: [Bolton]
   Bristol City: []
+  Burton Albion: [Burton]
   Cardiff City: [Cardiff]
   Charlton Athletic: [Charlton]
   Derby County: [Derby]
+  Doncaster Rovers: [Doncaster]
   Huddersfield Town: [Huddersfield]
   Lincoln City: [Lincoln]
   Middlesbrough: [Middlesboro]
   Millwall: []
+  Milton Keynes Dons: [MK Dons]
   Oxford United: [Oxford, Oxford Utd]
   Peterborough United: [Peterboro, Peterborough]
   Plymouth Argyle: [Plymouth]
@@ -75,9 +78,12 @@ teams:
   Queens Park Rangers: [QPR]
   Reading: []
   Rotherham United: [Rotherham]
+  Scunthorpe United: [Scunthorpe]
   Sheffield Wednesday: [Sheffield Weds, Sheff Wed]
   Stoke City: [Stoke]
   Swansea City: [Swansea]
   West Bromwich Albion: [West Brom, WBA]
   Wigan Athletic: [Wigan]
   Wrexham: [Wrexham AFC]
+  Wycombe Wanderers: [Wycombe]
+  Yeovil Town: [Yeovil]

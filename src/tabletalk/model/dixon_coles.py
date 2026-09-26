@@ -276,6 +276,13 @@ class DixonColesModel:
         max_goals: size of the scoreline grid used for predictions.
         rho_bounds: search range for rho. Keeps tau positive at realistic
             scoring rates; the fitted value should sit well inside it.
+        min_weight: matches whose decay weight falls below this are dropped
+            before fitting. At the default 0.001 that is anything more than
+            ~5 years old with a 180-day half-life: such a match counts for a
+            thousandth of a recent one, so dropping it changes no rating
+            measurably, but keeping it makes every fit process years of rows
+            for nothing. Being a weight threshold, not an age limit, it scales
+            with the half-life automatically. 0 keeps everything.
     """
 
     def __init__(
@@ -284,6 +291,7 @@ class DixonColesModel:
         rating_prior_sd: float = 1.0,
         max_goals: int = 10,
         rho_bounds: tuple[float, float] = (-0.3, 0.3),
+        min_weight: float = 1e-3,
     ):
         if rating_prior_sd <= 0:
             raise ValueError("rating_prior_sd must be positive")
@@ -291,6 +299,7 @@ class DixonColesModel:
         self.rating_prior_sd = float(rating_prior_sd)
         self.max_goals = int(max_goals)
         self.rho_bounds = rho_bounds
+        self.min_weight = float(min_weight)
 
     @classmethod
     def from_config(cls, model_config: Mapping, **overrides) -> "DixonColesModel":
@@ -299,6 +308,7 @@ class DixonColesModel:
             "half_life_days": model_config.get("time_decay_half_life_days", 180.0),
             "rating_prior_sd": model_config.get("rating_prior_sd", 1.0),
             "max_goals": model_config.get("max_goals", 10),
+            "min_weight": model_config.get("min_match_weight", 1e-3),
         }
         settings.update({k: v for k, v in overrides.items() if v is not None})
         return cls(**settings)
@@ -335,6 +345,9 @@ class DixonColesModel:
             as_of = played["date"].max() + pd.Timedelta(days=1)
         as_of = pd.Timestamp(as_of)
         train = played.loc[played["date"] < as_of]
+        if self.half_life_days is not None and self.min_weight > 0:
+            age = (as_of - train["date"]).dt.days.to_numpy(dtype=float)
+            train = train.loc[decay_weights(age, self.half_life_days) >= self.min_weight]
         if train.empty:
             raise ValueError(f"no played matches before {as_of.date()}")
 

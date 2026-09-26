@@ -89,8 +89,9 @@ varying. See [Known limitations](#known-limitations).
 5. For a **neutral venue** (a cup final) the home-advantage term is dropped.
 
 Fitted to the Premier League as of September 2026: home advantage **+0.17** (home
-sides score ×1.19), rho **−0.11**, an average team scores 1.15 away from home —
-all in the range the literature reports. The implementation is in
+sides score ×1.19), rho **−0.11**, an average team scores 1.15 away from home.
+How much those numbers move from season to season is covered under
+[validation](#what-the-data-says-about-the-parameters). The implementation is in
 [src/tabletalk/model/dixon_coles.py](src/tabletalk/model/dixon_coles.py), with the
 gradient derived in the code comments.
 
@@ -154,9 +155,12 @@ fallback, but it is one site's export with no stated licence or history.
 openfootball is community-maintained, so its own scores can lag; TableTalk uses it
 for the schedule only.
 
-Currently loaded: Premier League 2021-22 to 2026-27 — 1,950 results plus the
-complete 2026-27 schedule (50 played, 330 to come, through 2027-05-30) — and 2,855
-Championship results as `context` data (see [Promoted teams](#promoted-teams)).
+Currently loaded: Premier League 2010-11 to 2026-27 — 6,130 results plus the
+complete 2026-27 schedule (50 played, 330 to come, through 2027-05-30) — and 8,927
+Championship results over the same seasons as `context` data (see
+[Promoted teams](#promoted-teams)). The long history is there for the backtests
+and the promoted-team prior; time decay means the current ratings rest almost
+entirely on the last two seasons.
 
 A third source role, **`context`**, carries results from a *related* competition
 that the match model may learn from but that is never tabulated, simulated or
@@ -236,10 +240,6 @@ Before asking whether the model is *good*, check that it is *correct*:
   Dixon-Coles score distribution, fit the model, and confirm it gets the ratings,
   home advantage and rho back within sampling error. This is what catches a flipped
   sign on defence or a tau correction applied to the wrong scoreline.
-- Worth knowing from those simulations: **rho is the least well-identified
-  parameter**. From 2,240 simulated matches with a true rho of −0.10, fitted values
-  ranged from −0.02 to −0.14 across random seeds. It only moves four scorelines, so
-  it needs a lot of data.
 
 ### Does it beat knowing nothing?
 
@@ -251,26 +251,54 @@ historical home/draw/away frequencies.
 
 Scores are *proper scoring rules* (lower is better): **log loss**, **Brier score**,
 and **ranked probability score**, which respects that a draw is "closer" to a home
-win than an away win is. Over 2023-24 to 2025-26 (1,140 matches):
+win than an away win is.
+
+The headline covers **12 seasons, 2012-13 to 2025-26, 4,560 matches**. The two
+COVID-affected seasons are reported separately; that exclusion was decided and
+written into the config, with the reason, before any backtest was run.
 
 | | log loss | Brier | RPS | vs baseline |
 |---|---|---|---|---|
-| Dixon-Coles | **0.981** | **0.585** | **0.201** | **−8.6% log loss** |
-| Base rates | 1.074 | 0.650 | 0.233 | — |
+| Dixon-Coles | **0.968** | **0.574** | **0.197** | **−9.2% log loss** |
+| Base rates | 1.066 | 0.644 | 0.231 | — |
 
-The improvement holds in every season individually (2023-24: 0.933 vs 1.055;
-2024-25: 0.977 vs 1.082; 2025-26: 1.033 vs 1.084).
+The model beats the baseline in **all 14 seasons tested**, the COVID ones included.
+Its worst season is 2015-16 (log loss 1.035 against the baseline's 1.088): the
+season Leicester won the league as 5000-1 outsiders. A model built on "strength
+drifts slowly" should find that season hardest, and it does.
 
-**Time decay.** Log loss is flat for half-lives between 180 and 365 days (0.9812 /
-0.9805 / 0.9811) and clearly worse below 120 days. The configured 180 days is kept
-rather than switching to whichever value happens to score best on the test
-seasons, which would be tuning on the test set.
+**The COVID seasons on their own** (2019-20 and 2020-21, 760 matches): still 7.2%
+better than the baseline, despite 2020-21 being played without crowds.
+
+### What the data says about the parameters
+
+Fitting each season on its own shows how much the "fixed" parameters actually move:
+
+- **Home advantage** averages +0.24 in normal seasons (home sides score ×1.27), with
+  a standard deviation of 0.07 between seasons. In 2020-21, behind closed doors, it
+  was **+0.007**, essentially zero, and that was the only season in the data with
+  more away wins than home wins. It has also **declined**, from about +0.27 in the
+  early 2010s to about +0.18 recently, and even with crowds 2024-25 came in at
+  +0.06. Time decay lets the current estimate (+0.17) follow that drift.
+- **rho** is noisy: per season it ranges from −0.16 to +0.14, averaging −0.045. It
+  only reshapes four scorelines, so it needs a lot of data; simulations show the
+  same (from 2,240 simulated matches with a true rho of −0.10, fitted values ranged
+  from −0.02 to −0.14). The current fit's −0.11 comes from about 240
+  effective matches and is probably overstated.
+- **Time decay** (measured on 2023-24 to 2025-26): log loss is flat for half-lives
+  between 180 and 365 days (0.9812 / 0.9805 / 0.9811) and clearly worse below 120.
+  The configured 180 days is kept rather than switching to whichever value scores
+  best on the test seasons, which would be tuning on the test set.
+- Matches whose decay weight falls below 0.001 (more than ~5 years old) are left
+  out of each fit. Across all 380 pairings this season, that changes no win, draw or
+  loss probability by more than 0.0005, and it makes fits about three times faster.
 
 ### Promoted teams
 
-A team promoted this season has few or no Premier League results. Fitted naively,
-it is rated on a handful of matches: with five games played, the unadjusted model
-puts newly promoted Hull City **5th in the league** on the strength of two wins.
+A team promoted this season has few or no recent Premier League results. Fitted
+naively, it is rated on a handful of matches: with five games played, the
+unadjusted model puts newly promoted Hull City **5th in the league** on the
+strength of two wins.
 
 How public models handle this: nearly all of them (Elo-style systems,
 FiveThirtyEight's SPI, Opta's power rankings) sidestep it by rating more than one
@@ -280,53 +308,65 @@ Academic goal models more often shrink sparse teams toward a common prior.
 TableTalk implements both and lets the backtest decide:
 
 - **`prior`**: start each promoted team at the average first-season rating of the
-  12 teams promoted in the previous four seasons (they scored ×0.75 and conceded
-  ×1.31 an average team's goals), with a spread equal to how much those teams
+  45 teams promoted in the previous 15 seasons (they scored ×0.77 and conceded
+  ×1.21 an average team's goals), with a spread equal to how much those teams
   varied. Their own results then pull them away from it.
 - **`second_tier`**: fit the Championship alongside the Premier League, with its
   own goal-rate offset, so promoted teams carry a Championship-earned rating onto
   the Premier League scale via the clubs that move between divisions.
 - **`none`**: no special handling, as a reference point.
 
-Log loss on the same backtest:
+Log loss over the 12 seasons (36 promoted teams):
 
 | matches | n | `none` | `prior` | `second_tier` |
 |---|---|---|---|---|
-| all | 1,140 | 0.981 | 0.981 | 0.988 |
-| promoted team involved | 324 | 0.883 | 0.883 | 0.909 |
-| early season (games 1-10), promoted team involved | 84 | 0.828 | 0.831 | 0.884 |
+| all | 4,560 | 0.972 | **0.968** | 0.970 |
+| promoted team involved | 1,296 | 0.932 | **0.917** | 0.930 |
+| early season (games 1-10), promoted team involved | 340 | 0.930 | **0.904** | 0.932 |
 
-Log loss alone cannot separate `prior` from `none`: a paired comparison on
-promoted-team matches gives a difference of −0.0005 ± 0.019. With only nine
-promoted teams in three test seasons, the sample is simply too small. The **bias**
-in forecast goal difference for promoted teams is clearer (predicted minus actual,
-goals per game, from the promoted team's side):
+Paired comparisons on the same matches (95% intervals):
+
+- `prior` beats `none` overall (−0.0042 ± 0.0026) and on promoted-team matches
+  (−0.0146 ± 0.0093).
+- `prior` beats `second_tier` on promoted-team matches (−0.0129 ± 0.0073), and by
+  more in the first ten games (−0.028 ± 0.020).
+- `second_tier` is indistinguishable from doing nothing.
+
+Bias in forecast goal difference for promoted teams (forecast minus actual, goals
+per game, from the promoted team's side):
 
 | | games 1-10 | games 11-38 |
 |---|---|---|
-| `none` | +0.23 | +0.09 |
-| `prior` | **+0.14** | **+0.06** |
-| `second_tier` | +0.43 | +0.18 |
+| `none` | +0.23 ± 0.17 | −0.03 ± 0.10 |
+| `prior` | **+0.15 ± 0.16** | −0.04 ± 0.10 |
+| `second_tier` | +0.39 ± 0.17 | +0.08 ± 0.10 |
 
 **Why the Championship approach loses: the winner's curse.** A club is promoted
 partly *because* its Championship results flattered it, so a rating built from
 those results is biased upward. The clubs `second_tier` got most wrong were the
 ones that ran away with the division: Burnley 2023-24 (forecast −0.39 goals per
-game, actual −1.7), Burnley and Leeds 2025-26. Multi-division rating systems have
-to correct for exactly this; the `prior` approach avoids it because it is measured
-on promoted teams' actual Premier League results.
+game in their first ten matches, actual −1.7), Burnley and Leeds 2025-26.
+Multi-division rating systems have to correct for exactly this; the `prior`
+approach avoids it because it is measured on promoted teams' actual Premier
+League results.
 
-**Decision: `prior`.** It ties `none` on log loss and has the smallest bias. The
-bias matters more than the log-loss tie suggests: once ratings drive a season
-simulation, a promoted team rated 0.2 goals per game too high has its relegation
-probability understated in every one of the 10,000 runs, whereas log loss averages
-that error across all 380 matches.
+**Decision: `prior`.** It is the best of the three on every measure above, and the
+only one whose early-season bias is not distinguishable from zero.
+
+A lesson in statistical power along the way: an earlier version of this backtest
+covered only three seasons (nine promoted teams) and could not separate `prior`
+from `none` at all (a difference of −0.0005 ± 0.019). Loading 2010-11 onwards
+quadrupled the sample and turned "no detectable difference" into a clear result.
+With nine teams, the honest conclusion was "we cannot tell", not "it doesn't
+matter".
 
 Open questions, deliberately not tuned against the same test seasons:
 
-- **More history would give a real answer.** football-data.co.uk goes back to the
-  1990s; ten more seasons would mean roughly 30 more promoted teams, both for
-  estimating the prior and for testing it.
+- **Promoted teams are getting weaker.** Their average first-season net rating
+  fell from −0.38 (2011-12 to 2017-18) to −0.53 (2018-19 to 2025-26), consistent
+  with the widely reported gap between the Premier League and the Championship
+  growing. A prior weighting recent seasons more heavily would track that; it
+  likely explains the remaining +0.15 early-season bias.
 - **A corrected `second_tier`**, shrinking Championship ratings toward the promoted
   prior, might combine team-specific information with the winner's-curse
   correction.
@@ -340,7 +380,7 @@ Open questions, deliberately not tuned against the same test seasons:
 python -m pytest
 ```
 
-123 tests, no network access required (the integration test skips when the raw
+124 tests, no network access required (the integration test skips when the raw
 data is not cached). They cover the parts that are easy to get subtly wrong and hard
 to notice:
 
@@ -380,9 +420,12 @@ they are written.
 - **Nothing about teams beyond results.** No injuries, suspensions, transfers,
   managerial changes, European or cup fixture congestion, or motivation at the end
   of a season.
-- **Promoted teams are still slightly overrated** (+0.14 goals per game early in
-  the season) even with the `prior` strategy, and every promoted team starts from
-  the same prior however it was built. See [Promoted teams](#promoted-teams).
+- **Promoted teams start from one shared prior**, however they were built, and it
+  weights a promoted team from 2011 the same as one from 2025 although promoted
+  sides have been getting weaker. See [Promoted teams](#promoted-teams).
+- **Home advantage and rho are single numbers per fit.** Home advantage differs by
+  ground and has drifted downwards for a decade; rho is poorly determined by a
+  time-decayed sample.
 - **Strength is assumed to drift slowly.** Time decay is a blunt instrument: it
   cannot capture a team that changes overnight.
 - **Early-season forecasts are weakly informed** by the current season and lean on

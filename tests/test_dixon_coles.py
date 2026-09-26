@@ -306,3 +306,18 @@ def test_predict_adds_probabilities_to_a_fixture_frame(recovered):
     totals = predicted[["p_home", "p_draw", "p_away"]].sum(axis=1)
     assert np.allclose(totals, 1.0)
     assert predicted.loc[0, "p_home"] > predicted.loc[0, "p_away"]  # best v worst
+
+
+# A 30-day half-life leaves ~40 matches of effective data: far too few to pin
+# down rho, which duly hits its bound. Irrelevant to what this test checks.
+@pytest.mark.filterwarnings("ignore:rho=.*search bound")
+def test_negligible_weight_matches_are_dropped():
+    """Matches that decay below min_weight are excluded; the rest are unchanged."""
+    matches = _simulate_league(n_rounds=6, seed=8)  # 336 matches, one a day
+    as_of = matches["date"].max() + pd.Timedelta(days=1)
+    # half-life 30 days: after ~300 days a match weighs < 0.001
+    trimmed = DixonColesModel(half_life_days=30, min_weight=1e-3).fit(matches, as_of=as_of)
+    everything = DixonColesModel(half_life_days=30, min_weight=0).fit(matches, as_of=as_of)
+    assert trimmed.n_matches < everything.n_matches
+    assert everything.n_matches == len(matches)
+    assert np.allclose(trimmed.attack, everything.attack, atol=0.01)

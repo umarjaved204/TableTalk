@@ -34,6 +34,7 @@ from .data.dataset import processed_path
 from .data.loaders import available_loaders, build_loaders
 from .data.normalise import default_normaliser
 from .cli_model import add_model_commands
+from .model.promoted import promoted_teams
 
 
 # ---------------------------------------------------------------------------
@@ -66,45 +67,70 @@ def cmd_data_fetch(args: argparse.Namespace) -> int:
 
 
 def cmd_data_check(args: argparse.Namespace) -> int:
-    """Data-quality report. Run this after adding a season or a new source."""
+    """Data-quality report. Run this after adding a season or a new source.
+
+    Each section is its own function below, in the order it is printed.
+    """
     config = load_competition(args.competition)
+    _report_config(config)
+    unknown = _report_team_names(config, refresh=args.refresh)
+    matches = load_matches(config, refresh=args.refresh, strict_names=not unknown)
+    _report_seasons(matches, config)
+    _report_current_season(matches, config)
+    _report_fixture_list(matches, config)
+    _report_team_history(matches, config)
+    _report_assumptions(config)
+    return 1 if unknown else 0
+
+
+def _report_config(config) -> None:
     print(f"=== {config.name} ({config.id}) ===")
     print(f"config:   {config.source_path}")
     print(f"format:   {config.format}, {config.league.n_teams} teams, "
           f"{config.league.matches_per_team} matches each, "
           f"{config.points.win}/{config.points.draw}/{config.points.loss} points")
-    print(f"seasons:  {', '.join(config.seasons)} (current: {config.current_season})")
+    print(f"seasons:  {config.seasons[0]} to {config.seasons[-1]} "
+          f"({len(config.seasons)}; current: {config.current_season})")
 
-    # 1. Unknown team names, reported all at once rather than failing on the first.
+
+def _report_team_names(config, *, refresh: bool) -> set[str]:
+    """Unknown team names, reported all at once rather than failing on the first."""
     normaliser = default_normaliser()
     unknown: set[str] = set()
     for loader in build_loaders(config):
-        unknown.update(normaliser.unknown(loader.raw_team_names(refresh=args.refresh)))
+        unknown.update(normaliser.unknown(loader.raw_team_names(refresh=refresh)))
     print("\n--- team names ---")
-    if unknown:
-        print(f"{len(unknown)} name(s) missing from configs/team_aliases.yaml:")
-        for name in sorted(unknown):
-            print(f"  - {name!r}")
-    else:
+    if not unknown:
         print("all source team names resolve to a canonical name")
+        return unknown
+    print(f"{len(unknown)} name(s) missing from configs/team_aliases.yaml:")
+    for name in sorted(unknown):
+        print(f"  - {name!r}")
+    return unknown
 
-    matches = load_matches(config, refresh=args.refresh, strict_names=not unknown)
 
+def _report_seasons(matches: pd.DataFrame, config) -> None:
     print("\n--- seasons ---")
-    print(season_summary(matches).to_string(index=False))
-    expected = config.league.total_matches if config.league else None
-    if expected:
-        complete = season_summary(matches).query("played != @expected")["season"].tolist()
-        if complete:
-            print(f"\nseason(s) not at the full {expected} matches: {', '.join(complete)} "
-                  "(expected for the season in progress)")
+    summary = season_summary(matches)
+    print(summary.to_string(index=False))
+    if not config.league:
+        return
+    expected = config.league.total_matches
+    incomplete = summary.loc[summary["played"] != expected, "season"].tolist()
+    if incomplete:
+        print(f"\nseason(s) not at the full {expected} matches: {', '.join(incomplete)} "
+              "(expected for the season in progress)")
 
+
+def _report_current_season(matches: pd.DataFrame, config) -> None:
     print("\n--- current season ---")
     progress = season_progress(matches, config, config.current_season)
     print(f"{config.current_season}: {progress['played']} played, "
           f"{progress['remaining']} remaining of {progress['total']}")
     print("\n" + _provisional_table(matches, config).to_string(index=False))
 
+
+def _report_fixture_list(matches: pd.DataFrame, config) -> None:
     print("\n--- fixture list ---")
     problems = check_fixture_list(matches, config, config.current_season)
     if problems:
@@ -121,25 +147,34 @@ def cmd_data_check(args: argparse.Namespace) -> int:
               f"{upcoming['date'].max():%Y-%m-%d}):")
         print(upcoming.head(5)[["date", "matchday", "home_team", "away_team"]].to_string(index=False))
 
-    print("\n--- history available per team (matches per season) ---")
-    counts = team_seasons(matches)
-    print(counts.to_string())
-    current_teams = counts.index[counts[config.current_season] > 0]
-    history = counts.loc[current_teams, [s for s in config.seasons if s != config.current_season]]
-    newcomers = history.index[history.sum(axis=1) == 0].tolist()
-    thin = history.index[(history.sum(axis=1) > 0) & (history.sum(axis=1) <= 38)].tolist()
-    if newcomers:
-        print(f"\nno history in this competition: {', '.join(newcomers)}")
-    if thin:
-        print(f"one season of history only:     {', '.join(thin)}")
-    print("These teams are the promoted-team problem the match model has to handle;\n"
-          "treating them as average would overrate them.")
 
+def _report_team_history(matches: pd.DataFrame, config) -> None:
+    """How much top-flight history each of this season's teams has."""
+    print("\n--- this season's teams: history in this competition ---")
+    counts = team_seasons(matches)
+    past = [s for s in config.seasons if s != config.current_season]
+    current_teams = counts.index[counts[config.current_season] > 0]
+    recent = past[-5:]
+    history = counts.loc[current_teams, recent].copy()
+    history.insert(0, "seasons", (counts.loc[current_teams, past] > 0).sum(axis=1))
+    print(f"(matches per season for the last {len(recent)} seasons; `seasons` counts all "
+          f"{len(past)} completed seasons loaded)")
+    print(history.sort_values("seasons").to_string())
+
+    promoted = promoted_teams(matches, config.id, config.current_season)
+    if promoted:
+        strategy = (config.model.get("promoted_teams") or {}).get("strategy", "prior")
+        print(f"\npromoted into {config.current_season}: {', '.join(promoted)}")
+        print(f"These are rated with the `{strategy}` promoted-team strategy: any older "
+              "top-flight spell\nis too far back to count once time decay is applied "
+              "(see `python -m tabletalk ratings`).")
+
+
+def _report_assumptions(config) -> None:
     print("\n--- flagged assumptions in this config ---")
     for assumption in config.assumptions:
         text = " ".join(str(assumption.get("text", "")).split())
         print(f"  [{assumption.get('id')}] {text}")
-    return 1 if unknown else 0
 
 
 def _provisional_table(matches: pd.DataFrame, config) -> pd.DataFrame:
@@ -253,7 +288,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ConfigError as exc:
         print(f"config error: {exc}", file=sys.stderr)
         return 2
-    except Exception as exc:  # noqa: BLE001 - CLI boundary: report, don't traceback
+    # Deliberately broad: this is the CLI boundary, where any failure should be
+    # reported as one readable line rather than a traceback.
+    except Exception as exc:  # noqa: BLE001
         print(f"error: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
 
