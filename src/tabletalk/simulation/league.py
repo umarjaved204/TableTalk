@@ -25,15 +25,15 @@ How it is fast
   where teams are *still* level - under 1% for the Premier League - go through
   the exact, slower tiebreaker engine for the head-to-head criteria.
 
-Modelling assumption: fixed strengths
--------------------------------------
-Every simulated season uses the ratings as they stand today. A team does not
-"get better" within a simulation because it won its simulated matches. This is
-the standard approach and easy to explain, but it understates the spread of
-outcomes a little: in reality ratings drift over a season, which fattens both
-tails (a surprise title challenge, a collapse). Simulating that drift, by
-updating ratings as simulated results come in, is noted as a possible
-extension.
+Strength uncertainty
+--------------------
+With a ``StrengthUncertainty`` (see ``simulation.uncertainty``), each simulated
+season draws its own ratings from the fit's uncertainty and lets them drift
+through the season, so outcomes are as spread out as our real ignorance says
+they should be. Scorelines are then sampled per run rather than from one shared
+score matrix per fixture. Without it (``FIXED``), every run uses today's best
+estimates for every fixture: faster, but the season backtest shows it makes
+forecasts made months ahead over-confident.
 
 Monte Carlo error
 -----------------
@@ -53,6 +53,7 @@ from ..config import CompetitionConfig, Zone
 from ..data.fixtures import remaining_fixtures, season_teams
 from ..model.dixon_coles import FittedDixonColes
 from .table import SeasonResults, Tiebreaker, _season_criterion, league_table, result_points, season_totals
+from .uncertainty import FIXED, StrengthUncertainty, simulate_fixtures
 
 
 @dataclass
@@ -126,11 +127,17 @@ class LeagueSimulationResult:
 class LeagueSimulator:
     """Simulates the remainder of a round-robin league season."""
 
-    def __init__(self, config: CompetitionConfig, model: FittedDixonColes):
+    def __init__(
+        self,
+        config: CompetitionConfig,
+        model: FittedDixonColes,
+        uncertainty: StrengthUncertainty = FIXED,
+    ):
         if config.league is None:
             raise ValueError(f"{config.id} has no `league:` section to simulate")
         self.config = config
         self.model = model
+        self.uncertainty = uncertainty
 
     def simulate(
         self,
@@ -165,7 +172,20 @@ class LeagueSimulator:
         # --- 1. simulate every remaining fixture in every run -------------------
         home_idx = fixtures["home_team"].map(index).to_numpy(dtype=int)
         away_idx = fixtures["away_team"].map(index).to_numpy(dtype=int)
-        sim_home_goals, sim_away_goals = self._sample_scores(fixtures, n_simulations, rng)
+        if self.uncertainty.active:
+            days_ahead = (fixtures["date"] - self.model.as_of).dt.days.to_numpy(dtype=float)
+            sim_home_goals, sim_away_goals = simulate_fixtures(
+                self.model,
+                self.uncertainty,
+                fixtures["home_team"].tolist(),
+                fixtures["away_team"].tolist(),
+                days_ahead,
+                fixtures["neutral"].fillna(False).to_numpy(dtype=bool),
+                n_simulations,
+                rng,
+            )
+        else:
+            sim_home_goals, sim_away_goals = self._sample_scores(fixtures, n_simulations, rng)
 
         # --- 2. final totals for every team in every run --------------------------
         totals = self._final_totals(base, home_idx, away_idx, sim_home_goals, sim_away_goals, n_teams)
@@ -333,6 +353,8 @@ def simulate_league(
     as_of: str | pd.Timestamp | None = None,
     season: str | None = None,
     prior=None,
+    fixed_strengths: bool = False,
+    strength_uncertainty: dict | None = None,
 ) -> LeagueSimulationResult:
     """Fit the match model and simulate the season in one call.
 
@@ -341,13 +363,26 @@ def simulate_league(
     season-level backtest). By default, everything played so far is used.
     ``prior`` is a precomputed promoted-team prior, so a backtest replaying the
     same season from several dates estimates it once.
+
+    Strength uncertainty follows the config's ``simulation.strength_uncertainty``
+    block, or ``strength_uncertainty`` if given (same keys, for comparing
+    variants); ``fixed_strengths=True`` switches it off (today's ratings for
+    every run).
     """
     from ..model.promoted import fit_competition_model
 
     season = season or config.current_season
+    # A config without a `strength_uncertainty` block simulates fixed strengths.
+    if strength_uncertainty is not None:
+        settings = dict(strength_uncertainty)
+    else:
+        settings = config.simulation.get("strength_uncertainty") or {}
+    wants_uncertainty = bool(settings) and bool(settings.get("enabled", True)) and not fixed_strengths
     fit = fit_competition_model(
-        config, matches, context, season=season, as_of=as_of, strategy=strategy, prior=prior
+        config, matches, context, season=season, as_of=as_of, strategy=strategy, prior=prior,
+        compute_covariance=wants_uncertainty and bool(settings.get("parameter_uncertainty", True)),
     )
+    uncertainty = StrengthUncertainty.from_config(settings, fit.model) if wants_uncertainty else FIXED
     frame = matches
     if as_of is not None:
         # Forget results on or after as_of: they become fixtures to simulate.
@@ -355,8 +390,8 @@ def simulate_league(
         future = (frame["season"].astype(str) == season) & (frame["date"] >= pd.Timestamp(as_of))
         frame.loc[future, ["home_goals", "away_goals"]] = pd.NA
         frame.loc[future, "played"] = False
-    result = LeagueSimulator(config, fit.model).simulate(
+    result = LeagueSimulator(config, fit.model, uncertainty).simulate(
         frame, season=season, n_simulations=n_simulations, seed=seed
     )
-    result.metadata.update({"strategy": fit.strategy, "promoted": fit.promoted})
+    result.metadata.update({"strategy": fit.strategy, "promoted": fit.promoted, "uncertainty": uncertainty})
     return result

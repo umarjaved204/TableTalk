@@ -78,6 +78,9 @@ from scipy.stats import poisson
 #: parameter value during optimisation cannot produce log(0).
 _TINY = 1e-10
 
+#: Search range for rho. Keeps tau positive at realistic scoring rates.
+RHO_BOUNDS: tuple[float, float] = (-0.3, 0.3)
+
 
 # ---------------------------------------------------------------------------
 # Pure functions: the math, testable on its own
@@ -290,7 +293,7 @@ class DixonColesModel:
         half_life_days: float | None = 180.0,
         rating_prior_sd: float = 1.0,
         max_goals: int = 10,
-        rho_bounds: tuple[float, float] = (-0.3, 0.3),
+        rho_bounds: tuple[float, float] = RHO_BOUNDS,
         min_weight: float = 1e-3,
     ):
         if rating_prior_sd <= 0:
@@ -313,6 +316,24 @@ class DixonColesModel:
         settings.update({k: v for k, v in overrides.items() if v is not None})
         return cls(**settings)
 
+    def _prior_arrays(
+        self, index: Mapping[str, int], priors: Mapping[str, TeamPrior] | None
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Prior means and sds per team: the default wide prior, overridden per team."""
+        n = len(index)
+        prior_attack = np.zeros(n)
+        prior_defence = np.zeros(n)
+        prior_sd = np.full(n, self.rating_prior_sd)
+        for team, prior in (priors or {}).items():
+            if team not in index:
+                continue
+            i = index[team]
+            prior_attack[i] = prior.attack
+            prior_defence[i] = prior.defence
+            if prior.sd is not None:
+                prior_sd[i] = prior.sd
+        return prior_attack, prior_defence, prior_sd
+
     def fit(
         self,
         matches: pd.DataFrame,
@@ -321,6 +342,7 @@ class DixonColesModel:
         teams: Sequence[str] | None = None,
         priors: Mapping[str, TeamPrior] | None = None,
         base_division: str | None = None,
+        compute_covariance: bool = False,
     ) -> "FittedDixonColes":
         """Fit to played matches dated strictly before ``as_of``.
 
@@ -337,6 +359,10 @@ class DixonColesModel:
             base_division: the competition predictions are for. Other
                 competitions in ``matches`` get their own goal-rate offset.
                 Defaults to the most common competition in the data.
+            compute_covariance: also estimate how uncertain the parameters
+                are (see :func:`parameter_covariance`). Needed to simulate with
+                strength uncertainty; off by default because backtests refit
+                hundreds of times and never use it.
         """
         played = matches.loc[matches["played"].fillna(False).astype(bool)]
         if as_of is None:
@@ -362,18 +388,7 @@ class DixonColesModel:
         other_divisions = sorted(set(competitions) - {base})
         division_index = {base: 0, **{div: i + 1 for i, div in enumerate(other_divisions)}}
 
-        # --- priors --------------------------------------------------------
-        prior_attack = np.zeros(n)
-        prior_defence = np.zeros(n)
-        prior_sd = np.full(n, self.rating_prior_sd)
-        for team, prior in (priors or {}).items():
-            if team not in index:
-                continue
-            i = index[team]
-            prior_attack[i] = prior.attack
-            prior_defence[i] = prior.defence
-            if prior.sd is not None:
-                prior_sd[i] = prior.sd
+        prior_attack, prior_defence, prior_sd = self._prior_arrays(index, priors)
 
         age_days = (as_of - train["date"]).dt.days.to_numpy(dtype=float)
         data = _FitData(
@@ -425,6 +440,8 @@ class DixonColesModel:
 
             warnings.warn(f"rho={rho:.3f} is at its search bound {self.rho_bounds}", stacklevel=2)
 
+        covariance = parameter_covariance(theta, data) if compute_covariance else None
+
         return FittedDixonColes(
             teams=tuple(team_list),
             attack=theta[:n].copy(),
@@ -446,7 +463,43 @@ class DixonColesModel:
             prior_defence=dict(zip(team_list, prior_defence)),
             prior_sd=dict(zip(team_list, prior_sd)),
             matches_per_team=_matches_per_team(train, team_list),
+            covariance=covariance,
         )
+
+
+def parameter_covariance(theta: np.ndarray, data: _FitData, step: float = 1e-5) -> np.ndarray:
+    """How uncertain the fitted parameters are: the Laplace approximation.
+
+    Near its optimum, a log-likelihood (here, log-posterior) is close to a
+    quadratic bowl. A sharply curved bowl means the data pin the parameter down;
+    a shallow one means many values fit about equally well. Approximating the
+    posterior by a Gaussian with that curvature gives
+
+        covariance = inverse(Hessian of the negative log-posterior at the optimum)
+
+    The Hessian is computed by central differences of the analytic gradient.
+
+    What this gives, for free and without tuning:
+    * a team with 200 recent matches gets a tight rating,
+    * a promoted team with five matches gets a wide one (mostly its prior),
+    * everyone's ratings are wider early in a season, when time decay has
+      down-weighted most of the evidence.
+
+    Eigenvalues are floored at a tiny positive number before inverting, so the
+    result is always a valid covariance even where the posterior is flat.
+    """
+    size = theta.size
+    hessian = np.empty((size, size))
+    for j in range(size):
+        shift = np.zeros(size)
+        shift[j] = step
+        up = _negative_log_posterior(theta + shift, data)[1]
+        down = _negative_log_posterior(theta - shift, data)[1]
+        hessian[:, j] = (up - down) / (2 * step)
+    hessian = 0.5 * (hessian + hessian.T)
+    eigenvalues, eigenvectors = np.linalg.eigh(hessian)
+    eigenvalues = np.maximum(eigenvalues, 1e-8)
+    return (eigenvectors / eigenvalues) @ eigenvectors.T
 
 
 def _matches_per_team(train: pd.DataFrame, team_list: list[str]) -> dict[str, int]:
@@ -483,9 +536,26 @@ class FittedDixonColes:
     prior_defence: dict[str, float] = field(default_factory=dict)
     prior_sd: dict[str, float] = field(default_factory=dict)
     matches_per_team: dict[str, int] = field(default_factory=dict)
+    #: Parameter covariance (Laplace approximation), in the layout of
+    #: :meth:`parameter_vector`; None unless the fit was asked for it.
+    covariance: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         self._index = {team: i for i, team in enumerate(self.teams)}
+
+    def parameter_vector(self) -> np.ndarray:
+        """All parameters as one vector, in the fit's layout:
+
+        ``[attack (n) | defence (n) | intercept | home_advantage | rho | division offsets]``
+        """
+        offsets = [self.division_offsets[d] for d in sorted(self.division_offsets)]
+        return np.concatenate(
+            (self.attack, self.defence, [self.intercept, self.home_advantage, self.rho], offsets)
+        )
+
+    def team_index(self, team: str) -> int:
+        """Position of ``team`` in :attr:`teams` (and in the parameter vector)."""
+        return self._team(team)
 
     # -- core predictions ---------------------------------------------------
     def _team(self, team: str) -> int:

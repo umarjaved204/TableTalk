@@ -204,6 +204,28 @@ evaluation:
 simulation:
   n_simulations: 10000
   random_seed: 20260926
+  # How uncertain team strengths are inside a simulated season (see
+  # tabletalk/simulation/uncertainty.py). Without this block, every simulated
+  # season uses today's best-estimate ratings for every remaining fixture.
+  #
+  # Chosen from a season-level backtest of three versions (12 seasons, 4
+  # checkpoints each; see README "Fixing the early over-confidence"):
+  #   fixed strengths      pre-season 70-99% forecasts came true 71% of the time (forecast 87%)
+  #   + rating uncertainty pre-season: 83% (forecast 86%); pooled log loss better
+  #   + drift as well      no further gain on any pooled measure
+  # Cost: forecasts made mid-to-late season become slightly under-confident
+  # (calibration gap 1.0 -> 1.6 pts); within noise at 50% played, about two
+  # standard errors at 75%.
+  strength_uncertainty:
+    enabled: true
+    # Draw each simulated season's ratings from the fit's own uncertainty
+    # (Laplace approximation): wide for promoted teams and early in a season.
+    parameter_uncertainty: true
+    # Random-walk drift in every rating through the rest of the season.
+    # `implied` derives the step size from the time-decay half-life, so there
+    # is no separate number to tune. Off: it added nothing in the backtest,
+    # which suggests strength changes mostly between seasons, not within them.
+    drift: none
 
 verification:
   checked_on: "2026-09-26"

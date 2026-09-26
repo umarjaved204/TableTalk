@@ -6,8 +6,8 @@ competition simulators, producing the kind of numbers newspapers print as
 assumptions flagged, and the forecasts checked against what actually happened.
 
 **Status: Phase 1 complete.** Data layer, Dixon-Coles match model, league
-simulator and both backtests (match-level and season-level, with calibration) are
-done and tested for the Premier League. The headline results are
+simulator (with rating uncertainty) and both backtests (match-level and
+season-level, with calibration) are done and tested for the Premier League. The headline results are
 [below](#results-does-it-work-phase-1-done); Phase 2 adds the other big leagues.
 
 ```
@@ -398,13 +398,13 @@ team finished in each zone the config defines:
 
 ```
                         now  pts  exp pts range (10-90%) title top four top five top half relegation
-Manchester City           1   15     81.6          73-90  61.1     99.3     99.8      100          -
-Arsenal                   2   12     78.3          70-87  35.0     98.2     99.3      100          -
-Brighton & Hove Albion    3   10     65.8          57-75   2.3     65.1     77.7     97.7          -
+Manchester City           1   15     81.0          69-93  52.1     94.3     96.6     99.8          -
+Arsenal                   2   12     77.7          65-90  33.8     89.4     93.8     99.5          -
+Brighton & Hove Albion    3   10     65.5          52-78   5.2     51.6     63.1     92.3        0.1
 ...
-Tottenham Hotspur        20    2     36.8          28-46     -     <0.1     <0.1      2.1       47.6
-Ipswich Town             11    6     32.9          25-41     -        -        -      0.4       73.3
-Coventry City            18    3     30.0          22-38     -        -        -      0.1       84.9
+Tottenham Hotspur        20    2     37.3          25-49     -      0.3      0.7      7.7       40.9
+Ipswich Town             11    6     33.7          22-46  <0.1      0.1      0.3      3.8       58.9
+Coventry City            18    3     30.8          19-43     -     <0.1      0.2      2.8       69.5
 ```
 
 (2026-27 after five matchdays. Tottenham finished 17th in each of the last two
@@ -415,18 +415,23 @@ of a possible change of manager.)
 ### How one simulated season works
 
 1. Start from the real table.
-2. For each remaining fixture, draw a scoreline from the match model's score
-   matrix: take the running total of the flattened matrix and see where a
-   uniform random number lands in it.
-3. Add the simulated results to the real ones and rank the table with the
+2. Draw this season's team ratings from the fit's uncertainty (see
+   [strength uncertainty](#strength-uncertainty)), so a team is a little stronger
+   in some simulated seasons and a little weaker in others.
+3. For each remaining fixture, draw a scoreline from the Dixon-Coles distribution
+   with those ratings.
+4. Add the simulated results to the real ones and rank the table with the
    config's points system and tiebreakers.
 
-It takes about 1.5 seconds for 10,000 seasons (3.3 million matches). Each
-fixture's score matrix is computed once; all runs are drawn at once as a
-fixtures × runs array; the tables are built with a matrix product; and the
-tables are sorted in bulk on points, goal difference and goals scored. Only runs
-where teams are *still* level (about 0.5% for the Premier League) go through the
-exact tiebreaker engine for the head-to-head criteria.
+It takes under 3 seconds for 10,000 seasons (3.3 million matches). All runs are
+drawn at once as a fixtures × runs array; the tables are built with a matrix
+product; and the tables are sorted in bulk on points, goal difference and goals
+scored. Only runs where teams are *still* level (about 0.5% for the Premier
+League) go through the exact tiebreaker engine for the head-to-head criteria.
+
+Scorelines are drawn by exact rejection sampling: propose from two independent
+Poissons, accept with probability proportional to the Dixon-Coles correction.
+A test checks it reproduces the model's score matrix over 400,000 draws.
 
 With 10,000 runs, a 50% figure carries about ±1 percentage point of simulation
 noise (95%), a 5% figure about ±0.4. `-` in the output means "in none of the
@@ -458,14 +463,36 @@ clubs that went down. Its biggest miss was Manchester United: 4.8% for the top
 four, and they finished third. One season is an anecdote; step 4 asks whether the
 model's 5% events happen about 5% of the time across many seasons.
 
-### Assumption: strengths stay fixed within a simulated season
+### Strength uncertainty
 
-Every simulated season uses today's ratings: a team does not improve within a
-simulation because it won its simulated matches. This is the standard approach
-and easy to explain, but real ratings drift over a season, so it understates the
-spread of outcomes somewhat: surprise title challenges and collapses are a little
-more common in reality than in the simulation. Updating ratings as simulated
-results come in would address it at a cost in speed and clarity.
+The simplest simulator uses today's best-estimate ratings for every simulated
+season. That leaves out a real source of spread: **we do not know how good each
+team is exactly**, and a team that is really a little better than its rating is
+better in *all* its remaining matches, not just one. Ignoring that makes season
+forecasts too sure of themselves, and the backtest showed exactly that (see
+[the fix](#fixing-the-early-over-confidence)).
+
+So each simulated season draws its own ratings from the fit's uncertainty. That
+uncertainty is not a tuned number: near its best fit, the log-likelihood is
+shaped like a bowl, and **how sharply it curves says how well the data pin each
+parameter down** (the Laplace approximation: covariance = inverse of the
+curvature, the Hessian). It comes out wide for promoted teams and early in a
+season, when there is little relevant data, and narrow for gaps between
+established sides.
+
+A useful discovery along the way: with a 180-day half-life, the model effectively
+sees each team through only about 24 recent matches, which is worth about ±0.14
+on a single rating. It is much less sure of each team than its confident
+single-match forecasts suggest.
+
+A second option, **drift**, lets ratings wander through the season as a random
+walk, with the step size derived from the half-life (exponential down-weighting
+is what the optimal tracker of a random-walk strength, a Kalman filter,
+produces). It is implemented and tested, but switched off: in the backtest it
+added nothing, which suggests strength changes mostly *between* seasons
+(transfers, pre-season) rather than steadily within them.
+
+`--fixed-strengths` switches uncertainty off, for comparison.
 
 ## Results: does it work? (Phase 1, done)
 
@@ -505,57 +532,84 @@ than each baseline:
 
 | vs **uniform** (knows nothing) | title | top four | top five | top half | relegation |
 |---|---|---|---|---|---|
-| pre-season | 25.5 | 39.5 | 52.1 | 37.8 | 25.6 |
-| 25% played | 48.0 | 58.6 | 65.5 | 51.6 | 42.8 |
-| 50% played | 59.2 | 81.7 | 85.7 | 66.2 | 54.7 |
-| 75% played | 67.8 | 83.2 | 85.7 | 73.3 | 75.2 |
+| pre-season | 27.9 | 43.4 | 53.4 | 40.8 | 25.3 |
+| 25% played | 46.5 | 60.2 | 66.4 | 53.4 | 42.8 |
+| 50% played | 59.2 | 80.1 | 83.9 | 66.5 | 54.4 |
+| 75% played | 67.4 | 82.8 | 85.5 | 73.6 | 74.8 |
 
 | vs **persistence** (the table as it stands) | title | top four | top five | top half | relegation |
 |---|---|---|---|---|---|
-| pre-season | 46.9 | 35.5 | 46.1 | 41.7 | 36.8 |
-| 25% played | 63.0 | 53.2 | 48.3 | 36.9 | 37.5 |
-| 50% played | 53.5 | 56.1 | 54.1 | 27.6 | 36.9 |
-| 75% played | 54.2 | 35.6 | 54.1 | 38.3 | **−26.4** |
+| pre-season | 48.7 | 39.6 | 47.6 | 44.5 | 36.5 |
+| 25% played | 61.9 | 55.0 | 49.6 | 39.2 | 37.5 |
+| 50% played | 53.4 | 52.2 | 48.3 | 28.3 | 36.6 |
+| 75% played | 53.5 | 33.8 | 53.3 | 39.0 | **−28.5** |
 
 "Persistence" is the naive pundit: the final table will look like the current
 one (pre-season, last season's table with the promoted teams at the bottom). The
-model beats it everywhere except one cell. Finishing positions tell the same
-story: the expected position is 2.8 places off pre-season (persistence: 3.3),
-falling to 1.3 with a quarter of the season left (persistence: 1.4). The
-pre-season favourite won the title in 5 of 12 seasons, with an average
-favourite's probability of 58%.
+model beats it everywhere except one cell, discussed below. Finishing positions
+tell the same story: the expected position is 2.9 places off pre-season
+(persistence: 3.3), falling to 1.3 with a quarter of the season left
+(persistence: 1.4).
 
-### Where it goes wrong: early over-confidence, late stubbornness
+### Fixing the early over-confidence
+
+The first version simulated every season with fixed, best-estimate strengths.
+Its backtest found that **forecasts made early in a season were over-confident**:
+when it said 70-99% pre-season, the outcome happened 71% of the time against an
+average forecast of 87%, about 3.5 standard errors off. Its pre-season title
+favourite was given 58% on average and won 5 of 12 titles (42%).
+
+The cause is the fixed strengths: they ignore how uncertain each rating is, and
+that uncertainty is shared by all of a team's remaining matches. Three versions
+were run through the same backtest, with the decision rule written down
+beforehand (improve overall accuracy, fix the early over-confidence, don't hurt
+later calibration):
+
+| | fixed strengths | + rating uncertainty | + drift as well |
+|---|---|---|---|
+| zone log loss, pooled (lower is better) | 0.1949 | **0.1890** | 0.1895 |
+| confident (70-99%) pre-season forecasts: forecast / observed | 86.6% / 71.4% | 86.0% / **83.3%** | 86.4% / 84.9% |
+| calibration gap, early season | 2.7 pts | **1.1 pts** | 1.3 pts |
+| calibration gap, later season | **1.0 pts** | 1.6 pts | 1.6 pts |
+| pre-season favourite's average title chance (won 42% of the time) | 58% | **46.5%** | 44% |
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="reports/figures/uncertainty-fix-dark.png">
+  <img alt="Early-season calibration before and after adding rating uncertainty: the after panel tracks the diagonal" src="reports/figures/uncertainty-fix-light.png">
+</picture>
+
+**Adopted: rating uncertainty, without drift.** Strictly, it misses the third
+condition: forecasts made mid-to-late season become slightly *under*-confident
+(the later-season gap rises from 1.0 to 1.6 points). Weighed against sampling
+error, the trade is lopsided: the early-season miss was about 3.5 standard errors
+and is now inside one; the new later-season miss is inside the noise at 50%
+played and about two standard errors at 75%, where the fixed version was already
+under-confident. Drift added nothing on any pooled measure, so it stays off.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="reports/figures/season-calibration-dark.png">
-  <img alt="Season-forecast calibration: early-season forecasts fall below the diagonal at high probabilities; later ones track it" src="reports/figures/season-calibration-light.png">
+  <img alt="Season-forecast calibration with rating uncertainty: early forecasts track the diagonal; later ones show a mild S-shape" src="reports/figures/season-calibration-light.png">
 </picture>
 
-- **Early in a season, confident forecasts are too confident.** Forecasts of
-  70-99% made pre-season came true 71% of the time against an average forecast of
-  87%; at 25% played, 77% against 87%. By mid-season they agree (86.5% against
-  86.6%).
+### What is still wrong
+
 - **Late in a season, it hedges where the table has already decided.** With a
   quarter of the season left, the bottom three stayed there in 9 of 12 seasons,
-  and the model lost to "the table as it stands" by holding on to ratings:
-  Leicester 2022-23 were in the bottom three and given a 21% relegation chance
-  (they went down); Swansea 2017-18 got 34% (they went down).
-
-Both trace back to one simplification in the simulator: **each team's strength
-is fixed within a simulated season.** Over a long horizon real strength drifts
-(transfers, injuries, managers), so forecasts made months ahead are too sure.
-Late on, ratings partly built from last season lag behind a genuinely declining
-team that the table has already caught. The natural fix is to give each team's
-rating uncertainty that grows with the forecast horizon, drawing fresh ratings
-for every simulated season. It is the first thing to try in the next iteration;
-it is not tuned against these results here.
-
-Caveats: twelve seasons means twelve champions and 36 relegated teams, so the
-rare-event numbers carry real uncertainty; and pooled season-level observations
-are not independent (the same team appears at four checkpoints, and exactly one
-team wins each title), so the calibration intervals are narrower than they should
-be.
+  and the model loses to "the table as it stands" by holding on to ratings:
+  Leicester 2022-23 were in the bottom three and given a 23% relegation chance
+  (they went down). This is lag, not width: ratings built partly from
+  last season are slow to catch a genuinely declining team, and uncertainty does
+  not fix that. A model where strength changes explicitly over time, rather than
+  one half-life doing two jobs, is the principled next step.
+- **Mid-to-late forecasts are now slightly under-confident** (the gentle S-shape
+  above). One reading: in-season uncertainty is overstated while the change
+  between seasons is understated, so modelling the summer (transfers,
+  pre-season) separately from in-season drift could fix both ends at once.
+- **Sample size.** Twelve seasons means twelve champions and 36 relegated teams,
+  so the rare-event numbers carry real uncertainty; and pooled season-level
+  observations are not independent (the same team appears at four checkpoints,
+  and exactly one team wins each title), so the calibration intervals are
+  narrower than they should be.
 
 ## Tests
 
@@ -563,7 +617,7 @@ be.
 python -m pytest
 ```
 
-166 tests, no network access required (the integration test skips when the raw
+176 tests, no network access required (the integration test skips when the raw
 data is not cached). They cover the parts that are easy to get subtly wrong and hard
 to notice:
 
@@ -590,6 +644,10 @@ to notice:
 - **Calibration and season backtest:** Wilson intervals, a calibrated forecaster
   landing on the diagonal and an over-confident one being caught, position RPS
   rewarding near misses, checkpoint dates, and the persistence baseline.
+- **Strength uncertainty:** the score sampler reproducing the model's score matrix
+  over 400,000 draws, a team with no data being exactly as uncertain as its prior,
+  the drift worked example, and uncertainty widening outcomes without moving the
+  average.
 - **CLI:** every command runs end to end on the real data and exits cleanly.
 
 Knockout aggregate and penalty handling will get the same treatment in Phase 3.
@@ -599,9 +657,12 @@ Knockout aggregate and penalty handling will get the same treatment in Phase 3.
 - **Phase 1 — core model + Premier League.** Data layer ✅ · Dixon-Coles ✅ ·
   match-level backtest vs a base-rate baseline ✅ · LeagueSimulator ✅ · season-level
   backtest, calibration plots and results notebook ✅
-- **Next iteration of the model**, before or alongside Phase 2: rating uncertainty
-  that grows with the forecast horizon, which the season backtest points to (see
-  [where it goes wrong](#where-it-goes-wrong-early-over-confidence-late-stubbornness)).
+- **Rating uncertainty in season simulations** ✅, which fixed the early-season
+  over-confidence the backtest found (see [the fix](#fixing-the-early-over-confidence)).
+  Candidates for the next model iteration, both pointed to by the backtest: an
+  explicitly time-varying strength (for the late-season lag), and modelling change
+  between seasons separately from change within them (for the mild mid-season
+  under-confidence).
 - **Phase 2 — La Liga, Serie A, Bundesliga, Ligue 1**, by config; per-league fit
   and per-league validation. openfootball already covers all four schedules
   (`es.1`, `it.1`, `de.1`, `fr.1`), including the 18-team leagues.
@@ -623,10 +684,10 @@ Knockout aggregate and penalty handling will get the same treatment in Phase 3.
 - **Home advantage and rho are single numbers per fit.** Home advantage differs by
   ground and has drifted downwards for a decade; rho is poorly determined by a
   time-decayed sample.
-- **Strengths are fixed within a simulated season.** The season backtest shows
-  the cost: forecasts made months ahead are over-confident, and late in a season
-  the model trusts ratings over a table that has already moved. See
-  [where it goes wrong](#where-it-goes-wrong-early-over-confidence-late-stubbornness).
+- **Ratings lag a genuinely declining team.** Late in a season the model still
+  trusts ratings partly built on last season, where the table has already moved;
+  and forecasts made mid-to-late season are slightly under-confident. See
+  [what is still wrong](#what-is-still-wrong).
 - **It cannot pick out likely draws.** Draw forecasts are calibrated but almost
   all sit between 20% and 30%.
 - **Strength is assumed to drift slowly.** Time decay is a blunt instrument: it
@@ -637,8 +698,10 @@ Knockout aggregate and penalty handling will get the same treatment in Phase 3.
   strong team in a weak league looks better than it is.
 - **Cups are not modelled**, so European places that depend on cup winners are
   indicative.
-- **Point estimates, not intervals.** Simulation captures the randomness of
-  football, not the uncertainty in the fitted parameters themselves.
+- **Single-match forecasts use best-estimate ratings.** Season simulations draw
+  ratings from their uncertainty, but `ratings` and the match-level backtest
+  report each match from the point estimates. For one match the difference is
+  small; it matters when the same uncertainty is shared across a whole season.
 - **One home advantage for everyone.** Some grounds are genuinely harder to visit
   than others; the model does not know that.
 - **The schedule is taken as given.** Postponements and rearrangements are only

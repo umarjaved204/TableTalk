@@ -193,6 +193,7 @@ def fit_competition_model(
     strategy: str | None = None,
     half_life_days: float | None = None,
     prior: PromotedPrior | None = None,
+    compute_covariance: bool = False,
 ) -> CompetitionFit:
     """Fit the match model for predicting ``season`` of a competition.
 
@@ -207,6 +208,8 @@ def fit_competition_model(
             kept to show what goes wrong without it). Defaults to the config.
         prior: a precomputed PromotedPrior, so a backtest refitting every week
             does not re-estimate it every time.
+        compute_covariance: also estimate parameter uncertainty (needed to
+            simulate with strength uncertainty).
     """
     season = season or config.current_season
     promoted_config: Mapping = config.model.get("promoted_teams", {}) or {}
@@ -253,6 +256,7 @@ def fit_competition_model(
         teams=season_teams,
         priors=priors,
         base_division=config.id,
+        compute_covariance=compute_covariance,
     )
     return CompetitionFit(
         model=fitted,

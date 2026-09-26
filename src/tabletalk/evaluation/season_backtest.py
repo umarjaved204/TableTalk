@@ -129,6 +129,8 @@ def season_backtest(
     n_simulations: int = 5_000,
     seed: int = 20260926,
     strategy: str | None = None,
+    fixed_strengths: bool = False,
+    strength_uncertainty: dict | None = None,
 ) -> SeasonBacktest:
     own = matches.loc[matches["competition"].astype(str) == config.id]
     zone_rows: list[dict] = []
@@ -155,6 +157,8 @@ def season_backtest(
                 seed=seed + 100 * season_number + checkpoint_number,
                 strategy=strategy,
                 prior=prior,
+                fixed_strengths=fixed_strengths,
+                strength_uncertainty=strength_uncertainty,
             )
             teams = list(result.teams)
             zone_probs = result.zone_probabilities()

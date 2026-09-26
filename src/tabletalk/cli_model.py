@@ -179,7 +179,10 @@ def cmd_evaluate_seasons(args: argparse.Namespace) -> int:
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
-        backtest = season_backtest(config, matches, context, seasons, n_simulations=args.n_simulations)
+        backtest = season_backtest(
+            config, matches, context, seasons,
+            n_simulations=args.n_simulations, fixed_strengths=args.fixed_strengths,
+        )
 
     zones = backtest.zone_summary()
     print("Brier score skill (% better than the baseline; higher is better)")
@@ -241,6 +244,18 @@ def _percent(p: float) -> str:
     return f"{100 * p:.1f}"
 
 
+def _describe_uncertainty(uncertainty) -> str:
+    if uncertainty is None or not uncertainty.active:
+        return "fixed at today's ratings for every simulated season"
+    parts = []
+    if uncertainty.parameter_uncertainty:
+        parts.append("each season draws its ratings from the fit's uncertainty")
+    if uncertainty.drift_variance_per_day > 0:
+        season_sd = (uncertainty.drift_variance_per_day * 280) ** 0.5
+        parts.append(f"and ratings drift during it (about +/-{season_sd:.2f} over a season)")
+    return " ".join(parts)
+
+
 def cmd_simulate(args: argparse.Namespace) -> int:
     """Simulate the rest of the season and print zone probabilities."""
     import time
@@ -259,6 +274,7 @@ def cmd_simulate(args: argparse.Namespace) -> int:
         strategy=args.strategy,
         as_of=args.as_of,
         season=season,
+        fixed_strengths=args.fixed_strengths,
     )
     elapsed = time.perf_counter() - started
 
@@ -269,6 +285,7 @@ def cmd_simulate(args: argparse.Namespace) -> int:
     print(f"=== {title}: {result.n_simulations:,} simulated seasons ===")
     print(f"model: Dixon-Coles fitted on results before {result.model_as_of.date()}, "
           f"promoted teams via `{result.metadata.get('strategy')}`")
+    print(f"strengths: {_describe_uncertainty(result.metadata.get('uncertainty'))}")
     print(f"{played} matches played, {result.n_remaining} simulated per season; "
           f"{elapsed:.1f}s; seed {result.seed}")
     print(f"simulation noise: a 50% figure is good to about "
@@ -353,6 +370,8 @@ def add_model_commands(subparsers, add_competition_arg) -> None:
     simulate.add_argument("--table", action="store_true",
                           help="print the projected final table (W/D/L/GF/GA/Pts) instead")
     simulate.add_argument("--refresh", action="store_true", help="re-download data first")
+    simulate.add_argument("--fixed-strengths", action="store_true",
+                          help="use today's ratings for every simulated season (no strength uncertainty)")
     simulate.add_argument("--save", default=None, help="write the summary to this CSV")
     simulate.set_defaults(func=cmd_simulate)
 
@@ -382,6 +401,8 @@ def add_model_commands(subparsers, add_competition_arg) -> None:
     seasons.add_argument("--seasons", nargs="+", default=None,
                          help="completed seasons to test (default: all where every strategy can run)")
     seasons.add_argument("--n-simulations", type=int, default=5_000, help="simulations per checkpoint")
+    seasons.add_argument("--fixed-strengths", action="store_true",
+                         help="simulate without strength uncertainty, to compare")
     seasons.add_argument("--save", default=None, help="write per-team zone forecasts to this CSV")
     seasons.add_argument("--plot", default=None,
                          help="write a calibration chart: <PLOT>-light.png and <PLOT>-dark.png")
