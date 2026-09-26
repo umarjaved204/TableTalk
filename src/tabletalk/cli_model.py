@@ -16,6 +16,9 @@ from .data import load_context_matches, load_matches, remaining_fixtures
 from .data.seasons import Season
 from .evaluation.backtest import match_backtest, summarise_backtest, summarise_by_season
 from .model.promoted import STRATEGIES, fit_competition_model
+from .evaluation.calibration import calibration_table, expected_calibration_error, match_calibration
+from .evaluation.plots import plot_calibration, save_themed
+from .evaluation.season_backtest import favourite_record, season_backtest, season_calibration_by_phase
 from .simulation import simulate_league
 
 
@@ -128,9 +131,100 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     print("\nlog loss by season")
     print(summarise_by_season(predictions).round(4).to_string())
 
+    # Calibration of the headline model: when it said ~60%, did it happen ~60%?
+    model_name = "prior" if "prior" in strategies else strategies[0]
+    model_rows = predictions.loc[predictions["model"] == model_name]
+    tables = match_calibration(model_rows)
+    print(f"\ncalibration of `{model_name}`: forecasts grouped by probability, vs how often it happened")
+    for outcome, table in tables.items():
+        print(f"\n{outcome} win" if outcome != "draw" else "\ndraw", end="")
+        print(f"  (average gap {100 * expected_calibration_error(table):.1f} pts)")
+        shown = table.assign(**{c: (100 * table[c]).round(1) for c in ("mean_forecast", "observed", "ci_low", "ci_high")})
+        print(shown.drop(columns="gap").to_string(index=False))
+
+    if args.plot:
+        labelled = {"home win": tables["home"], "draw": tables["draw"], "away win": tables["away"]}
+        written = save_themed(
+            lambda theme: plot_calibration(
+                labelled,
+                title="Match forecasts: calibration",
+                subtitle=f"{len(model_rows):,} {config.name} matches, {seasons[0]} to {seasons[-1]}, "
+                         "each forecast from results before it",
+                theme=theme,
+            ),
+            args.plot,
+        )
+        print("\ncalibration chart written to " + ", ".join(str(path) for path in written))
+
     if args.save:
         predictions.to_csv(args.save, index=False)
         print(f"\nper-match predictions written to {args.save}")
+    return 0
+
+
+def cmd_evaluate_seasons(args: argparse.Namespace) -> int:
+    """Season-level backtest: zone forecasts from several checkpoints vs final tables."""
+    config = load_competition(args.competition)
+    matches, context = _load(config)
+    seasons = args.seasons or _default_backtest_seasons(config)
+
+    print(f"=== {config.name}: season-level backtest ===")
+    print(f"seasons: {', '.join(seasons)} | {args.n_simulations:,} simulations per checkpoint")
+    print("Each checkpoint forgets every later result, fits on what was known then and\n"
+          "simulates the rest; forecasts are scored against the real final table.")
+    if not args.seasons:
+        for season, reason in _excluded_seasons(config).items():
+            print(f"excluded {season}: {reason}")
+    print()
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        backtest = season_backtest(config, matches, context, seasons, n_simulations=args.n_simulations)
+
+    zones = backtest.zone_summary()
+    print("Brier score skill (% better than the baseline; higher is better)")
+    for baseline in ("uniform", "persistence"):
+        pivot = zones.pivot(index="checkpoint", columns="zone", values=f"skill_vs_{baseline}_pct")
+        pivot = pivot.loc[zones["checkpoint"].unique(), [zone.id for zone in config.zones]]
+        print(f"\nvs {baseline}" + (" (knows nothing)" if baseline == "uniform" else " (the table as it stands)"))
+        print(pivot.round(1).to_string())
+
+    print("\nfinishing position (lower is better): ranked probability score, and average error in places")
+    print(backtest.position_summary().round(3).to_string(index=False))
+
+    print("\nhow often the model's title favourite won (descriptive only)")
+    print(favourite_record(backtest.zones).round(3).to_string(index=False))
+
+    table = calibration_table(backtest.zones["p_model"], backtest.zones["outcome"])
+    print(f"\nzone forecast calibration, all zones and checkpoints pooled "
+          f"(average gap {100 * expected_calibration_error(table):.1f} pts)")
+    shown = table.assign(**{c: (100 * table[c]).round(1) for c in ("mean_forecast", "observed", "ci_low", "ci_high")})
+    print(shown.drop(columns="gap").to_string(index=False))
+
+    confident = backtest.zones.loc[backtest.zones["p_model"].between(0.7, 0.99)]
+    print("\nconfident forecasts (70-99%) by checkpoint: average forecast vs how often it happened")
+    print(
+        confident.groupby("checkpoint", sort=False)
+        .agg(n=("outcome", "size"), forecast=("p_model", "mean"), observed=("outcome", "mean"))
+        .assign(forecast=lambda f: (100 * f["forecast"]).round(1), observed=lambda f: (100 * f["observed"]).round(1))
+        .to_string()
+    )
+
+    if args.plot:
+        halves = season_calibration_by_phase(backtest.zones)
+        written = save_themed(
+            lambda theme: plot_calibration(
+                halves,
+                title="Season forecasts: calibration",
+                subtitle=f"{len(backtest.zones):,} zone forecasts, {len(seasons)} seasons x 4 checkpoints",
+                theme=theme,
+            ),
+            args.plot,
+        )
+        print("\ncalibration chart written to " + ", ".join(str(path) for path in written))
+    if args.save:
+        backtest.zones.to_csv(args.save, index=False)
+        print(f"\nper-team zone forecasts written to {args.save}")
     return 0
 
 
@@ -181,6 +275,9 @@ def cmd_simulate(args: argparse.Namespace) -> int:
           f"+/-{100 * 1.96 * float(result.standard_error(0.5)):.1f} points (95%)\n")
 
     summary = result.summary()
+    if args.table:
+        _print_projected_table(result, summary)
+        return 0
     table = pd.DataFrame(
         {
             "now": summary["position_now"],
@@ -192,6 +289,10 @@ def cmd_simulate(args: argparse.Namespace) -> int:
         index=summary.index,
     )
     table.index.name = None
+    if played == 0:
+        # Pre-season every team is on 0 points, and "now" would just be
+        # alphabetical order: drop it rather than show a meaningless column.
+        table = table.drop(columns=["now", "pts"])
     print("probabilities in %, teams ordered by expected finishing position")
     print(f"'-' = in none of the {result.n_simulations:,} runs; '100' = in all of them "
           "(likely, not necessarily mathematically certain)")
@@ -208,8 +309,38 @@ def cmd_simulate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _print_projected_table(result, summary: pd.DataFrame) -> None:
+    """The average simulated final table, laid out like a league table.
+
+    Every figure is an average over all runs, so the numbers are not whole and
+    the spread is compressed: see the note printed with it.
+    """
+    record = result.expected_record.loc[summary.index]
+    table = pd.DataFrame(
+        {
+            "P": record[["won", "drawn", "lost"]].sum(axis=1),
+            "W": record["won"],
+            "D": record["drawn"],
+            "L": record["lost"],
+            "GF": record["goals_for"],
+            "GA": record["goals_against"],
+            "GD": record["goals_for"] - record["goals_against"],
+            "Pts": summary["expected_points"],
+        },
+        index=summary.index,
+    )
+    table = table.round(1)
+    table["P"] = table["P"].round().astype(int)
+    table.insert(0, "pos", range(1, len(table) + 1))
+    table.index.name = None
+    print("projected final table: the average of every simulated season")
+    print("(averages pull everyone toward the middle: the real champions usually finish above\n"
+          " the top figure here, and the real bottom side below the bottom one)")
+    print(table.to_string())
+
+
 def add_model_commands(subparsers, add_competition_arg) -> None:
-    """Register ``ratings``, ``evaluate`` and ``simulate`` on the main parser."""
+    """Register ``ratings``, ``evaluate``, ``evaluate-seasons`` and ``simulate``."""
     simulate = subparsers.add_parser("simulate", help="simulate the rest of the season")
     add_competition_arg(simulate)
     simulate.add_argument("--n-simulations", type=int, default=None, help="default: from the config")
@@ -219,6 +350,8 @@ def add_model_commands(subparsers, add_competition_arg) -> None:
     simulate.add_argument("--as-of", default=None,
                           help="replay from this date: results on or after it are simulated instead")
     simulate.add_argument("--positions", action="store_true", help="also print every finishing position")
+    simulate.add_argument("--table", action="store_true",
+                          help="print the projected final table (W/D/L/GF/GA/Pts) instead")
     simulate.add_argument("--refresh", action="store_true", help="re-download data first")
     simulate.add_argument("--save", default=None, help="write the summary to this CSV")
     simulate.set_defaults(func=cmd_simulate)
@@ -240,7 +373,19 @@ def add_model_commands(subparsers, add_competition_arg) -> None:
     evaluate.add_argument("--half-life", type=float, default=None, help="time-decay half-life in days")
     evaluate.add_argument("--refit-days", type=int, default=7, help="days between refits")
     evaluate.add_argument("--save", default=None, help="write per-match predictions to this CSV")
+    evaluate.add_argument("--plot", default=None,
+                          help="write a calibration chart: <PLOT>-light.png and <PLOT>-dark.png")
     evaluate.set_defaults(func=cmd_evaluate)
+
+    seasons = subparsers.add_parser("evaluate-seasons", help="season-level backtest of zone probabilities")
+    add_competition_arg(seasons)
+    seasons.add_argument("--seasons", nargs="+", default=None,
+                         help="completed seasons to test (default: all where every strategy can run)")
+    seasons.add_argument("--n-simulations", type=int, default=5_000, help="simulations per checkpoint")
+    seasons.add_argument("--save", default=None, help="write per-team zone forecasts to this CSV")
+    seasons.add_argument("--plot", default=None,
+                         help="write a calibration chart: <PLOT>-light.png and <PLOT>-dark.png")
+    seasons.set_defaults(func=cmd_evaluate_seasons)
 
 
 __all__ = ["add_model_commands", "cmd_evaluate", "cmd_ratings", "cmd_simulate"]

@@ -72,6 +72,7 @@ class LeagueSimulationResult:
     seed: int | None
     model_as_of: pd.Timestamp | None = None
     exact_tiebreaks: int = 0       # simulations that needed the exact tiebreaker engine
+    expected_record: pd.DataFrame | None = None  # mean final W/D/L/GF/GA per team
     metadata: dict = field(default_factory=dict)
 
     @property
@@ -186,6 +187,16 @@ class LeagueSimulator:
             positions=positions,
             points=totals["points"],
             goal_difference=totals["goal_difference"],
+            expected_record=pd.DataFrame(
+                {
+                    "won": totals["wins"].mean(axis=0),
+                    "drawn": totals["draws"].mean(axis=0),
+                    "lost": config.league.matches_per_team - totals["wins"].mean(axis=0) - totals["draws"].mean(axis=0),
+                    "goals_for": totals["goals_for"].mean(axis=0),
+                    "goals_against": totals["goals_against"].mean(axis=0),
+                },
+                index=list(teams),
+            ),
             current_table=league_table(own, config, season, teams=teams),
             n_remaining=len(fixtures),
             seed=seed,
@@ -251,6 +262,7 @@ class LeagueSimulator:
             "goals_for": add(home_goals, away_goals, "goals_for"),
             "goals_against": add(away_goals, home_goals, "goals_against"),
             "wins": add((home_goals > away_goals), (away_goals > home_goals), "wins"),
+            "draws": add((home_goals == away_goals), (home_goals == away_goals), "draws"),
             "away_goals": add(zeros, away_goals, "away_goals"),
         }
         totals["goal_difference"] = totals["goals_for"] - totals["goals_against"]
@@ -320,17 +332,22 @@ def simulate_league(
     strategy: str | None = None,
     as_of: str | pd.Timestamp | None = None,
     season: str | None = None,
+    prior=None,
 ) -> LeagueSimulationResult:
     """Fit the match model and simulate the season in one call.
 
     ``as_of`` fits on results before that date and simulates everything from
     there, which is how a past season is replayed from a chosen point (the
     season-level backtest). By default, everything played so far is used.
+    ``prior`` is a precomputed promoted-team prior, so a backtest replaying the
+    same season from several dates estimates it once.
     """
     from ..model.promoted import fit_competition_model
 
     season = season or config.current_season
-    fit = fit_competition_model(config, matches, context, season=season, as_of=as_of, strategy=strategy)
+    fit = fit_competition_model(
+        config, matches, context, season=season, as_of=as_of, strategy=strategy, prior=prior
+    )
     frame = matches
     if as_of is not None:
         # Forget results on or after as_of: they become fixtures to simulate.

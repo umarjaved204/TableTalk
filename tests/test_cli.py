@@ -31,8 +31,11 @@ def _needs_cached_data(premier_league):
          "--n-simulations", "300", "--positions"],
         ["evaluate", "-c", "premier_league", "--seasons", "2025-26", "--strategies", "prior",
          "--refit-days", "60"],
+        ["simulate", "-c", "premier_league", "--n-simulations", "300", "--table"],
+        ["evaluate-seasons", "-c", "premier_league", "--seasons", "2025-26", "--n-simulations", "200"],
     ],
-    ids=["competitions", "data-check", "ratings", "simulate", "simulate-replay", "evaluate"],
+    ids=["competitions", "data-check", "ratings", "simulate", "simulate-replay", "evaluate",
+         "simulate-table", "evaluate-seasons"],
 )
 def test_command_runs(argv, capsys):
     assert main(argv) == 0
