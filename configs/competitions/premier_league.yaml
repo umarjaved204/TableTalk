@@ -50,6 +50,13 @@ tiebreakers:
   - head_to_head_away_goals  # Rule C.17.4: away goals in those matches
   - coin_flip                # See assumption A1 below.
 
+# Whether a head-to-head stage that splits a tied group only partly is run
+# again on the teams still level, using only the matches among them (UEFA
+# style). The Premier League's rule has no such step, and with its two
+# head-to-head criteria coming after goal difference and goals scored, a
+# multi-team tie reaching them is vanishingly rare anyway.
+head_to_head_reapply: false
+
 # Finishing-position zones we report probabilities for. Positions are 1-indexed
 # places in the final table.
 #

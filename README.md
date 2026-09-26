@@ -5,9 +5,9 @@ competition simulators, producing the kind of numbers newspapers print as
 "supercomputer predicts the title race" — but with the method written down, the
 assumptions flagged, and the forecasts checked against what actually happened.
 
-**Status: Phase 1 in progress.** Data layer and Dixon-Coles match model are done,
-tested and backtested; the league simulator is next. This document marks clearly
-what exists and what does not.
+**Status: Phase 1 in progress.** Data layer, Dixon-Coles match model and league
+simulator are done and tested; the season-level backtest and calibration plots
+are next. This document marks clearly what exists and what does not.
 
 ```
 python -m tabletalk competitions                         # what is configured
@@ -15,6 +15,7 @@ python -m tabletalk data fetch --competition premier_league --refresh
 python -m tabletalk data check --competition premier_league
 python -m tabletalk ratings    --competition premier_league   # fitted ratings + next fixtures
 python -m tabletalk evaluate   --competition premier_league   # match-level backtest
+python -m tabletalk simulate   --competition premier_league   # title / top-four / relegation odds
 ```
 
 ---
@@ -124,7 +125,10 @@ src/tabletalk/
   evaluation/
     metrics.py          # log loss, Brier score, ranked probability score
     backtest.py         # rolling-origin match-level backtest vs a base-rate baseline
-  simulation/           # LeagueSimulator (next), KnockoutSimulator (Phase 3)
+  simulation/
+    table.py            # league tables and the config-driven tiebreaker engine
+    league.py           # LeagueSimulator: 10,000 seasons, zone probabilities
+                        # (KnockoutSimulator arrives in Phase 3)
 tests/                  # pytest; runs offline
 data/raw/               # untouched downloads (gitignored)
 data/processed/         # assembled standard-schema CSVs (gitignored, rebuilt on demand)
@@ -374,13 +378,90 @@ Open questions, deliberately not tuned against the same test seasons:
   well-funded promoted team from a weak one before either plays; it needs a new
   data source.
 
+## The league simulator (Phase 1, done)
+
+`python -m tabletalk simulate -c premier_league` fits the model on every result
+so far, plays out the rest of the season 10,000 times, and reports how often each
+team finished in each zone the config defines:
+
+```
+                        now  pts  exp pts range (10-90%) title top four top five top half relegation
+Manchester City           1   15     81.6          73-90  61.1     99.3     99.8      100          -
+Arsenal                   2   12     78.3          70-87  35.0     98.2     99.3      100          -
+Brighton & Hove Albion    3   10     65.8          57-75   2.3     65.1     77.7     97.7          -
+...
+Tottenham Hotspur        20    2     36.8          28-46     -     <0.1     <0.1      2.1       47.6
+Ipswich Town             11    6     32.9          25-41     -        -        -      0.4       73.3
+Coventry City            18    3     30.0          22-38     -        -        -      0.1       84.9
+```
+
+(2026-27 after five matchdays. Tottenham finished 17th in each of the last two
+seasons and have two points from five games, so the model rates them the
+weakest established side in the league; it knows nothing of their wage bill or
+of a possible change of manager.)
+
+### How one simulated season works
+
+1. Start from the real table.
+2. For each remaining fixture, draw a scoreline from the match model's score
+   matrix: take the running total of the flattened matrix and see where a
+   uniform random number lands in it.
+3. Add the simulated results to the real ones and rank the table with the
+   config's points system and tiebreakers.
+
+It takes about 1.5 seconds for 10,000 seasons (3.3 million matches). Each
+fixture's score matrix is computed once; all runs are drawn at once as a
+fixtures × runs array; the tables are built with a matrix product; and the
+tables are sorted in bulk on points, goal difference and goals scored. Only runs
+where teams are *still* level (about 0.5% for the Premier League) go through the
+exact tiebreaker engine for the head-to-head criteria.
+
+With 10,000 runs, a 50% figure carries about ±1 percentage point of simulation
+noise (95%), a 5% figure about ±0.4. `-` in the output means "in none of the
+runs", which is not the same as impossible.
+
+### Tiebreakers
+
+The engine ([table.py](src/tabletalk/simulation/table.py)) applies whatever
+ordered list of criteria the config gives it. Season-wide criteria (goal
+difference, goals scored, wins, ...) use every match; head-to-head criteria use
+a mini-table of the matches among the tied teams. A run of head-to-head criteria
+is applied as one block over the teams that were level when it started; a
+config flag, `head_to_head_reapply`, adds the UEFA-style rule of running the block
+again on any smaller group still level. The same results can give a different
+table under a Premier League chain and a head-to-head-first chain, and there is a
+test that shows exactly that.
+
+The bulk sort and the exact engine are checked against each other: 6,000 random
+low-scoring seasons (where ties are common), under both a Premier League chain and
+a head-to-head-first chain, must produce identical tables.
+
+### Replaying a past season
+
+`--season 2025-26 --as-of 2026-01-01` forgets every result from that date on and
+simulates the rest, which is how step 4's season-level backtest will work. From 1
+January 2026 it gave Arsenal a 65.5% title chance and 84.9 expected points (they
+won it with 85), and its three most likely relegation candidates were the three
+clubs that went down. Its biggest miss was Manchester United: 4.8% for the top
+four, and they finished third. One season is an anecdote; step 4 asks whether the
+model's 5% events happen about 5% of the time across many seasons.
+
+### Assumption: strengths stay fixed within a simulated season
+
+Every simulated season uses today's ratings: a team does not improve within a
+simulation because it won its simulated matches. This is the standard approach
+and easy to explain, but real ratings drift over a season, so it understates the
+spread of outcomes somewhat: surprise title challenges and collapses are a little
+more common in reality than in the simulation. Updating ratings as simulated
+results come in would address it at a cost in speed and clarity.
+
 ## Tests
 
 ```
 python -m pytest
 ```
 
-124 tests, no network access required (the integration test skips when the raw
+153 tests, no network access required (the integration test skips when the raw
 data is not cached). They cover the parts that are easy to get subtly wrong and hard
 to notice:
 
@@ -396,15 +477,23 @@ to notice:
   prior for a season never seeing that season's results.
 - **Evaluation:** each scoring rule on worked examples, RPS respecting outcome
   order where Brier cannot, and the backtest never forecasting from the future.
+- **Tables and tiebreakers:** hand-built tables for every criterion in the Premier
+  League chain (goal difference, goals scored, head-to-head points, head-to-head
+  away goals, coin flip), three- and four-way head-to-head ties, the re-apply
+  rule, and the same results ranking differently under two chains.
+- **Simulator:** a title race decided by one match matching that match's
+  probability, a finished season coming out certain, seeds being reproducible,
+  probabilities summing correctly, the bulk sort agreeing with the exact engine
+  on 6,000 random seasons, and a real season replayed from a date.
+- **CLI:** every command runs end to end on the real data and exits cleanly.
 
-Tiebreaker logic and knockout aggregate/penalty handling get the same treatment as
-they are written.
+Knockout aggregate and penalty handling will get the same treatment in Phase 3.
 
 ## Roadmap
 
 - **Phase 1 — core model + Premier League.** Data layer ✅ · Dixon-Coles ✅ ·
-  match-level backtest vs a base-rate baseline ✅ · LeagueSimulator ▫ · season-level
-  backtest and calibration plots ▫
+  match-level backtest vs a base-rate baseline ✅ · LeagueSimulator ✅ · season-level
+  backtest, calibration plots and results notebook ▫
 - **Phase 2 — La Liga, Serie A, Bundesliga, Ligue 1**, by config; per-league fit
   and per-league validation. openfootball already covers all four schedules
   (`es.1`, `it.1`, `de.1`, `fr.1`), including the 18-team leagues.
@@ -426,6 +515,8 @@ they are written.
 - **Home advantage and rho are single numbers per fit.** Home advantage differs by
   ground and has drifted downwards for a decade; rho is poorly determined by a
   time-decayed sample.
+- **Strengths are fixed within a simulated season**, which understates the spread
+  of outcomes a little. See [the simulator](#assumption-strengths-stay-fixed-within-a-simulated-season).
 - **Strength is assumed to drift slowly.** Time decay is a blunt instrument: it
   cannot capture a team that changes overnight.
 - **Early-season forecasts are weakly informed** by the current season and lean on

@@ -187,6 +187,7 @@ class CompetitionConfig:
     data_sources: tuple[DataSource, ...]
     current_season: str
     league: LeagueFormat | None = None
+    head_to_head_reapply: bool = False
     country: str | None = None
     confederation: str | None = None
     model: Mapping[str, Any] = field(default_factory=dict)
@@ -317,6 +318,7 @@ def _build_config(raw: Mapping[str, Any], path: Path) -> CompetitionConfig:
         data_sources=sources,
         current_season=current_season,
         league=league,
+        head_to_head_reapply=bool(raw.get("head_to_head_reapply", False)),
         country=raw.get("country"),
         confederation=raw.get("confederation"),
         model=dict(raw.get("model") or {}),

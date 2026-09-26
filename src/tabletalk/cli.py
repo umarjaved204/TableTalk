@@ -7,9 +7,9 @@ Phase 1 commands:
     python -m tabletalk data check --competition premier_league
     python -m tabletalk ratings    --competition premier_league [--strategy prior]
     python -m tabletalk evaluate   --competition premier_league [--seasons 2024-25 2025-26]
+    python -m tabletalk simulate   --competition premier_league [--n-simulations 10000]
 
-``simulate`` is registered but not implemented yet; it arrives with the
-LeagueSimulator.
+The model commands (ratings, evaluate, simulate) live in ``cli_model.py``.
 """
 
 from __future__ import annotations
@@ -35,6 +35,7 @@ from .data.loaders import available_loaders, build_loaders
 from .data.normalise import default_normaliser
 from .cli_model import add_model_commands
 from .model.promoted import promoted_teams
+from .simulation import league_table
 
 
 # ---------------------------------------------------------------------------
@@ -127,7 +128,7 @@ def _report_current_season(matches: pd.DataFrame, config) -> None:
     progress = season_progress(matches, config, config.current_season)
     print(f"{config.current_season}: {progress['played']} played, "
           f"{progress['remaining']} remaining of {progress['total']}")
-    print("\n" + _provisional_table(matches, config).to_string(index=False))
+    print("\n" + league_table(matches, config).to_string(index=False))
 
 
 def _report_fixture_list(matches: pd.DataFrame, config) -> None:
@@ -177,56 +178,6 @@ def _report_assumptions(config) -> None:
         print(f"  [{assumption.get('id')}] {text}")
 
 
-def _provisional_table(matches: pd.DataFrame, config) -> pd.DataFrame:
-    """Points/goal-difference standings, for eyeballing the data only.
-
-    This deliberately does NOT apply the config's tiebreakers - that logic
-    belongs to the LeagueSimulator and is built (and unit-tested) in the next
-    step. Rows tied on points and goal difference may be in the wrong order.
-    """
-    season = config.current_season
-    played = matches.loc[
-        (matches["season"].astype("string") == season) & matches["played"].fillna(False).astype(bool)
-    ]
-    rows = []
-    teams = sorted(set(played["home_team"]) | set(played["away_team"]))
-    points = config.points
-    for team in teams:
-        home = played.loc[played["home_team"] == team]
-        away = played.loc[played["away_team"] == team]
-        scored = int(home["home_goals"].sum() + away["away_goals"].sum())
-        conceded = int(home["away_goals"].sum() + away["home_goals"].sum())
-        wins = int((home["home_goals"] > home["away_goals"]).sum() + (away["away_goals"] > away["home_goals"]).sum())
-        draws = int((home["home_goals"] == home["away_goals"]).sum() + (away["away_goals"] == away["home_goals"]).sum())
-        losses = len(home) + len(away) - wins - draws
-        rows.append(
-            {
-                "team": team,
-                "played": len(home) + len(away),
-                "w": wins,
-                "d": draws,
-                "l": losses,
-                "gf": scored,
-                "ga": conceded,
-                "gd": scored - conceded,
-                "pts": wins * points.win + draws * points.draw + losses * points.loss,
-            }
-        )
-    table = pd.DataFrame(rows).sort_values(["pts", "gd", "gf"], ascending=False)
-    table.insert(0, "pos", range(1, len(table) + 1))
-    return table.reset_index(drop=True)
-
-
-def cmd_simulate(args: argparse.Namespace) -> int:
-    print(
-        "`simulate` is not implemented yet.\n"
-        "It arrives with the LeagueSimulator (tabletalk.simulation), the next step\n"
-        "of Phase 1. Available now: `data fetch`, `data check`, `ratings`, `evaluate`.",
-        file=sys.stderr,
-    )
-    return 2
-
-
 # ---------------------------------------------------------------------------
 # Parser
 # ---------------------------------------------------------------------------
@@ -258,11 +209,6 @@ def build_parser() -> argparse.ArgumentParser:
     check.set_defaults(func=cmd_data_check)
 
     add_model_commands(subparsers, _add_competition_arg)
-
-    simulate = subparsers.add_parser("simulate", help="simulate a competition (not yet implemented)")
-    _add_competition_arg(simulate)
-    simulate.add_argument("--n-simulations", type=int, default=None)
-    simulate.set_defaults(func=cmd_simulate)
 
     return parser
 

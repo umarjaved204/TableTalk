@@ -19,3 +19,6 @@ notebooks/*.html
 .DS_Store
 .vscode/
 .idea/
+
+# Ad-hoc exports from `--save` written to the project root.
+/*.csv

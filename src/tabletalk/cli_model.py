@@ -1,4 +1,4 @@
-"""CLI commands for the match model: ``ratings`` and ``evaluate``.
+"""CLI commands for the model: ``ratings``, ``evaluate`` and ``simulate``.
 
 Kept apart from ``cli.py``, which holds the parser and the data commands.
 """
@@ -16,6 +16,7 @@ from .data import load_context_matches, load_matches, remaining_fixtures
 from .data.seasons import Season
 from .evaluation.backtest import match_backtest, summarise_backtest, summarise_by_season
 from .model.promoted import STRATEGIES, fit_competition_model
+from .simulation import simulate_league
 
 
 def _load(config: CompetitionConfig, refresh: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -133,8 +134,95 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _percent(p: float) -> str:
+    """Probabilities as a reader expects them: never a bare 0 or 100 unless certain."""
+    if p == 0:
+        return "-"
+    if p == 1:
+        return "100"
+    if p < 0.001:
+        return "<0.1"
+    if p > 0.999:
+        return ">99.9"
+    return f"{100 * p:.1f}"
+
+
+def cmd_simulate(args: argparse.Namespace) -> int:
+    """Simulate the rest of the season and print zone probabilities."""
+    import time
+
+    config = load_competition(args.competition)
+    matches, context = _load(config, refresh=args.refresh)
+    season = args.season or config.current_season
+
+    started = time.perf_counter()
+    result = simulate_league(
+        config,
+        matches,
+        context,
+        n_simulations=args.n_simulations,
+        seed=args.seed,
+        strategy=args.strategy,
+        as_of=args.as_of,
+        season=season,
+    )
+    elapsed = time.perf_counter() - started
+
+    played = int(result.current_table["played"].sum() // 2)
+    title = f"{config.name} {season}"
+    if args.as_of:
+        title += f", replayed from {pd.Timestamp(args.as_of).date()}"
+    print(f"=== {title}: {result.n_simulations:,} simulated seasons ===")
+    print(f"model: Dixon-Coles fitted on results before {result.model_as_of.date()}, "
+          f"promoted teams via `{result.metadata.get('strategy')}`")
+    print(f"{played} matches played, {result.n_remaining} simulated per season; "
+          f"{elapsed:.1f}s; seed {result.seed}")
+    print(f"simulation noise: a 50% figure is good to about "
+          f"+/-{100 * 1.96 * float(result.standard_error(0.5)):.1f} points (95%)\n")
+
+    summary = result.summary()
+    table = pd.DataFrame(
+        {
+            "now": summary["position_now"],
+            "pts": summary["points_now"],
+            "exp pts": summary["expected_points"].round(1),
+            "range (10-90%)": [f"{lo:.0f}-{hi:.0f}" for lo, hi in zip(summary["points_p10"], summary["points_p90"])],
+            **{zone.id.replace("_", " "): summary[zone.id].map(_percent) for zone in config.zones},
+        },
+        index=summary.index,
+    )
+    table.index.name = None
+    print("probabilities in %, teams ordered by expected finishing position")
+    print(f"'-' = in none of the {result.n_simulations:,} runs; '100' = in all of them "
+          "(likely, not necessarily mathematically certain)")
+    print(table.to_string())
+
+    if args.positions:
+        positions = result.position_probabilities().loc[summary.index]
+        print("\nfinishing-position probabilities (%)")
+        print((100 * positions).round(0).astype(int).replace(0, "").to_string())
+
+    if args.save:
+        summary.to_csv(args.save)
+        print(f"\nsummary written to {args.save}")
+    return 0
+
+
 def add_model_commands(subparsers, add_competition_arg) -> None:
-    """Register ``ratings`` and ``evaluate`` on the main parser."""
+    """Register ``ratings``, ``evaluate`` and ``simulate`` on the main parser."""
+    simulate = subparsers.add_parser("simulate", help="simulate the rest of the season")
+    add_competition_arg(simulate)
+    simulate.add_argument("--n-simulations", type=int, default=None, help="default: from the config")
+    simulate.add_argument("--seed", type=int, default=None, help="default: from the config")
+    simulate.add_argument("--strategy", choices=STRATEGIES, default=None, help="promoted-team strategy")
+    simulate.add_argument("--season", default=None, help="season to simulate (default: current)")
+    simulate.add_argument("--as-of", default=None,
+                          help="replay from this date: results on or after it are simulated instead")
+    simulate.add_argument("--positions", action="store_true", help="also print every finishing position")
+    simulate.add_argument("--refresh", action="store_true", help="re-download data first")
+    simulate.add_argument("--save", default=None, help="write the summary to this CSV")
+    simulate.set_defaults(func=cmd_simulate)
+
     ratings = subparsers.add_parser("ratings", help="fit the match model and show team ratings")
     add_competition_arg(ratings)
     ratings.add_argument("--strategy", choices=STRATEGIES, default=None,
@@ -155,4 +243,4 @@ def add_model_commands(subparsers, add_competition_arg) -> None:
     evaluate.set_defaults(func=cmd_evaluate)
 
 
-__all__ = ["add_model_commands", "cmd_evaluate", "cmd_ratings"]
+__all__ = ["add_model_commands", "cmd_evaluate", "cmd_ratings", "cmd_simulate"]
