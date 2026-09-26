@@ -1,0 +1,60 @@
+# ---------------------------------------------------------------------------
+# Team-name normalisation map.
+#
+# Different sources spell the same club differently ("Man United",
+# "Manchester Utd", "Manchester United FC"). Every loader passes its raw names
+# through TeamNameNormaliser, which resolves them to the canonical name below.
+#
+# Format:
+#   canonical name:
+#     - alias
+#     - another alias
+#
+# Matching is case-insensitive and ignores punctuation, accents and common
+# suffixes (FC, CF, AFC, ...), so you only need to list genuinely different
+# spellings, not every capitalisation. Unknown names are reported by
+# `python -m tabletalk data check`, which is the intended workflow when adding
+# a new source: run it, then add the missing aliases here.
+#
+# Canonical names are the club's usual full English-language name.
+# ---------------------------------------------------------------------------
+
+teams:
+  # --- England: Premier League clubs appearing in 2021-22..2026-27 ---------
+  Arsenal: [Arsenal FC]
+  Aston Villa: [Villa]
+  Bournemouth: [AFC Bournemouth]
+  Brentford: []
+  Brighton & Hove Albion: [Brighton, Brighton and Hove Albion, Brighton Hove Albion]
+  Burnley: []
+  Chelsea: []
+  Coventry City: [Coventry]
+  Crystal Palace: [Palace]
+  Everton: []
+  Fulham: []
+  Hull City: [Hull]
+  Ipswich Town: [Ipswich]
+  Leeds United: [Leeds, Leeds Utd]
+  Leicester City: [Leicester]
+  Liverpool: []
+  Luton Town: [Luton]
+  Manchester City: [Man City, Manchester Cty]
+  Manchester United: [Man United, Man Utd, Manchester Utd]
+  Newcastle United: [Newcastle, Newcastle Utd]
+  Norwich City: [Norwich]
+  Nottingham Forest: ["Nott'm Forest", Nottm Forest, Notts Forest]
+  Sheffield United: [Sheffield Utd, Sheff United, Sheff Utd]
+  Southampton: [Saints]
+  Sunderland: [Sunderland AFC]
+  Tottenham Hotspur: [Tottenham, Spurs]
+  Watford: []
+  West Ham United: [West Ham, West Ham Utd]
+  Wolverhampton Wanderers: [Wolves]
+
+  # --- Other England clubs likely to be promoted / appear in cup data ------
+  Birmingham City: [Birmingham]
+  Middlesbrough: [Middlesboro]
+  Sheffield Wednesday: [Sheffield Weds, Sheff Wed]
+  Stoke City: [Stoke]
+  Swansea City: [Swansea]
+  West Bromwich Albion: [West Brom, WBA]

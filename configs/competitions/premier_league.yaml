@@ -1,0 +1,139 @@
+# ---------------------------------------------------------------------------
+# Premier League (England, men) competition config.
+#
+# Everything competition-specific lives in files like this one. No Python
+# module in tabletalk/ may hardcode "20 teams", "38 matches" or "top 4".
+#
+# Rules verified 2026-09-26 against the Premier League Handbook summary and
+# Premier League / UEFA reporting. See `verification` at the bottom of this
+# file for what was confirmed and what is an explicit assumption.
+# ---------------------------------------------------------------------------
+
+id: premier_league
+name: Premier League
+country: England
+confederation: UEFA
+gender: men
+
+# `format` selects which simulator drives this competition.
+#   league   -> LeagueSimulator (round robin, final table)
+#   knockout -> KnockoutSimulator (Phase 3)
+#   hybrid   -> league phase chained into knockout rounds (Phase 3, e.g. UCL)
+format: league
+
+league:
+  n_teams: 20
+  # Each pair meets twice (home and away): 19 opponents x 2 = 38 matches.
+  meetings_per_pair: 2
+  matches_per_team: 38
+  # True for competitions played entirely at neutral venues (e.g. a one-off
+  # tournament). False here: home advantage applies to every league match.
+  neutral_venue: false
+
+points:
+  win: 3
+  draw: 1
+  loss: 0
+
+# Ordered tiebreakers, applied only to teams still level after the previous
+# criterion. The names come from a fixed vocabulary implemented once in the
+# simulator (tabletalk.config.KNOWN_TIEBREAKERS).
+#
+# NOTE (league-specific, do not copy blindly): the Premier League applies
+# goal difference and goals scored BEFORE any head-to-head record. Several
+# other leagues (La Liga, Serie A) do the opposite. This ordering is exactly
+# why tiebreakers are config, not code.
+tiebreakers:
+  - goal_difference          # Rule C.17.1
+  - goals_scored             # Rule C.17.2
+  - head_to_head_points      # Rule C.17.3: points in matches between the tied teams
+  - head_to_head_away_goals  # Rule C.17.4: away goals in those matches
+  - coin_flip                # See assumption A1 below.
+
+# Finishing-position zones we report probabilities for. Positions are 1-indexed
+# places in the final table.
+#
+# These are deliberately stated as league positions, not as "qualifies for X":
+# which European place a position earns depends on UEFA coefficients and domestic
+# cup winners, and European competitions are out of scope until the domestic
+# leagues are validated.
+zones:
+  - id: title
+    label: Win the title
+    positions: [1]
+  - id: top_four
+    label: Top four
+    positions: [1, 2, 3, 4]
+  - id: top_five
+    label: Top five
+    positions: [1, 2, 3, 4, 5]
+  - id: top_half
+    label: Top half
+    positions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  - id: relegation
+    label: Relegation to the Championship
+    positions: [18, 19, 20]
+
+# Where the data comes from. Each entry names a loader registered in
+# tabletalk.data.loaders and a role:
+#   results  - authoritative for scores of matches already played
+#   fixtures - authoritative for the schedule, i.e. what is still to be played
+data:
+  current_season: "2026-27"
+  sources:
+    - loader: football_data_uk
+      role: results
+      params:
+        division: E0
+        seasons:
+          - "2021-22"
+          - "2022-23"
+          - "2023-24"
+          - "2024-25"
+          - "2025-26"
+          - "2026-27"
+    # The published 2026-27 fixture list, with real dates. Past seasons need no
+    # schedule, so only the current season is listed here.
+    - loader: openfootball
+      role: fixtures
+      params:
+        league_code: en.1
+        seasons:
+          - "2026-27"
+        # `ref` can be pinned to a commit SHA for a fully reproducible run.
+        ref: master
+
+# Defaults for the match model when simulating this competition. Overridable
+# from the command line; kept here so each competition can be tuned separately.
+model:
+  # Dixon-Coles time decay: weight = exp(-xi * age_in_days). Expressed as a
+  # half-life because that is easier to reason about than xi.
+  # 180 days ~= "a match from a year ago counts about a quarter of a recent one".
+  time_decay_half_life_days: 180
+
+simulation:
+  n_simulations: 10000
+  random_seed: 20260926
+
+verification:
+  checked_on: "2026-09-26"
+  confirmed:
+    - "20 teams, 38 matches each, 3 points for a win."
+    - "Tiebreaker order: goal difference, then goals scored, then head-to-head points, then head-to-head away goals (Premier League Handbook Rule C.17)."
+    - "Three teams relegated (18th, 19th, 20th); no relegation play-off in England's top flight."
+  assumptions:
+    - id: A1
+      text: >-
+        The real final tiebreaker is a one-off play-off at a neutral ground,
+        used only when the title, European qualification or relegation is at
+        stake. We approximate it with a 50/50 coin flip. The probability of
+        two teams being level on points, goal difference, goals scored and
+        head-to-head record is tiny, so this has no practical effect on the
+        reported numbers.
+    - id: A2
+      text: >-
+        Zones are reported as league positions only. Mapping a position to a
+        European place depends on UEFA coefficients (England currently has a
+        fifth Champions League entry through the European Performance Spot) and
+        on domestic cup winners, neither of which is modelled while the scope is
+        domestic leagues.

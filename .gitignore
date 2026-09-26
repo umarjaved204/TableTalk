@@ -1,0 +1,21 @@
+# Data: raw downloads and processed caches are reproducible, so they are not tracked.
+data/raw/
+data/processed/
+*.csv.gz
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Notebook outputs are regenerated; keep the repo diff-able.
+notebooks/*.html
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/

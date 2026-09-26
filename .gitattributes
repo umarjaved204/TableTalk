@@ -1,0 +1,7 @@
+# Normalise line endings in the repo; check out native on each platform.
+* text=auto
+
+# Data files are always LF.
+*.csv text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf

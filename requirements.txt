@@ -1,0 +1,19 @@
+# Core numerical stack
+numpy>=1.26
+pandas>=2.1
+scipy>=1.11
+
+# Config files
+PyYAML>=6.0
+
+# Data download
+requests>=2.31
+
+# Plots (calibration curves, position distributions)
+matplotlib>=3.8
+
+# Notebooks
+jupyter>=1.0
+
+# Tests
+pytest>=8.0
