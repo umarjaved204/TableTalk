@@ -5,13 +5,16 @@ competition simulators, producing the kind of numbers newspapers print as
 "supercomputer predicts the title race" — but with the method written down, the
 assumptions flagged, and the forecasts checked against what actually happened.
 
-**Status: Phase 1 in progress.** Project skeleton, config system and data layer are
-done and tested (this document marks clearly what exists and what does not).
+**Status: Phase 1 in progress.** Data layer and Dixon-Coles match model are done,
+tested and backtested; the league simulator is next. This document marks clearly
+what exists and what does not.
 
 ```
 python -m tabletalk competitions                         # what is configured
 python -m tabletalk data fetch --competition premier_league --refresh
 python -m tabletalk data check --competition premier_league
+python -m tabletalk ratings    --competition premier_league   # fitted ratings + next fixtures
+python -m tabletalk evaluate   --competition premier_league   # match-level backtest
 ```
 
 ---
@@ -60,26 +63,36 @@ The trade-off is honest: Dixon-Coles knows nothing about injuries, transfers,
 managerial changes or fixture congestion, and treats a team's strength as slowly
 varying. See [Known limitations](#known-limitations).
 
-### How the match model will work (plain English)
-
-*Implementation lands in the next step of Phase 1; the method is fixed and stated
-here so the data layer can be judged against it.*
+### How the match model works (plain English)
 
 1. Each team gets two numbers: an **attack** strength and a **defence** strength.
-   A single league-wide **home advantage** term is added on top.
-2. The expected goals for a match are the home team's attack multiplied by the away
-   team's weakness, times home advantage; and symmetrically for the away team. Goals
-   are then treated as (nearly) Poisson around those expectations.
-3. Real football has more 0-0s, 1-1s and 1-0s than independent Poisson draws
-   predict: low-scoring matches are correlated. Dixon and Coles (1997) fix this with
-   one extra parameter, **rho**, that reweights exactly the 0-0, 1-0, 0-1 and 1-1
-   cells. This is the part that makes it Dixon-Coles instead of "two Poissons", and
-   it is not skipped here.
-4. All parameters are fitted by **maximum likelihood** with **time decay**: a match
-   from last week counts more than one from three years ago, with the half-life a
-   configurable parameter.
-5. For a **neutral venue** (a cup final) the home advantage term is switched off,
-   which is why `neutral` is a column in the match schema from day one.
+   One league-wide **home advantage** term is added on top.
+2. Expected goals for each side come from those numbers:
+
+   ```
+   log(home xG) = intercept + home_advantage + attack[home] - defence[away]
+   log(away xG) = intercept                  + attack[away] - defence[home]
+   ```
+
+   Ratings are on a log scale, so they read as multipliers: an attack of +0.24 means
+   `exp(0.24) = 1.27`, i.e. 27% more goals than an average team. Goals are then
+   (nearly) Poisson around those expectations.
+3. Real football has more 0-0s and 1-1s, and fewer 1-0s and 0-1s, than independent
+   Poisson draws predict. Dixon and Coles (1997) fix this with one parameter,
+   **rho**, that reweights exactly those four scorelines, and the adjustments
+   cancel so probabilities still sum to one. This is what makes it Dixon-Coles
+   rather than "two Poissons".
+4. Parameters are fitted by **maximum likelihood with time decay**: a match's weight
+   halves every 180 days, so recent form counts more. A weak Gaussian prior on each
+   rating (worth less than one match of data) keeps the fit well-posed, and is also
+   the hook for handling promoted teams.
+5. For a **neutral venue** (a cup final) the home-advantage term is dropped.
+
+Fitted to the Premier League as of September 2026: home advantage **+0.17** (home
+sides score ×1.19), rho **−0.11**, an average team scores 1.15 away from home —
+all in the range the literature reports. The implementation is in
+[src/tabletalk/model/dixon_coles.py](src/tabletalk/model/dixon_coles.py), with the
+gradient derived in the code comments.
 
 ---
 
@@ -104,9 +117,13 @@ src/tabletalk/
     fixtures.py         # the remaining fixtures; checking a schedule against the config
     reconcile.py        # merging results with the published fixture list
     dataset.py          # assemble, filter and summarise a competition's matches
-  model/                # Dixon-Coles                     (next)
-  simulation/           # LeagueSimulator, KnockoutSimulator (next / Phase 3)
-  evaluation/           # backtests, calibration, Brier/log loss (next)
+  model/
+    dixon_coles.py      # likelihood, analytic gradient, fitting, predictions
+    promoted.py         # promoted-team strategies: prior / second_tier / none
+  evaluation/
+    metrics.py          # log loss, Brier score, ranked probability score
+    backtest.py         # rolling-origin match-level backtest vs a base-rate baseline
+  simulation/           # LeagueSimulator (next), KnockoutSimulator (Phase 3)
 tests/                  # pytest; runs offline
 data/raw/               # untouched downloads (gitignored)
 data/processed/         # assembled standard-schema CSVs (gitignored, rebuilt on demand)
@@ -138,7 +155,13 @@ openfootball is community-maintained, so its own scores can lag; TableTalk uses 
 for the schedule only.
 
 Currently loaded: Premier League 2021-22 to 2026-27 — 1,950 results plus the
-complete 2026-27 schedule (50 played, 330 to come, through 2027-05-30).
+complete 2026-27 schedule (50 played, 330 to come, through 2027-05-30) — and 2,855
+Championship results as `context` data (see [Promoted teams](#promoted-teams)).
+
+A third source role, **`context`**, carries results from a *related* competition
+that the match model may learn from but that is never tabulated, simulated or
+checked against the schedule. The Championship feeds the model this way without a
+single Championship row reaching the Premier League's tables.
 
 **Team-name normalisation** — sources spell clubs differently ("Man United",
 "Manchester Utd", "Manchester United FC"). Unreconciled, that silently splits one
@@ -200,27 +223,148 @@ Flagged assumptions, recorded in the config file itself:
   flip. The chance of reaching it is negligible.
 - **A2** Zones are league positions only, for the reason above.
 
+## The match model: validation (Phase 1, done)
+
+### Is the implementation right?
+
+Before asking whether the model is *good*, check that it is *correct*:
+
+- **The gradient matches finite differences** to about 1e-7 relative error. The
+  optimiser uses a hand-derived gradient; an almost-right gradient still converges,
+  just to the wrong place, so this is the first check.
+- **Parameter recovery.** Simulate 11,200 matches from known ratings using the exact
+  Dixon-Coles score distribution, fit the model, and confirm it gets the ratings,
+  home advantage and rho back within sampling error. This is what catches a flipped
+  sign on defence or a tau correction applied to the wrong scoreline.
+- Worth knowing from those simulations: **rho is the least well-identified
+  parameter**. From 2,240 simulated matches with a true rho of −0.10, fitted values
+  ranged from −0.02 to −0.14 across random seeds. It only moves four scorelines, so
+  it needs a lot of data.
+
+### Does it beat knowing nothing?
+
+`python -m tabletalk evaluate` runs a **rolling-origin backtest**: for each week of
+a completed season, fit using only results before that week, forecast the week's
+matches, move on. No forecast ever sees a result from its own future. Every model
+is compared with a **baseline** that ignores the teams and predicts the league's
+historical home/draw/away frequencies.
+
+Scores are *proper scoring rules* (lower is better): **log loss**, **Brier score**,
+and **ranked probability score**, which respects that a draw is "closer" to a home
+win than an away win is. Over 2023-24 to 2025-26 (1,140 matches):
+
+| | log loss | Brier | RPS | vs baseline |
+|---|---|---|---|---|
+| Dixon-Coles | **0.981** | **0.585** | **0.201** | **−8.6% log loss** |
+| Base rates | 1.074 | 0.650 | 0.233 | — |
+
+The improvement holds in every season individually (2023-24: 0.933 vs 1.055;
+2024-25: 0.977 vs 1.082; 2025-26: 1.033 vs 1.084).
+
+**Time decay.** Log loss is flat for half-lives between 180 and 365 days (0.9812 /
+0.9805 / 0.9811) and clearly worse below 120 days. The configured 180 days is kept
+rather than switching to whichever value happens to score best on the test
+seasons, which would be tuning on the test set.
+
+### Promoted teams
+
+A team promoted this season has few or no Premier League results. Fitted naively,
+it is rated on a handful of matches: with five games played, the unadjusted model
+puts newly promoted Hull City **5th in the league** on the strength of two wins.
+
+How public models handle this: nearly all of them (Elo-style systems,
+FiveThirtyEight's SPI, Opta's power rankings) sidestep it by rating more than one
+division on a single scale, so a promoted team arrives with a rating earned below.
+Dixon and Coles' own paper fitted league and cup data across English divisions.
+Academic goal models more often shrink sparse teams toward a common prior.
+TableTalk implements both and lets the backtest decide:
+
+- **`prior`**: start each promoted team at the average first-season rating of the
+  12 teams promoted in the previous four seasons (they scored ×0.75 and conceded
+  ×1.31 an average team's goals), with a spread equal to how much those teams
+  varied. Their own results then pull them away from it.
+- **`second_tier`**: fit the Championship alongside the Premier League, with its
+  own goal-rate offset, so promoted teams carry a Championship-earned rating onto
+  the Premier League scale via the clubs that move between divisions.
+- **`none`**: no special handling, as a reference point.
+
+Log loss on the same backtest:
+
+| matches | n | `none` | `prior` | `second_tier` |
+|---|---|---|---|---|
+| all | 1,140 | 0.981 | 0.981 | 0.988 |
+| promoted team involved | 324 | 0.883 | 0.883 | 0.909 |
+| early season (games 1-10), promoted team involved | 84 | 0.828 | 0.831 | 0.884 |
+
+Log loss alone cannot separate `prior` from `none`: a paired comparison on
+promoted-team matches gives a difference of −0.0005 ± 0.019. With only nine
+promoted teams in three test seasons, the sample is simply too small. The **bias**
+in forecast goal difference for promoted teams is clearer (predicted minus actual,
+goals per game, from the promoted team's side):
+
+| | games 1-10 | games 11-38 |
+|---|---|---|
+| `none` | +0.23 | +0.09 |
+| `prior` | **+0.14** | **+0.06** |
+| `second_tier` | +0.43 | +0.18 |
+
+**Why the Championship approach loses: the winner's curse.** A club is promoted
+partly *because* its Championship results flattered it, so a rating built from
+those results is biased upward. The clubs `second_tier` got most wrong were the
+ones that ran away with the division: Burnley 2023-24 (forecast −0.39 goals per
+game, actual −1.7), Burnley and Leeds 2025-26. Multi-division rating systems have
+to correct for exactly this; the `prior` approach avoids it because it is measured
+on promoted teams' actual Premier League results.
+
+**Decision: `prior`.** It ties `none` on log loss and has the smallest bias. The
+bias matters more than the log-loss tie suggests: once ratings drive a season
+simulation, a promoted team rated 0.2 goals per game too high has its relegation
+probability understated in every one of the 10,000 runs, whereas log loss averages
+that error across all 380 matches.
+
+Open questions, deliberately not tuned against the same test seasons:
+
+- **More history would give a real answer.** football-data.co.uk goes back to the
+  1990s; ten more seasons would mean roughly 30 more promoted teams, both for
+  estimating the prior and for testing it.
+- **A corrected `second_tier`**, shrinking Championship ratings toward the promoted
+  prior, might combine team-specific information with the winner's-curse
+  correction.
+- **Squad value** (e.g. Transfermarkt) is the one signal that separates a
+  well-funded promoted team from a weak one before either plays; it needs a new
+  data source.
+
 ## Tests
 
 ```
 python -m pytest
 ```
 
-76 tests, no network access required (the integration test skips when the raw data
-is not cached). They cover the parts that are easy to get subtly wrong and hard to
-notice: config validation, team-name normalisation (including idempotence and
-ambiguous aliases), schema validation, season-label parsing, both loaders' date and
-score handling, reconciling results against the schedule (no double counting, no
-lost match, repeat pairings consumed in date order, orphaned results detected), and
-the fixture-list checks. The
-Dixon-Coles likelihood, tiebreaker logic and knockout aggregate/penalty handling
-get the same treatment as they are written.
+123 tests, no network access required (the integration test skips when the raw
+data is not cached). They cover the parts that are easy to get subtly wrong and hard
+to notice:
+
+- **Data:** config validation, team-name normalisation (idempotence, ambiguous
+  aliases), schema validation, season labels, both loaders, reconciling results
+  against the schedule (no double counting, no lost match, orphaned results
+  detected), and the fixture-list checks.
+- **Model:** each tau cell, the adjustments cancelling exactly, the objective
+  against a hand-computed likelihood, the gradient against finite differences,
+  parameter recovery from simulated data, neutral venues, and fitting ignoring any
+  result on or after the fit date.
+- **Promoted teams:** detection, a newcomer starting exactly at its prior, and the
+  prior for a season never seeing that season's results.
+- **Evaluation:** each scoring rule on worked examples, RPS respecting outcome
+  order where Brier cannot, and the backtest never forecasting from the future.
+
+Tiebreaker logic and knockout aggregate/penalty handling get the same treatment as
+they are written.
 
 ## Roadmap
 
-- **Phase 1 — core model + Premier League.** Data layer ✅ · Dixon-Coles ▫ ·
-  LeagueSimulator ▫ · backtest, calibration, Brier/log loss vs a base-rate
-  baseline ▫
+- **Phase 1 — core model + Premier League.** Data layer ✅ · Dixon-Coles ✅ ·
+  match-level backtest vs a base-rate baseline ✅ · LeagueSimulator ▫ · season-level
+  backtest and calibration plots ▫
 - **Phase 2 — La Liga, Serie A, Bundesliga, Ligue 1**, by config; per-league fit
   and per-league validation. openfootball already covers all four schedules
   (`es.1`, `it.1`, `de.1`, `fr.1`), including the 18-team leagues.
@@ -236,10 +380,9 @@ get the same treatment as they are written.
 - **Nothing about teams beyond results.** No injuries, suspensions, transfers,
   managerial changes, European or cup fixture congestion, or motivation at the end
   of a season.
-- **Promoted teams have little or no history** in the competition. Right now
-  Coventry City and Hull City have none at all and Ipswich Town has one season;
-  treating them as average would badly overrate them. The chosen approach and its
-  trade-offs get written up with the model.
+- **Promoted teams are still slightly overrated** (+0.14 goals per game early in
+  the season) even with the `prior` strategy, and every promoted team starts from
+  the same prior however it was built. See [Promoted teams](#promoted-teams).
 - **Strength is assumed to drift slowly.** Time decay is a blunt instrument: it
   cannot capture a team that changes overnight.
 - **Early-season forecasts are weakly informed** by the current season and lean on
@@ -250,6 +393,8 @@ get the same treatment as they are written.
   indicative.
 - **Point estimates, not intervals.** Simulation captures the randomness of
   football, not the uncertainty in the fitted parameters themselves.
+- **One home advantage for everyone.** Some grounds are genuinely harder to visit
+  than others; the model does not know that.
 - **The schedule is taken as given.** Postponements and rearrangements are only
   picked up when the fixture source is refreshed.
 

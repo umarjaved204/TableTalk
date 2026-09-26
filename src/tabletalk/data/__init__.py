@@ -16,7 +16,13 @@ Submodules:
     dataset    - assembling, filtering and summarising a competition's matches
 """
 
-from .dataset import filter_matches, load_matches, season_summary, team_seasons
+from .dataset import (
+    filter_matches,
+    load_context_matches,
+    load_matches,
+    season_summary,
+    team_seasons,
+)
 from .fixtures import (
     check_fixture_list,
     remaining_fixtures,
@@ -38,6 +44,7 @@ __all__ = [
     "canonical_season",
     "default_normaliser",
     "filter_matches",
+    "load_context_matches",
     "load_matches",
     "check_fixture_list",
     "combine_results_and_fixtures",

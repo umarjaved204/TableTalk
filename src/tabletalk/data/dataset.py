@@ -72,6 +72,27 @@ def load_matches(
     return matches
 
 
+def load_context_matches(
+    config: CompetitionConfig | str,
+    *,
+    refresh: bool = False,
+    strict_names: bool = True,
+) -> pd.DataFrame:
+    """Results from related competitions (``role: context``), for model fitting only.
+
+    Kept out of :func:`load_matches` on purpose: everything that tabulates,
+    checks fixtures or simulates works on the competition's own matches, and a
+    Championship row there would be a bug. The match model is the only consumer.
+    Returns an empty frame when the config lists no context sources.
+    """
+    if isinstance(config, str):
+        config = load_competition(config)
+    context = _load_role(config, "context", refresh=refresh, strict_names=strict_names)
+    if context.empty:
+        return context
+    return validate_matches(context, source=f"{config.id} context data")
+
+
 def _load_role(
     config: CompetitionConfig, role: str, *, refresh: bool, strict_names: bool
 ) -> pd.DataFrame:

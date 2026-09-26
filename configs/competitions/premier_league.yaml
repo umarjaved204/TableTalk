@@ -102,14 +102,55 @@ data:
           - "2026-27"
         # `ref` can be pinned to a commit SHA for a fully reproducible run.
         ref: master
+    # Championship results: never simulated or tabulated, only used by the match
+    # model so that promoted teams arrive with a rating earned in the second
+    # tier (promoted-team strategy `second_tier`, below).
+    - loader: football_data_uk
+      role: context
+      params:
+        division: E1
+        competition: championship
+        seasons:
+          - "2021-22"
+          - "2022-23"
+          - "2023-24"
+          - "2024-25"
+          - "2025-26"
+          - "2026-27"
 
-# Defaults for the match model when simulating this competition. Overridable
-# from the command line; kept here so each competition can be tuned separately.
+# Defaults for the match model when simulating this competition. Kept here so
+# each competition can be tuned separately.
 model:
-  # Dixon-Coles time decay: weight = exp(-xi * age_in_days). Expressed as a
-  # half-life because that is easier to reason about than xi.
-  # 180 days ~= "a match from a year ago counts about a quarter of a recent one".
+  # Dixon-Coles time decay: a match's weight halves every `half_life` days.
+  # 180 days ~= "a match from a year ago counts a quarter as much as today's".
+  # To be tuned by backtest, not guessed.
   time_decay_half_life_days: 180
+  # Scorelines are computed on a 0..max_goals grid; 10+ goals for one side is
+  # rare enough that the truncated mass is negligible.
+  max_goals: 10
+  # Every team's attack and defence gets a Gaussian prior centred on 0 (league
+  # average) with this sd, on the log scale. Deliberately weak - worth less
+  # than one match of data - it exists to keep the fit well-posed, not to
+  # shrink real teams.
+  rating_prior_sd: 1.0
+  promoted_teams:
+    # How to rate teams promoted into the season being predicted:
+    #   prior       - start them at the average first-season rating of past
+    #                 promoted teams, and let their results pull them away
+    #   second_tier - fit the Championship jointly (the `context` source), so
+    #                 they carry a rating earned there
+    #   none        - no special handling (kept as a reference point)
+    #
+    # Chosen: `prior`. Backtest 2023-24..2025-26 (python -m tabletalk evaluate):
+    # `prior` and `none` tie on log loss, but `prior` has the smallest bias on
+    # promoted teams (over-rates them by 0.14 goals/game early season, vs 0.23
+    # for `none` and 0.43 for `second_tier`). `second_tier` loses: promoted
+    # clubs' Championship results flatter them (the winner's curse). Bias
+    # matters more than log loss suggests once these ratings drive a season
+    # simulation - it shifts one specific team's relegation odds every run.
+    strategy: prior
+    # Minimum completed seasons of history needed to estimate the `prior`.
+    min_seasons_for_prior: 1
 
 simulation:
   n_simulations: 10000

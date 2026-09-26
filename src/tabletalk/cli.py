@@ -5,9 +5,11 @@ Phase 1 commands:
     python -m tabletalk competitions
     python -m tabletalk data fetch --competition premier_league [--refresh]
     python -m tabletalk data check --competition premier_league
+    python -m tabletalk ratings    --competition premier_league [--strategy prior]
+    python -m tabletalk evaluate   --competition premier_league [--seasons 2024-25 2025-26]
 
 ``simulate`` is registered but not implemented yet; it arrives with the
-Dixon-Coles model and the LeagueSimulator.
+LeagueSimulator.
 """
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ from .data import (
 from .data.dataset import processed_path
 from .data.loaders import available_loaders, build_loaders
 from .data.normalise import default_normaliser
+from .cli_model import add_model_commands
 
 
 # ---------------------------------------------------------------------------
@@ -182,9 +185,8 @@ def _provisional_table(matches: pd.DataFrame, config) -> pd.DataFrame:
 def cmd_simulate(args: argparse.Namespace) -> int:
     print(
         "`simulate` is not implemented yet.\n"
-        "It arrives with the Dixon-Coles match model (tabletalk.model) and the\n"
-        "LeagueSimulator (tabletalk.simulation), the next step of Phase 1.\n"
-        "Available now: `data fetch` and `data check`.",
+        "It arrives with the LeagueSimulator (tabletalk.simulation), the next step\n"
+        "of Phase 1. Available now: `data fetch`, `data check`, `ratings`, `evaluate`.",
         file=sys.stderr,
     )
     return 2
@@ -219,6 +221,8 @@ def build_parser() -> argparse.ArgumentParser:
     _add_competition_arg(check)
     check.add_argument("--refresh", action="store_true", help="re-download instead of using the raw cache")
     check.set_defaults(func=cmd_data_check)
+
+    add_model_commands(subparsers, _add_competition_arg)
 
     simulate = subparsers.add_parser("simulate", help="simulate a competition (not yet implemented)")
     _add_competition_arg(simulate)

@@ -46,9 +46,13 @@ KNOWN_TIEBREAKERS: frozenset[str] = frozenset(
 #: What a data source contributes.
 #:   results  - authoritative for scores of matches already played
 #:   fixtures - authoritative for the schedule: which matches are still to come
+#:   context  - results from a *related* competition, used only to inform team
+#:              ratings and never simulated or tabulated (e.g. the second tier,
+#:              so promoted teams arrive with a rating). Rows carry their own
+#:              competition id, set by the source's `competition` param.
 #: A competition needs at least one results source, and one fixtures source to be
 #: simulable mid-season.
-KNOWN_SOURCE_ROLES: frozenset[str] = frozenset({"results", "fixtures"})
+KNOWN_SOURCE_ROLES: frozenset[str] = frozenset({"results", "fixtures", "context"})
 
 #: Competition formats, each handled by one simulator.
 KNOWN_FORMATS: frozenset[str] = frozenset({"league", "knockout", "hybrid"})
@@ -161,7 +165,13 @@ class DataSource:
                 f"data source {raw.get('loader')!r} has role {role!r}; "
                 f"expected one of {sorted(KNOWN_SOURCE_ROLES)}"
             )
-        return cls(loader=str(raw["loader"]), role=role, params=dict(raw.get("params", {})))
+        params = dict(raw.get("params", {}))
+        if role == "context" and not params.get("competition"):
+            raise ConfigError(
+                f"context source {raw.get('loader')!r} needs a `competition` param "
+                "naming the competition its matches belong to (e.g. championship)"
+            )
+        return cls(loader=str(raw["loader"]), role=role, params=params)
 
 
 @dataclass(frozen=True)
@@ -201,9 +211,14 @@ class CompetitionConfig:
 
     @property
     def seasons(self) -> tuple[str, ...]:
-        """Every season named by any data source, in config order."""
+        """Every season this competition's own sources cover, in config order.
+
+        Context sources are excluded: they describe another competition.
+        """
         out: list[str] = []
         for source in self.data_sources:
+            if source.role == "context":
+                continue
             for season in source.params.get("seasons", []):
                 if str(season) not in out:
                     out.append(str(season))

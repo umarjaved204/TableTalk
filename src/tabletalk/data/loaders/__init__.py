@@ -42,9 +42,15 @@ def get_loader_class(name: str) -> Type[MatchLoader]:
 
 
 def build_loader(spec: DataSource, competition: str, **overrides: Any) -> MatchLoader:
-    """Instantiate the loader described by one config data source."""
+    """Instantiate the loader described by one config data source.
+
+    Rows are labelled with ``competition`` unless the source names its own
+    (context sources do: Championship rows must not claim to be Premier League).
+    """
     loader_class = get_loader_class(spec.loader)
-    return loader_class(competition, **{**dict(spec.params), **overrides})
+    params = {**dict(spec.params), **overrides}
+    label = str(params.pop("competition", competition))
+    return loader_class(label, **params)
 
 
 def build_loaders(
