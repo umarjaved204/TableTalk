@@ -226,6 +226,25 @@ class CompetitionConfig:
         return tuple(out)
 
     @property
+    def excluded_seasons(self) -> dict[str, str]:
+        """Seasons kept out of backtest results (still used for training), with the reason."""
+        evaluation = self.raw.get("evaluation") or {}
+        excluded = evaluation.get("exclude_seasons") or {}
+        return {str(season): " ".join(str(reason).split()) for season, reason in excluded.items()}
+
+    @property
+    def evaluation_split(self) -> dict[str, tuple[str, ...]]:
+        """Backtest seasons for choosing settings (``tune``) and for results (``report``).
+
+        Empty if the config defines no split. Validated at load time: the two
+        lists are disjoint, and every tuning season comes before every report
+        season, so a tuned value can never have seen a report-season result.
+        """
+        evaluation = self.raw.get("evaluation") or {}
+        split = evaluation.get("split") or {}
+        return {name: tuple(str(s) for s in split.get(name) or ()) for name in ("tune", "report") if name in split}
+
+    @property
     def assumptions(self) -> tuple[Mapping[str, Any], ...]:
         """Modelling assumptions flagged in the config's `verification` block."""
         verification = self.raw.get("verification") or {}
@@ -336,7 +355,31 @@ def _build_config(raw: Mapping[str, Any], path: Path) -> CompetitionConfig:
             f"{path}: current_season {current_season!r} is not among the seasons "
             f"loaded by the data sources {config.seasons}"
         )
+    _check_evaluation_split(config, path)
     return config
+
+
+def _check_evaluation_split(config: CompetitionConfig, path: Path) -> None:
+    split = config.evaluation_split
+    if not split:
+        return
+    if set(split) != {"tune", "report"}:
+        raise ConfigError(f"{path}: evaluation.split needs both `tune` and `report` season lists")
+    completed = config.seasons[: config.seasons.index(config.current_season)]
+    for name, seasons in split.items():
+        if not seasons:
+            raise ConfigError(f"{path}: evaluation.split.{name} is empty")
+        for season in seasons:
+            if season not in completed:
+                raise ConfigError(f"{path}: evaluation.split.{name} season {season!r} is not a completed season in the data")
+            if season in config.excluded_seasons:
+                raise ConfigError(f"{path}: evaluation.split.{name} season {season!r} is also in exclude_seasons")
+    overlap = set(split["tune"]) & set(split["report"])
+    if overlap:
+        raise ConfigError(f"{path}: evaluation.split tune and report share season(s) {sorted(overlap)}")
+    order = {season: i for i, season in enumerate(config.seasons)}
+    if max(order[s] for s in split["tune"]) > min(order[s] for s in split["report"]):
+        raise ConfigError(f"{path}: evaluation.split must be chronological: every tune season before every report season")
 
 
 def _check_unique(values: Sequence[str], message: str) -> None:

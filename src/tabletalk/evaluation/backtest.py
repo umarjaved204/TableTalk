@@ -196,6 +196,49 @@ def summarise_backtest(predictions: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+#: Columns that identify one match across the rows of different models.
+MATCH_KEY = ["season", "date", "home_team", "away_team"]
+
+
+def per_match_log_loss(rows: pd.DataFrame) -> pd.Series:
+    """``-log(probability given to what happened)`` for each match, indexed by match."""
+    probs = rows[["p_home", "p_draw", "p_away"]].to_numpy(dtype=float)
+    chosen = probs[np.arange(len(rows)), rows["outcome"].to_numpy(dtype=int)]
+    index = pd.MultiIndex.from_frame(rows[MATCH_KEY])
+    return pd.Series(-np.log(np.clip(chosen, 1e-15, 1.0)), index=index)
+
+
+def paired_comparison(predictions: pd.DataFrame, model: str, other: str) -> pd.DataFrame:
+    """Log loss of ``model`` minus ``other`` on the same matches, per subgroup.
+
+    Pairing matters: both models face the same matches, so the match-to-match
+    luck that dominates any one model's score cancels in the difference. The
+    95% interval (``ci95``) is 1.96 standard errors of the mean per-match
+    difference. Negative means ``model`` is better.
+
+    Caveat: matches in the same week or involving the same team are not fully
+    independent, so the interval is, if anything, a little too narrow.
+    """
+    rows = []
+    for group_name, selector in SUBGROUPS:
+        subset = predictions.loc[selector(predictions)]
+        a = per_match_log_loss(subset.loc[subset["model"] == model])
+        b = per_match_log_loss(subset.loc[subset["model"] == other])
+        diff = (a - b).dropna()
+        if diff.empty:
+            continue
+        rows.append(
+            {
+                "group": group_name,
+                "comparison": f"{model} - {other}",
+                "n": len(diff),
+                "diff": diff.mean(),
+                "ci95": 1.96 * diff.std(ddof=1) / np.sqrt(len(diff)),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def summarise_by_season(predictions: pd.DataFrame) -> pd.DataFrame:
     """Log loss per season and model, to check a result is not one season's fluke."""
     table = (

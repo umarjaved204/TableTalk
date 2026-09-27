@@ -131,3 +131,20 @@ def test_second_tier_strategy_rates_a_newcomer_from_the_lower_division(four_team
 def test_unknown_strategy_is_rejected(four_team_config):
     with pytest.raises(ValueError, match="unknown promoted-team strategy"):
         fit_competition_model(four_team_config, _season(list("ABCD"), "2025-26"), strategy="vibes")
+
+
+def test_prior_is_identical_with_every_later_season_deleted():
+    """Walk-forward check: the prior for a season is the same whether or not the
+    data also holds that season and everything after it."""
+    history = pd.concat(
+        [
+            _three_seasons(),
+            _season(list("ABCDEI"), "2025-26", seed=4, boost={"I": 3}),
+        ],
+        ignore_index=True,
+    )
+    full = estimate_promoted_prior(history, "toy_league", "2024-25")
+    truncated = estimate_promoted_prior(
+        history.loc[history["season"].isin(["2022-23", "2023-24"])], "toy_league", "2024-25"
+    )
+    assert full == truncated

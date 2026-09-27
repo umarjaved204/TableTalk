@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tabletalk.evaluation.backtest import base_rates, match_backtest, summarise_backtest
+from tabletalk.evaluation.backtest import base_rates, match_backtest, paired_comparison, summarise_backtest
 from tabletalk.evaluation.metrics import (
     AWAY,
     DRAW,
@@ -127,3 +127,18 @@ def test_backtest_summary_compares_against_the_baseline(backtest_predictions):
     baseline = summary.loc[(summary["model"] == "baseline") & (summary["group"] == "all matches")]
     assert baseline["vs_baseline_pct"].iloc[0] == pytest.approx(0.0)
     assert {"log_loss", "brier", "rps", "n"} <= set(summary.columns)
+
+
+def test_paired_comparison_of_a_model_with_itself_is_zero(backtest_predictions):
+    paired = paired_comparison(backtest_predictions, "prior", "prior")
+    assert (paired["diff"] == 0).all()
+
+
+def test_paired_comparison_matches_the_difference_in_log_loss(backtest_predictions):
+    paired = paired_comparison(backtest_predictions, "prior", "baseline")
+    overall = paired.loc[paired["group"] == "all matches"].iloc[0]
+    summary = summarise_backtest(backtest_predictions).set_index(["group", "model"])
+    expected = summary.loc[("all matches", "prior"), "log_loss"] - summary.loc[("all matches", "baseline"), "log_loss"]
+    assert overall["n"] == 12
+    assert overall["diff"] == pytest.approx(expected)
+    assert overall["ci95"] > 0

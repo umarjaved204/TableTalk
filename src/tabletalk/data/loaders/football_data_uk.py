@@ -19,9 +19,17 @@ HomeTeam / AwayTeam  team names, source spelling
 FTHG / FTAG          full-time goals
 ======  ==================================================
 
-Everything else in the file (half-time scores, shots, cards, bookmaker odds) is
-ignored here. The odds columns are worth revisiting later as a benchmark to
-compare the model against; they are not used as model input.
+Everything else in the file (half-time scores, shots, cards) is ignored, except
+bookmaker odds, which :meth:`FootballDataUKLoader.load_odds` reads separately as
+a benchmark for the model (never as an input to it). Odds columns are named
+``<prefix>H``, ``<prefix>D``, ``<prefix>A`` for home, draw and away, e.g.
+
+======  ==========================================================
+PSC     Pinnacle closing odds (2012-13 onwards in the Premier League)
+AvgC    average closing odds across the bookmakers they track (2019-20 on)
+PS      Pinnacle, at the time the file was compiled (not closing)
+B365    Bet365
+======  ==========================================================
 """
 
 from __future__ import annotations
@@ -54,6 +62,9 @@ class FootballDataUKLoader(MatchLoader):
             ``SP1`` (La Liga), ``D1`` (Bundesliga).
         seasons: canonical season labels, e.g. ``["2024-25", "2025-26"]``.
         cache_dir: optional override for where downloads are kept.
+        odds_preference: odds column prefixes to use for the market benchmark,
+            best first, e.g. ``["PSC", "AvgC"]``: each match takes the first
+            one that has all three prices. Omitted means "no odds".
     """
 
     name = "football_data_uk"
@@ -84,6 +95,9 @@ class FootballDataUKLoader(MatchLoader):
         ``refresh=True`` to re-download; you need it during a live season,
         because a cached current-season file stops at the date you fetched it.
         """
+        return self._read_all(refresh=refresh, keep_odds=False)
+
+    def _read_all(self, *, refresh: bool, keep_odds: bool) -> pd.DataFrame:
         frames: list[pd.DataFrame] = []
         for season in self.seasons:
             path = self.cache_path(season)
@@ -93,12 +107,52 @@ class FootballDataUKLoader(MatchLoader):
             missing = [column for column in _USED_COLUMNS if column not in frame.columns]
             if missing:
                 raise ValueError(f"{path}: expected column(s) {missing} not found")
-            frame = frame.loc[:, _USED_COLUMNS].copy()
+            columns = list(_USED_COLUMNS)
+            if keep_odds:
+                columns += [
+                    f"{prefix}{side}"
+                    for prefix in self.odds_preference
+                    for side in "HDA"
+                    if f"{prefix}{side}" in frame.columns
+                ]
+            frame = frame.loc[:, columns].copy()
             frame["season"] = season.label
             frames.append(frame)
         if not frames:
             raise ValueError(f"{self.name} loader for {self.competition}: no seasons configured")
         return pd.concat(frames, ignore_index=True)
+
+    @property
+    def odds_preference(self) -> tuple[str, ...]:
+        return tuple(str(prefix) for prefix in self.params.get("odds_preference") or ())
+
+    def load_odds(self, *, refresh: bool = False) -> pd.DataFrame | None:
+        """Each played match's odds from the first preferred bookmaker that priced it.
+
+        A match that none of the preferred columns cover gets no row, so the
+        caller can report coverage honestly rather than silently mixing sources.
+        """
+        if not self.odds_preference:
+            return None
+        raw = self._read_all(refresh=refresh, keep_odds=True).reset_index(drop=True)
+        # The standard rows keep the raw row index, so each match lines up with
+        # its own odds even after blank and unplayed rows are dropped.
+        standard = self._standard_rows(raw)
+        chosen = raw.loc[standard.index].reset_index(drop=True)
+
+        out = standard[["season", "date", "home_team", "away_team"]].reset_index(drop=True).copy()
+        out[["odds_home", "odds_draw", "odds_away"]] = float("nan")
+        out["odds_source"] = pd.Series([None] * len(out), dtype="object")
+        for prefix in self.odds_preference:
+            columns = [f"{prefix}{side}" for side in "HDA"]
+            if not all(column in chosen.columns for column in columns):
+                continue
+            prices = chosen[columns].apply(pd.to_numeric, errors="coerce")
+            usable = prices.notna().all(axis=1) & (prices > 1.0).all(axis=1) & out["odds_source"].isna()
+            out.loc[usable, ["odds_home", "odds_draw", "odds_away"]] = prices.loc[usable].to_numpy()
+            out.loc[usable, "odds_source"] = prefix
+        out = out.loc[out["odds_source"].notna()].reset_index(drop=True)
+        return self.normalise_team_names(out)
 
     def _download(self, season: Season, path: Path) -> None:
         url = self.csv_url(season)
@@ -112,6 +166,10 @@ class FootballDataUKLoader(MatchLoader):
 
     # -- mapping ------------------------------------------------------------
     def to_standard(self, raw: pd.DataFrame) -> pd.DataFrame:
+        return self._standard_rows(raw).reset_index(drop=True)
+
+    def _standard_rows(self, raw: pd.DataFrame) -> pd.DataFrame:
+        """The standard frame, still indexed by the raw row each match came from."""
         frame = raw.copy()
 
         # Drop the blank trailing rows these files often end with.
@@ -158,7 +216,7 @@ class FootballDataUKLoader(MatchLoader):
             out = out.loc[out["played"].astype(bool)]
 
         out["played"] = out["played"].astype("boolean")
-        return out.reset_index(drop=True)
+        return out
 
 
 def _read_csv_tolerantly(path: Path) -> pd.DataFrame:

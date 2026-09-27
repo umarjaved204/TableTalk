@@ -14,11 +14,18 @@ import pandas as pd
 from .config import CompetitionConfig, load_competition
 from .data import load_context_matches, load_matches, remaining_fixtures
 from .data.seasons import Season
-from .evaluation.backtest import match_backtest, summarise_backtest, summarise_by_season
+from .evaluation.backtest import BASELINE, match_backtest, paired_comparison, summarise_backtest, summarise_by_season
+from .evaluation.market import MARKET, add_market_forecasts, gap_closed, load_market_odds, odds_coverage
 from .model.promoted import STRATEGIES, fit_competition_model
 from .evaluation.calibration import calibration_table, expected_calibration_error, match_calibration
 from .evaluation.plots import plot_calibration, save_themed
-from .evaluation.season_backtest import favourite_record, season_backtest, season_calibration_by_phase
+from .evaluation.season_backtest import (
+    favourite_record,
+    pooled_zone_log_loss,
+    season_backtest,
+    season_calibration_by_phase,
+)
+from .evaluation.tuning import cutoff_effect, tune_match_model, with_model_settings
 from .simulation import simulate_league
 
 
@@ -75,13 +82,6 @@ def cmd_ratings(args: argparse.Namespace) -> int:
     return 0
 
 
-def _excluded_seasons(config: CompetitionConfig) -> dict[str, str]:
-    """Seasons the config keeps out of headline backtests, with the reason."""
-    evaluation = config.raw.get("evaluation") or {}
-    excluded = evaluation.get("exclude_seasons") or {}
-    return {str(season): " ".join(str(reason).split()) for season, reason in excluded.items()}
-
-
 def _default_backtest_seasons(config: CompetitionConfig) -> list[str]:
     """Completed seasons where every strategy can run, minus configured exclusions.
 
@@ -90,24 +90,51 @@ def _default_backtest_seasons(config: CompetitionConfig) -> list[str]:
     """
     current = Season.parse(config.current_season).start_year
     completed = [s for s in config.seasons if Season.parse(s).start_year < current]
-    excluded = _excluded_seasons(config)
-    return [season for season in completed[2:] if season not in excluded]
+    return [season for season in completed[2:] if season not in config.excluded_seasons]
+
+
+def _backtest_seasons(config: CompetitionConfig, args: argparse.Namespace) -> list[str]:
+    """Seasons to backtest: explicit ``--seasons``, else the config's split.
+
+    ``report`` (the default) gives the headline results; ``tune`` is where
+    settings are chosen; ``all`` is every usable season, both halves together.
+    """
+    if args.seasons:
+        return list(args.seasons)
+    split = config.evaluation_split
+    if args.split == "all" or not split:
+        return _default_backtest_seasons(config)
+    return list(split[args.split])
+
+
+def _print_season_choice(config: CompetitionConfig, args: argparse.Namespace, seasons: list[str]) -> None:
+    if args.seasons:
+        label = "given on the command line"
+    elif config.evaluation_split and args.split != "all":
+        label = f"`{args.split}` split"
+    else:
+        label = "every usable season"
+    print(f"seasons ({label}): {', '.join(seasons)}")
+    if args.split == "tune" and not args.seasons:
+        print("TUNING seasons: for choosing settings, not for quoting results.")
+    if not args.seasons:
+        for season, reason in config.excluded_seasons.items():
+            print(f"excluded {season}: {reason}")
 
 
 def cmd_evaluate(args: argparse.Namespace) -> int:
     """Match-level backtest: strategies vs each other and vs the base-rate baseline."""
     config = load_competition(args.competition)
     matches, context = _load(config)
-    seasons = args.seasons or _default_backtest_seasons(config)
+    seasons = _backtest_seasons(config, args)
     strategies = tuple(args.strategies)
 
     print(f"=== {config.name}: match-level backtest ===")
-    print(f"seasons: {', '.join(seasons)} | refit every {args.refit_days} days | "
-          f"half-life {args.half_life or config.model.get('time_decay_half_life_days')} days")
+    _print_season_choice(config, args, seasons)
+    print(f"refit every {args.refit_days} days | "
+          f"half-life {args.half_life or config.model.get('time_decay_half_life_days')} days | "
+          f"ridge prior sd {config.model.get('rating_prior_sd', 1.0)}")
     print("Each match is forecast from a fit using only results before it.")
-    if not args.seasons:
-        for season, reason in _excluded_seasons(config).items():
-            print(f"excluded {season}: {reason}")
     print()
 
     with warnings.catch_warnings():
@@ -130,6 +157,14 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
 
     print("\nlog loss by season")
     print(summarise_by_season(predictions).round(4).to_string())
+
+    pairs = [(a, b) for i, a in enumerate(strategies) for b in strategies[i + 1:]]
+    if pairs:
+        print("\npaired differences in log loss on the same matches "
+              "(negative = first is better; +/- is a 95% interval)")
+        paired = pd.concat([paired_comparison(predictions, a, b) for a, b in pairs], ignore_index=True)
+        for row in paired.itertuples(index=False):
+            print(f"  {row.comparison:<22} {row.group:<38} n={row.n:<5} {row.diff:+.4f} +/- {row.ci95:.4f}")
 
     # Calibration of the headline model: when it said ~60%, did it happen ~60%?
     model_name = "prior" if "prior" in strategies else strategies[0]
@@ -166,23 +201,27 @@ def cmd_evaluate_seasons(args: argparse.Namespace) -> int:
     """Season-level backtest: zone forecasts from several checkpoints vs final tables."""
     config = load_competition(args.competition)
     matches, context = _load(config)
-    seasons = args.seasons or _default_backtest_seasons(config)
+    seasons = _backtest_seasons(config, args)
+    variant = "fixed" if args.fixed_strengths else args.uncertainty
 
     print(f"=== {config.name}: season-level backtest ===")
-    print(f"seasons: {', '.join(seasons)} | {args.n_simulations:,} simulations per checkpoint")
+    _print_season_choice(config, args, seasons)
+    print(f"{args.n_simulations:,} simulations per checkpoint | strengths: {variant or 'as configured'}")
     print("Each checkpoint forgets every later result, fits on what was known then and\n"
           "simulates the rest; forecasts are scored against the real final table.")
-    if not args.seasons:
-        for season, reason in _excluded_seasons(config).items():
-            print(f"excluded {season}: {reason}")
     print()
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         backtest = season_backtest(
             config, matches, context, seasons,
-            n_simulations=args.n_simulations, fixed_strengths=args.fixed_strengths,
+            n_simulations=args.n_simulations,
+            fixed_strengths=variant == "fixed",
+            strength_uncertainty=UNCERTAINTY_VARIANTS.get(variant) if variant else None,
         )
+
+    print(f"pooled zone log loss (every zone, team and checkpoint; lower is better): "
+          f"{pooled_zone_log_loss(backtest.zones, args.n_simulations):.4f}\n")
 
     zones = backtest.zone_summary()
     print("Brier score skill (% better than the baseline; higher is better)")
@@ -228,6 +267,147 @@ def cmd_evaluate_seasons(args: argparse.Namespace) -> int:
     if args.save:
         backtest.zones.to_csv(args.save, index=False)
         print(f"\nper-team zone forecasts written to {args.save}")
+    return 0
+
+
+def _pooled_calibration(rows: pd.DataFrame) -> pd.DataFrame:
+    """One reliability table over all three outcomes: every probability vs whether it happened."""
+    probs = rows[["p_home", "p_draw", "p_away"]].to_numpy().ravel()
+    happened = (np.eye(3)[rows["outcome"].to_numpy(dtype=int)]).ravel().astype(bool)
+    return calibration_table(pd.Series(probs), pd.Series(happened))
+
+
+def cmd_benchmark(args: argparse.Namespace) -> int:
+    """Model vs the betting market's closing odds, on exactly the same matches."""
+    config = load_competition(args.competition)
+    matches, context = _load(config)
+    seasons = _backtest_seasons(config, args)
+    odds = load_market_odds(config)
+    if odds.empty:
+        print(f"{config.id}: no data source is configured with `odds_preference`, so there is no market to compare with")
+        return 1
+    strategy = config.model.get("promoted_teams", {}).get("strategy", "prior")
+
+    print(f"=== {config.name}: model vs betting market ===")
+    _print_season_choice(config, args, seasons)
+    print("Market probabilities: closing odds with the margin removed proportionally (an assumption;\n"
+          "see tabletalk/evaluation/market.py). The market knows team news the model never sees.\n")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        predictions = match_backtest(config, matches, context, seasons, strategies=(strategy,))
+    predictions = add_market_forecasts(predictions, odds)
+
+    print("odds coverage per season (matches priced by each source) and average bookmaker margin")
+    print(odds_coverage(predictions).round(2).to_string())
+    market_rows = predictions.loc[predictions["model"] == MARKET]
+    compared = _only_matches(predictions, market_rows)
+    unpriced = int((predictions["model"] == BASELINE).sum()) - len(market_rows)
+    print(f"matches without odds (left out of every comparison below): {unpriced}\n")
+
+    summary = summarise_backtest(compared)
+    overall = summary.loc[summary["group"] == "all matches"].set_index("model")
+    print(f"all priced matches (n={int(overall['n'].iloc[0])}); lower is better")
+    print(overall[["log_loss", "brier", "rps"]].round(4).to_string())
+    base, model, market = (overall.loc[name, "log_loss"] for name in (BASELINE, strategy, MARKET))
+    print(f"\nthe model closes {100 * (base - model) / (base - market):.0f}% of the gap in log loss "
+          f"between knowing nothing ({base:.4f}) and the market ({market:.4f})")
+
+    print("\nper season (same matches for all three)")
+    print(gap_closed(compared, strategy).round(4).to_string(index=False))
+
+    print("\npaired difference, model minus market (positive = market better; +/- is a 95% interval)")
+    for row in paired_comparison(compared, strategy, MARKET).itertuples(index=False):
+        print(f"  {row.group:<38} n={row.n:<5} {row.diff:+.4f} +/- {row.ci95:.4f}")
+    # The same comparison restricted to the preferred bookmaker, so the fallback
+    # odds (wider margin) cannot flatter or hurt the headline.
+    preferred = _odds_preference(config)[0]
+    first_choice = _only_matches(compared, market_rows.loc[market_rows["odds_source"] == preferred])
+    first = next(paired_comparison(first_choice, strategy, MARKET).itertuples(index=False))
+    label = f"only matches with {preferred} odds"
+    print(f"  {label:<38} n={first.n:<5} {first.diff:+.4f} +/- {first.ci95:.4f}")
+
+    print("\ncalibration: average gap from the diagonal, in points (home / draw / away)")
+    for name in (strategy, MARKET):
+        tables = match_calibration(compared.loc[compared["model"] == name])
+        gaps = " / ".join(f"{100 * expected_calibration_error(tables[o]):.1f}" for o in ("home", "draw", "away"))
+        print(f"  {name:<8} {gaps}")
+
+    if args.plot:
+        panels = {
+            f"model (`{strategy}`)": _pooled_calibration(compared.loc[compared["model"] == strategy]),
+            "betting market": _pooled_calibration(compared.loc[compared["model"] == MARKET]),
+        }
+        written = save_themed(
+            lambda theme: plot_calibration(
+                panels,
+                title="Model vs market: calibration",
+                subtitle=f"home, draw and away probabilities pooled; {int(overall['n'].iloc[0]):,} matches, "
+                         f"{seasons[0]} to {seasons[-1]}",
+                theme=theme,
+            ),
+            args.plot,
+        )
+        print("\ncalibration chart written to " + ", ".join(str(path) for path in written))
+    if args.save:
+        predictions.to_csv(args.save, index=False)
+        print(f"\nper-match forecasts written to {args.save}")
+    return 0
+
+
+def _only_matches(predictions: pd.DataFrame, keep: pd.DataFrame) -> pd.DataFrame:
+    """Rows of ``predictions`` (every model) for the matches that appear in ``keep``."""
+    key = ["season", "home_team", "away_team"]
+    return predictions.merge(keep[key].drop_duplicates(), on=key, how="inner")
+
+
+def _odds_preference(config: CompetitionConfig) -> tuple[str, ...]:
+    """The configured odds sources, best first (from the first results source that has any)."""
+    for source in config.sources_with_role("results"):
+        if source.params.get("odds_preference"):
+            return tuple(str(prefix) for prefix in source.params["odds_preference"])
+    return ()
+
+
+def cmd_tune(args: argparse.Namespace) -> int:
+    """Grid-search half-life and ridge sd on the tuning seasons; check the weight cutoff."""
+    config = load_competition(args.competition)
+    matches, context = _load(config)
+    split = config.evaluation_split
+    if not split and not args.seasons:
+        print(f"{config.id}: no evaluation.split in the config; pass --seasons explicitly")
+        return 1
+    seasons = list(args.seasons or split["tune"])
+    clash = set(split.get("report", ())) & set(seasons)
+    if clash:
+        print(f"refusing to tune on report season(s) {sorted(clash)}")
+        return 1
+
+    print(f"=== {config.name}: tuning the match model ===")
+    print(f"tuning seasons: {', '.join(seasons)}")
+    print(f"grid: half-life {args.half_lives} days x ridge prior sd {args.prior_sds}; "
+          f"strategy `{args.strategy}`; rule: lowest log loss wins\n")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        grid = tune_match_model(
+            config, matches, context, seasons,
+            half_lives=args.half_lives, prior_sds=args.prior_sds, strategy=args.strategy,
+        )
+        print("diff_vs_best: log loss minus the winner's on the same matches, +/- ci95 (95% interval)")
+        print(grid.round(5).to_string(index=False))
+        best = grid.iloc[0]
+        print(f"\nwinner: half-life {best['half_life_days']:g} days, ridge prior sd {best['rating_prior_sd']:g}")
+
+        if args.check_cutoff:
+            tuned = with_model_settings(
+                config,
+                time_decay_half_life_days=float(best["half_life_days"]),
+                rating_prior_sd=float(best["rating_prior_sd"]),
+            )
+            effect = cutoff_effect(tuned, matches, context, seasons, strategy=args.strategy)
+            print(f"\nweight cutoff {effect['cutoff']:g} vs none, at the winning settings ({effect['n']} forecasts):")
+            print(f"  largest change in any win/draw/loss probability: {effect['max_probability_change']:.5f}")
+            print(f"  log loss {effect['log_loss_with_cutoff']:.5f} with, {effect['log_loss_without']:.5f} without")
     return 0
 
 
@@ -356,8 +536,20 @@ def _print_projected_table(result, summary: pd.DataFrame) -> None:
     print(table.to_string())
 
 
+SPLITS = ("report", "tune", "all")
+SPLIT_HELP = ("which of the config's backtest seasons: report (headline results, default), "
+              "tune (for choosing settings) or all")
+
+#: Strength-uncertainty variants for comparing in the season backtest.
+UNCERTAINTY_VARIANTS: dict[str, dict | None] = {
+    "fixed": None,
+    "parameter": {"enabled": True, "parameter_uncertainty": True, "drift": "none"},
+    "parameter+drift": {"enabled": True, "parameter_uncertainty": True, "drift": "implied"},
+}
+
+
 def add_model_commands(subparsers, add_competition_arg) -> None:
-    """Register ``ratings``, ``evaluate``, ``evaluate-seasons`` and ``simulate``."""
+    """Register ``ratings``, ``evaluate``, ``evaluate-seasons``, ``benchmark``, ``tune`` and ``simulate``."""
     simulate = subparsers.add_parser("simulate", help="simulate the rest of the season")
     add_competition_arg(simulate)
     simulate.add_argument("--n-simulations", type=int, default=None, help="default: from the config")
@@ -388,6 +580,7 @@ def add_model_commands(subparsers, add_competition_arg) -> None:
     add_competition_arg(evaluate)
     evaluate.add_argument("--seasons", nargs="+", default=None,
                           help="completed seasons to test (default: all where every strategy can run)")
+    evaluate.add_argument("--split", choices=SPLITS, default="report", help=SPLIT_HELP)
     evaluate.add_argument("--strategies", nargs="+", choices=STRATEGIES, default=list(STRATEGIES))
     evaluate.add_argument("--half-life", type=float, default=None, help="time-decay half-life in days")
     evaluate.add_argument("--refit-days", type=int, default=7, help="days between refits")
@@ -400,13 +593,35 @@ def add_model_commands(subparsers, add_competition_arg) -> None:
     add_competition_arg(seasons)
     seasons.add_argument("--seasons", nargs="+", default=None,
                          help="completed seasons to test (default: all where every strategy can run)")
+    seasons.add_argument("--split", choices=SPLITS, default="report", help=SPLIT_HELP)
     seasons.add_argument("--n-simulations", type=int, default=5_000, help="simulations per checkpoint")
     seasons.add_argument("--fixed-strengths", action="store_true",
-                         help="simulate without strength uncertainty, to compare")
+                         help="simulate without strength uncertainty, to compare (same as --uncertainty fixed)")
+    seasons.add_argument("--uncertainty", choices=sorted(UNCERTAINTY_VARIANTS), default=None,
+                         help="strength-uncertainty variant to compare (default: as configured)")
     seasons.add_argument("--save", default=None, help="write per-team zone forecasts to this CSV")
     seasons.add_argument("--plot", default=None,
                          help="write a calibration chart: <PLOT>-light.png and <PLOT>-dark.png")
     seasons.set_defaults(func=cmd_evaluate_seasons)
 
+    benchmark = subparsers.add_parser("benchmark", help="compare the model with bookmakers' closing odds")
+    add_competition_arg(benchmark)
+    benchmark.add_argument("--seasons", nargs="+", default=None, help="completed seasons to compare on")
+    benchmark.add_argument("--split", choices=SPLITS, default="report", help=SPLIT_HELP)
+    benchmark.add_argument("--save", default=None, help="write per-match forecasts (model, market, baseline) to this CSV")
+    benchmark.add_argument("--plot", default=None,
+                           help="write a calibration chart: <PLOT>-light.png and <PLOT>-dark.png")
+    benchmark.set_defaults(func=cmd_benchmark)
 
-__all__ = ["add_model_commands", "cmd_evaluate", "cmd_ratings", "cmd_simulate"]
+    tune = subparsers.add_parser("tune", help="choose half-life and ridge sd on the tuning seasons")
+    add_competition_arg(tune)
+    tune.add_argument("--seasons", nargs="+", default=None, help="default: the config's tuning seasons")
+    tune.add_argument("--half-lives", nargs="+", type=float, default=[60, 90, 120, 180, 270, 365, 540])
+    tune.add_argument("--prior-sds", nargs="+", type=float, default=[0.5, 1.0, 2.0])
+    tune.add_argument("--strategy", choices=STRATEGIES, default="prior")
+    tune.add_argument("--check-cutoff", action="store_true",
+                      help="also measure what the min_match_weight cutoff changes at the winning settings")
+    tune.set_defaults(func=cmd_tune)
+
+
+__all__ = ["add_model_commands", "cmd_evaluate", "cmd_ratings", "cmd_simulate", "cmd_tune", "cmd_benchmark"]

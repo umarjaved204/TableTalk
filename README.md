@@ -20,6 +20,8 @@ python -m tabletalk simulate   --competition premier_league   # title / top-four
 python -m tabletalk simulate   --competition premier_league --table                 # projected final table
 python -m tabletalk simulate   --competition premier_league --season 2025-26 --as-of 2026-01-01   # replay a past season
 python -m tabletalk evaluate-seasons --competition premier_league                   # season-level backtest
+python -m tabletalk benchmark  --competition premier_league   # model vs bookmakers' closing odds
+python -m tabletalk tune       --competition premier_league   # choose half-life / ridge sd on the tuning seasons
 ```
 
 The results notebook, [notebooks/premier_league_results.ipynb](notebooks/premier_league_results.ipynb),
@@ -91,13 +93,13 @@ varying. See [Known limitations](#known-limitations).
    cancel so probabilities still sum to one. This is what makes it Dixon-Coles
    rather than "two Poissons".
 4. Parameters are fitted by **maximum likelihood with time decay**: a match's weight
-   halves every 180 days, so recent form counts more. A weak Gaussian prior on each
+   halves every 365 days, so recent form counts more. A weak Gaussian prior on each
    rating (worth less than one match of data) keeps the fit well-posed, and is also
    the hook for handling promoted teams.
 5. For a **neutral venue** (a cup final) the home-advantage term is dropped.
 
 Fitted to the Premier League as of September 2026: home advantage **+0.17** (home
-sides score ×1.19), rho **−0.11**, an average team scores 1.15 away from home.
+sides score ×1.18), rho **−0.08**, an average team scores 1.19 away from home.
 How much those numbers move from season to season is covered under
 [validation](#what-the-data-says-about-the-parameters). The implementation is in
 [src/tabletalk/model/dixon_coles.py](src/tabletalk/model/dixon_coles.py), with the
@@ -132,6 +134,8 @@ src/tabletalk/
   evaluation/
     metrics.py          # log loss, Brier score, ranked probability score
     backtest.py         # rolling-origin match-level backtest vs a base-rate baseline
+    market.py           # bookmaker odds -> probabilities; model vs market benchmark
+    tuning.py           # grid search on the tuning seasons only
     season_backtest.py  # replay past seasons from checkpoints; zone and position scores
     calibration.py      # reliability tables with Wilson intervals
     plots.py            # calibration and probability charts, light and dark
@@ -269,14 +273,22 @@ Scores are *proper scoring rules* (lower is better): **log loss**, **Brier score
 and **ranked probability score**, which respects that a draw is "closer" to a home
 win than an away win is.
 
-The headline covers **12 seasons, 2012-13 to 2025-26, 4,560 matches**. The two
-COVID-affected seasons are reported separately; that exclusion was decided and
+The headline covers the **6 report seasons: 2018-19 and 2021-22 to 2025-26, 2,280
+matches**. The model's settings were chosen on the six seasons before them, never
+on these (see [how the settings were chosen](#how-the-settings-were-chosen)). The two
+COVID-affected seasons are left out of both halves; that exclusion was decided and
 written into the config, with the reason, before any backtest was run.
 
-| | log loss | Brier | RPS | vs baseline |
-|---|---|---|---|---|
-| Dixon-Coles | **0.968** | **0.574** | **0.197** | **−9.2% log loss** |
-| Base rates | 1.066 | 0.644 | 0.231 | — |
+| report seasons | log loss | vs baseline |
+|---|---|---|
+| Dixon-Coles | **0.965** | **−9.4% log loss** |
+| Base rates | 1.064 | — |
+
+Phase 1 originally reported 0.968 (−9.2%) over all 12 seasons, 2012-13 to
+2025-26. That figure is partly in-sample, because the promoted-team strategy and
+the simulation settings were chosen on the same seasons; the report-season figure
+is the one to quote. The per-season and COVID results below are from the Phase 1
+run over every season.
 
 The model beats the baseline in **all 14 seasons tested**, the COVID ones included.
 Its worst season is 2015-16 (log loss 1.035 against the baseline's 1.088): the
@@ -299,15 +311,16 @@ Fitting each season on its own shows how much the "fixed" parameters actually mo
 - **rho** is noisy: per season it ranges from −0.16 to +0.14, averaging −0.045. It
   only reshapes four scorelines, so it needs a lot of data; simulations show the
   same (from 2,240 simulated matches with a true rho of −0.10, fitted values ranged
-  from −0.02 to −0.14). The current fit's −0.11 comes from about 240
+  from −0.02 to −0.14). The current fit's −0.08 comes from about 520
   effective matches and is probably overstated.
-- **Time decay** (measured on 2023-24 to 2025-26): log loss is flat for half-lives
-  between 180 and 365 days (0.9812 / 0.9805 / 0.9811) and clearly worse below 120.
-  The configured 180 days is kept rather than switching to whichever value scores
-  best on the test seasons, which would be tuning on the test set.
-- Matches whose decay weight falls below 0.001 (more than ~5 years old) are left
-  out of each fit. Across all 380 pairings this season, that changes no win, draw or
-  loss probability by more than 0.0005, and it makes fits about three times faster.
+- **Time decay** is now **365 days**, chosen on the tuning seasons only (below).
+  Log loss is flat from 270 to 540 days and clearly worse below 120. Phase 1 used
+  180 days, a round number picked a priori and later only *checked* on 2023-24 to
+  2025-26, so its survival was not independent of the test seasons.
+- Matches whose decay weight falls below 0.001 (at 365 days, more than ~10 years
+  old) are left out of each fit. It is a speed setting, verified rather than tuned:
+  on the 330 remaining 2026-27 fixtures it drops 2,350 old matches and moves no
+  win, draw or loss probability by more than 0.0004.
 
 ### Promoted teams
 
@@ -332,7 +345,8 @@ TableTalk implements both and lets the backtest decide:
   the Premier League scale via the clubs that move between divisions.
 - **`none`**: no special handling, as a reference point.
 
-Log loss over the 12 seasons (36 promoted teams):
+Phase 1 compared them over all 12 seasons (36 promoted teams, 180-day half-life);
+the clean re-run on the report seasons follows below.
 
 | matches | n | `none` | `prior` | `second_tier` |
 |---|---|---|---|---|
@@ -366,8 +380,29 @@ Multi-division rating systems have to correct for exactly this; the `prior`
 approach avoids it because it is measured on promoted teams' actual Premier
 League results.
 
-**Decision: `prior`.** It is the best of the three on every measure above, and the
-only one whose early-season bias is not distinguishable from zero.
+**Clean re-run.** Chosen again on the tuning seasons alone (2012-13 to 2017-18, 18
+promoted teams), `prior` had the lowest log loss on promoted-team matches:
+
+| tuning seasons, promoted team involved (648 matches) | log loss | `prior` minus it |
+|---|---|---|
+| `prior` | **0.938** | |
+| `second_tier` | 0.948 | −0.0097 ± 0.0103 |
+| `none` | 0.961 | −0.0224 ± 0.0108 |
+
+Then scored once on the report seasons (2018-19, 2021-22 to 2025-26, 18 promoted
+teams), with the settings fixed:
+
+| report seasons, `prior` minus ... (95% intervals) | promoted team involved (648) | first ten games, promoted team (169) |
+|---|---|---|
+| `none` | −0.0020 ± 0.0122 | +0.0032 ± 0.0357 |
+| `second_tier` | −0.0161 ± 0.0101 | −0.0315 ± 0.0244 |
+
+**Decision: `prior`, with a weaker claim than Phase 1 made.** Against `second_tier`
+it is better in both halves, and on the report seasons the interval excludes zero.
+Against `none` it is consistently better but modest: ahead in both halves, but on
+the report seasons the difference is well inside the noise. With the 365-day
+half-life an unprotected promoted team starts nearer where it should anyway, so
+there is less for the prior to fix. Eighteen promoted teams per half is not many.
 
 A lesson in statistical power along the way: an earlier version of this backtest
 covered only three seasons (nine promoted teams) and could not separate `prior`
@@ -398,19 +433,21 @@ team finished in each zone the config defines:
 
 ```
                         now  pts  exp pts range (10-90%) title top four top five top half relegation
-Manchester City           1   15     81.0          69-93  52.1     94.3     96.6     99.8          -
-Arsenal                   2   12     77.7          65-90  33.8     89.4     93.8     99.5          -
-Brighton & Hove Albion    3   10     65.5          52-78   5.2     51.6     63.1     92.3        0.1
+Manchester City           1   15     82.2          71-93  58.1     98.0     99.1    >99.9          -
+Arsenal                   2   12     78.6          68-89  34.6     95.5     97.5    >99.9          -
+Liverpool                 6    9     66.7          56-78   4.1     62.5     73.8     96.2       <0.1
 ...
-Tottenham Hotspur        20    2     37.3          25-49     -      0.3      0.7      7.7       40.9
-Ipswich Town             11    6     33.7          22-46  <0.1      0.1      0.3      3.8       58.9
-Coventry City            18    3     30.8          19-43     -     <0.1      0.2      2.8       69.5
+Tottenham Hotspur        20    2     42.8          32-54     -      0.9      2.0     16.5       22.5
+Hull City                 8    8     40.4          28-53  <0.1      1.5      2.8     14.6       34.9
+Ipswich Town             11    6     31.3          21-42     -     <0.1     <0.1      1.3       75.1
+Coventry City            18    3     29.0          18-41     -     <0.1      0.2      1.7       80.0
 ```
 
 (2026-27 after five matchdays. Tottenham finished 17th in each of the last two
-seasons and have two points from five games, so the model rates them the
-weakest established side in the league; it knows nothing of their wage bill or
-of a possible change of manager.)
+seasons and have two points from five games. With the 365-day half-life their
+longer record counts for more, so they are given 22.5% for relegation, where the
+180-day version gave 40.9%. The model knows nothing of their wage bill or of a
+possible change of manager.)
 
 ### How one simulated season works
 
@@ -481,8 +518,8 @@ season, when there is little relevant data, and narrow for gaps between
 established sides.
 
 A useful discovery along the way: with a 180-day half-life, the model effectively
-sees each team through only about 24 recent matches, which is worth about ±0.14
-on a single rating. It is much less sure of each team than its confident
+saw each team through only about 24 recent matches, which is worth about ±0.14
+on a single rating (the 365-day half-life roughly doubles that sample). It is much less sure of each team than its confident
 single-match forecasts suggest.
 
 A second option, **drift**, lets ratings wander through the season as a random
@@ -496,11 +533,56 @@ added nothing, which suggests strength changes mostly *between* seasons
 
 ## Results: does it work? (Phase 1, done)
 
-Two backtests, both run on 12 completed seasons (2012-13 to 2025-26, leaving out
-the two COVID-affected seasons, a decision recorded in the config before any
-results were seen). Everything below is reproduced by
-[the results notebook](notebooks/premier_league_results.ipynb) or by
-`python -m tabletalk evaluate` and `python -m tabletalk evaluate-seasons`.
+Two backtests. The headline figures are from the **6 report seasons** (2018-19,
+2021-22 to 2025-26), with every setting chosen beforehand on the 6 tuning seasons
+(2012-13 to 2017-18). The two COVID-affected seasons are left out of both, a
+decision recorded in the config before any results were seen. Reproduce with
+`python -m tabletalk evaluate` and `python -m tabletalk evaluate-seasons` (both
+default to `--split report`).
+
+### How the settings were chosen
+
+A setting chosen by scoring it on the seasons you then report makes the results
+look better than they will be on new seasons. Phase 1 had that problem in part:
+the promoted-team strategy and the simulation settings were picked on the same 12
+seasons the results were quoted on, and the half-life had been checked on three of
+them. There was no *data* leak (every forecast used only earlier results, and the
+promoted-team prior only earlier seasons, which a test now checks by deleting every
+later season and getting an identical prior). The leak was in the *choices*.
+
+So the completed seasons are split in time (`evaluation.split` in the config).
+The split and the decision rules were written down before anything was run
+([protocol](reports/protocols/a1-clean-split.md)):
+
+| setting | how it was chosen | rule, on the tuning seasons | result |
+|---|---|---|---|
+| half-life | grid 60 to 540 days | lowest log loss | **365 days** (was 180) |
+| ridge prior sd | grid 0.5, 1, 2 (jointly with the half-life) | lowest log loss | **1.0** (unchanged) |
+| weight cutoff | a speed setting: verified, not tuned | no probability moves by 0.001 | **0.001** (unchanged) |
+| promoted teams | `none` / `prior` / `second_tier` | lowest log loss on promoted-team matches | **`prior`** (unchanged) |
+| simulation | fixed / rating uncertainty / + drift | lowest pooled zone log loss | **rating uncertainty** (unchanged) |
+
+`python -m tabletalk tune` reruns the grid. Two honest caveats. The report seasons
+are not "never seen": Phase 1 quoted numbers on them. What the split guarantees is
+narrower: nothing was chosen using them. And the half-life change itself is
+invisible out of sample: on the report seasons the 365-day model scores +0.0006 ±
+0.0033 log loss against the 180-day one, i.e. no difference.
+
+**What changed in the headline numbers** (report seasons unless stated):
+
+| | Phase 1 (all 12 seasons) | clean split (report seasons) |
+|---|---|---|
+| match log loss vs baseline | −9.2% | −9.4% |
+| match calibration gap, home / draw / away (pts) | 1.6 / 0.9 / 1.4 | **3.0** / 1.2 / 1.9 |
+| season zone log loss, pooled | 0.1890 | 0.1870 |
+| season calibration gap, early / later (pts) | 1.1 / 1.6 | **2.1** / 1.6 |
+| relegation at 75% played, vs "table as it stands" | −28.5% | **−43.5%** |
+| `prior` vs `none`, promoted-team matches | −0.0146 ± 0.0093 | **−0.0020 ± 0.0122** |
+
+The calibration gaps are wider partly because each bin now holds half as many
+matches (the home-win bins that miss are mostly still inside their 95% intervals),
+and the late relegation weakness is worse, which a longer memory would be expected
+to cause (see [what is still wrong](#what-is-still-wrong)).
 
 ### Match forecasts are well calibrated
 
@@ -512,15 +594,16 @@ forecasts by the probability they gave:
   <img alt="Calibration of home-win, draw and away-win forecasts: all three track the diagonal closely" src="reports/figures/match-calibration-light.png">
 </picture>
 
-When the model gave the home side 60-70%, the home side won **67.7%** of the
-time (95% interval 63.5-71.7%). Across all bins the average gap from the diagonal
-is 1.6 percentage points for home wins, 0.9 for draws and 1.4 for away wins.
-Overall log loss is **9.2% better than the base-rate baseline** (0.968 against
-1.066).
+When the model gave the home side 60-70%, the home side won **66.5%** of the
+time (95% interval 60.7-71.9%). Across all bins the average gap from the diagonal
+is 3.0 percentage points for home wins, 1.2 for draws and 1.9 for away wins; the
+home-win gap comes mostly from the 30-40% and 40-50% bins, which miss in opposite
+directions. Overall log loss is **9.4% better than the base-rate baseline** (0.965
+against 1.064).
 
 The one thing it cannot do is **pick out draws**. Its draw forecasts are well
-calibrated but barely vary: 3,306 of 4,560 fall between 20% and 30%, and none go
-above 40%. Team strengths say who is likely to win, much less whether a match will
+calibrated but barely vary: 1,740 of 2,280 fall between 20% and 30%, and none go
+above 36%. Team strengths say who is likely to win, much less whether a match will
 finish level. This is a known property of Dixon-Coles.
 
 ### Season forecasts beat both baselines
@@ -532,26 +615,106 @@ than each baseline:
 
 | vs **uniform** (knows nothing) | title | top four | top five | top half | relegation |
 |---|---|---|---|---|---|
-| pre-season | 27.9 | 43.4 | 53.4 | 40.8 | 25.3 |
-| 25% played | 46.5 | 60.2 | 66.4 | 53.4 | 42.8 |
-| 50% played | 59.2 | 80.1 | 83.9 | 66.5 | 54.4 |
-| 75% played | 67.4 | 82.8 | 85.5 | 73.6 | 74.8 |
+| pre-season | 54.4 | 43.7 | 56.0 | 34.9 | 29.3 |
+| 25% played | 66.6 | 57.4 | 66.4 | 50.5 | 54.8 |
+| 50% played | 65.8 | 77.9 | 85.3 | 65.6 | 66.4 |
+| 75% played | 67.4 | 76.8 | 85.3 | 70.3 | 81.2 |
 
 | vs **persistence** (the table as it stands) | title | top four | top five | top half | relegation |
 |---|---|---|---|---|---|
-| pre-season | 48.7 | 39.6 | 47.6 | 44.5 | 36.5 |
-| 25% played | 61.9 | 55.0 | 49.6 | 39.2 | 37.5 |
-| 50% played | 53.4 | 52.2 | 48.3 | 28.3 | 36.6 |
-| 75% played | 53.5 | 33.8 | 53.3 | 39.0 | **−28.5** |
+| pre-season | 35.0 | 46.0 | 55.0 | 42.6 | 22.8 |
+| 25% played | 76.2 | 54.5 | 52.8 | 32.5 | 30.9 |
+| 50% played | 67.5 | 29.2 | 58.6 | 26.2 | 35.7 |
+| 75% played | 69.0 | 44.3 | 58.6 | 44.3 | **−43.5** |
+
+(Six seasons, so six titles and 18 relegations: single cells move a lot with one
+season's surprises.)
 
 "Persistence" is the naive pundit: the final table will look like the current
 one (pre-season, last season's table with the promoted teams at the bottom). The
 model beats it everywhere except one cell, discussed below. Finishing positions
-tell the same story: the expected position is 2.9 places off pre-season
+tell the same story: the expected position is 3.1 places off pre-season
 (persistence: 3.3), falling to 1.3 with a quarter of the season left
 (persistence: 1.4).
 
+### How close does it get to the betting market?
+
+Bookmakers' closing odds are the strongest public forecast of a match: they pool
+every model and tipster and all the team news up to kick-off. They are the ceiling
+to measure against, not something to claim to beat. `python -m tabletalk benchmark`
+compares the model with them on exactly the same matches.
+
+**Which odds.** football-data.co.uk publishes several bookmakers. The preference is
+**Pinnacle's closing odds** (low margin, and closing prices absorb all pre-match
+news), available for every Premier League season from 2012-13, but only up to 8
+January 2026. For the rest of 2025-26 (170 matches) the fallback is the **average
+closing odds across bookmakers**: same timing, wider margin (about 5.7% against
+Pinnacle's 2-3%). The preference order is set in the config (`odds_preference`),
+and every report-season match is covered:
+
+| season | matches | Pinnacle closing | market average (fallback) | average margin |
+|---|---|---|---|---|
+| 2018-19 to 2024-25 (5 seasons) | 1,900 | 1,900 | 0 | 2.4-3.0% |
+| 2025-26 | 380 | 210 | 170 | 4.3% |
+
+**From odds to probabilities.** Odds of 2.50 "imply" 1 / 2.50 = 40%. Across home,
+draw and away these add up to a little over 100%; the excess is the bookmaker's
+margin. Dividing each by the total makes them sum to one (**proportional
+normalisation**). *Assumption:* this spreads the margin evenly, whereas bookmakers
+put more of it on long shots, so outsiders come out slightly too likely. With
+Pinnacle's small margin the effect is about a point at most.
+
+**Result (report seasons, 2,280 matches):**
+
+| | log loss | Brier | RPS |
+|---|---|---|---|
+| knows nothing (base rates) | 1.064 | 0.644 | 0.233 |
+| model | 0.965 | 0.573 | 0.199 |
+| market | **0.945** | **0.559** | **0.192** |
+
+The model closes **83% of the gap** between knowing nothing and the market. The
+market is better by 0.020 ± 0.007 in log loss (paired, 95% interval), and by the
+same on the Pinnacle-only matches (0.019 ± 0.007), so the fallback odds do not
+change the picture. Per season the model closes between 59% and 95% of the gap:
+
+| season | model minus market | gap closed |
+|---|---|---|
+| 2018-19 | 0.007 | 95% |
+| 2021-22 | 0.013 | 90% |
+| 2022-23 | 0.036 | 59% |
+| 2023-24 | 0.024 | 84% |
+| 2024-25 | 0.022 | 81% |
+| 2025-26 | 0.017 | 76% |
+
+2022-23 is the outlier, the season of Arsenal's unexpected title challenge and
+Chelsea's and Leicester's collapses: fast changes in strength, which the market
+sees and ratings built on a year-long memory catch late. On the tuning seasons
+(2012-13 to 2017-18) the model closed 87% of the gap.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="reports/figures/market-calibration-dark.png">
+  <img alt="Calibration of model and market forecasts, all outcomes pooled: both track the diagonal, the market slightly more closely" src="reports/figures/market-calibration-light.png">
+</picture>
+
+**Calibration.** Both are well calibrated; the market a little more so (average gap
+from the diagonal, home / draw / away: model 3.0 / 1.2 / 1.9 points, market 2.0 /
+1.3 / 1.1). The market's edge is mostly *sharpness*: it separates teams more
+precisely, not more honestly.
+
+**Draws are hard for everyone.** The market's draw forecasts barely vary either
+(standard deviation 5.3 points, against the model's 4.5; 73% of its draw forecasts
+fall between 20% and 30%). "It cannot pick out draws" is mostly a property of
+football, not a flaw peculiar to Dixon-Coles.
+
+**What the gap is made of.** Closing odds know line-ups, injuries, suspensions and
+managerial changes; the model sees only results, from a fit up to a week old. Part
+of the gap is information the model is never given, not modelling error.
+
 ### Fixing the early over-confidence
+
+(Phase 1 history, over all 12 seasons and with the 180-day half-life. The same
+choice was later re-made on the tuning seasons alone and came out the same; see
+[how the settings were chosen](#how-the-settings-were-chosen).)
 
 The first version simulated every season with fixed, best-estimate strengths.
 Its backtest found that **forecasts made early in a season were over-confident**:
@@ -594,10 +757,12 @@ under-confident. Drift added nothing on any pooled measure, so it stays off.
 ### What is still wrong
 
 - **Late in a season, it hedges where the table has already decided.** With a
-  quarter of the season left, the bottom three stayed there in 9 of 12 seasons,
-  and the model loses to "the table as it stands" by holding on to ratings:
-  Leicester 2022-23 were in the bottom three and given a 23% relegation chance
-  (they went down). This is lag, not width: ratings built partly from
+  quarter of the season left, the bottom three stayed there in 5 of the 6 report
+  seasons, and the model loses to "the table as it stands" by holding on to
+  ratings: Leicester 2022-23 were in the bottom three and given a 20% relegation
+  chance (they went down). The 365-day half-life makes this worse (−43.5% against
+  −28.5% for Phase 1's 180 days over 12 seasons): the half-life that forecasts
+  single matches best is too slow for a team in genuine decline. This is lag, not width: ratings built partly from
   last season are slow to catch a genuinely declining team, and uncertainty does
   not fix that. A model where strength changes explicitly over time, rather than
   one half-life doing two jobs, is the principled next step.
@@ -617,7 +782,7 @@ under-confident. Drift added nothing on any pooled measure, so it stays off.
 python -m pytest
 ```
 
-176 tests, no network access required (the integration test skips when the raw
+192 tests, no network access required (the integration test skips when the raw
 data is not cached). They cover the parts that are easy to get subtly wrong and hard
 to notice:
 
@@ -657,6 +822,9 @@ Knockout aggregate and penalty handling will get the same treatment in Phase 3.
 - **Phase 1 — core model + Premier League.** Data layer ✅ · Dixon-Coles ✅ ·
   match-level backtest vs a base-rate baseline ✅ · LeagueSimulator ✅ · season-level
   backtest, calibration plots and results notebook ✅
+- **Clean tune/report split** ✅: settings chosen on 2012-13 to 2017-18, results
+  reported on 2018-19 and 2021-22 to 2025-26 (see
+  [how the settings were chosen](#how-the-settings-were-chosen)).
 - **Rating uncertainty in season simulations** ✅, which fixed the early-season
   over-confidence the backtest found (see [the fix](#fixing-the-early-over-confidence)).
   Candidates for the next model iteration, both pointed to by the backtest: an
@@ -689,7 +857,10 @@ Knockout aggregate and penalty handling will get the same treatment in Phase 3.
   and forecasts made mid-to-late season are slightly under-confident. See
   [what is still wrong](#what-is-still-wrong).
 - **It cannot pick out likely draws.** Draw forecasts are calibrated but almost
-  all sit between 20% and 30%.
+  all sit between 20% and 30%; the betting market's barely vary more.
+- **It trails the betting market**, by 0.020 in log loss on the report seasons
+  (it closes 83% of the gap from knowing nothing). Part of that is information it
+  never sees: team news, line-ups, managerial changes.
 - **Strength is assumed to drift slowly.** Time decay is a blunt instrument: it
   cannot capture a team that changes overnight.
 - **Early-season forecasts are weakly informed** by the current season and lean on

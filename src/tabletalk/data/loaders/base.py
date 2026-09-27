@@ -65,6 +65,18 @@ class MatchLoader(ABC):
             out[column] = self._normaliser.normalise_series(out[column], strict=strict)
         return out
 
+    def load_odds(self, *, refresh: bool = False) -> pd.DataFrame | None:
+        """Pre-match 1X2 odds, if this source publishes them; None if it does not.
+
+        Odds are a *benchmark* (what the betting market thought), never an input
+        to the model, so they stay out of the standard match schema. A source
+        that has them returns one row per match: ``season``, ``date``,
+        ``home_team``, ``away_team`` (normalised names), ``odds_home``,
+        ``odds_draw``, ``odds_away`` (decimal odds) and ``odds_source`` (which
+        bookmaker's prices they are).
+        """
+        return None
+
     def raw_team_names(self, *, refresh: bool = False) -> list[str]:
         """Distinct team names as the source spells them (for alias-map upkeep)."""
         frame = self.to_standard(self.fetch_raw(refresh=refresh))

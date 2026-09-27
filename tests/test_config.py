@@ -125,3 +125,40 @@ def test_missing_config_lists_alternatives(tmp_path):
     directory = _write(tmp_path, _VALID_BODY)
     with pytest.raises(ConfigError, match="Available: broken"):
         load_competition("does_not_exist", config_dir=directory)
+
+
+_SPLIT_BODY = _VALID_BODY.replace(
+    'seasons: ["2025-26"]', 'seasons: ["2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26"]'
+) + """
+evaluation:
+  exclude_seasons: {"2022-23": "odd season"}
+  split: {tune: ["2020-21", "2021-22"], report: ["2023-24", "2024-25"]}
+"""
+
+
+def test_evaluation_split_loads(tmp_path):
+    config = load_competition("broken", config_dir=_write(tmp_path, _SPLIT_BODY))
+    assert config.evaluation_split == {"tune": ("2020-21", "2021-22"), "report": ("2023-24", "2024-25")}
+    assert list(config.excluded_seasons) == ["2022-23"]
+
+
+def test_premier_league_split_is_chronological_and_skips_covid(premier_league):
+    split = premier_league.evaluation_split
+    assert len(split["tune"]) == len(split["report"]) == 6
+    assert not set(split["tune"] + split["report"]) & set(premier_league.excluded_seasons)
+
+
+@pytest.mark.parametrize(
+    "split, expected_message",
+    [
+        ('{tune: ["2020-21", "2023-24"], report: ["2023-24"]}', "share season"),
+        ('{tune: ["2024-25"], report: ["2021-22"]}', "chronological"),
+        ('{tune: ["2022-23"], report: ["2024-25"]}', "also in exclude_seasons"),
+        ('{tune: ["2020-21"], report: ["2025-26"]}', "not a completed season"),
+        ('{tune: ["2020-21"]}', "both `tune` and `report`"),
+    ],
+)
+def test_invalid_evaluation_splits_are_rejected(tmp_path, split, expected_message):
+    body = _SPLIT_BODY.replace('{tune: ["2020-21", "2021-22"], report: ["2023-24", "2024-25"]}', split)
+    with pytest.raises(ConfigError, match=expected_message):
+        load_competition("broken", config_dir=_write(tmp_path, body))

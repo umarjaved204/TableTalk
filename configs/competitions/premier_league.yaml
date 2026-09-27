@@ -92,6 +92,13 @@ data:
       role: results
       params:
         division: E0
+        # Bookmaker odds for the market benchmark (never a model input), best
+        # first; each match uses the first that priced it. PSC = Pinnacle
+        # closing: the sharpest widely used price, low margin, and closing
+        # prices absorb all pre-match news. Present 2012-13 onwards but stops on
+        # 8 Jan 2026. AvgC = average closing odds across bookmakers (2019-20 on),
+        # the fallback for the rest of 2025-26: same timing, but a wider margin.
+        odds_preference: [PSC, AvgC]
         seasons:
           - "2010-11"
           - "2011-12"
@@ -151,13 +158,16 @@ data:
 # each competition can be tuned separately.
 model:
   # Dixon-Coles time decay: a match's weight halves every `half_life` days.
-  # 180 days ~= "a match from a year ago counts a quarter as much as today's".
-  # To be tuned by backtest, not guessed.
-  time_decay_half_life_days: 180
+  # 365 days = "a match from a year ago counts half as much as today's".
+  # Chosen on the tuning seasons only (python -m tabletalk tune; protocol in
+  # reports/protocols/a1-clean-split.md): lowest log loss of a 7 x 3 grid.
+  # The surface is flat from 270 to 540 days (all within 0.0008) and clearly
+  # worse below 120; the previous 180 was 0.0018 +/- 0.0029 behind.
+  time_decay_half_life_days: 365
   # Matches weighing less than this after decay are left out of the fit:
-  # with a 180-day half-life, anything more than ~5 years old. They would
+  # with a 365-day half-life, anything more than ~10 years old. They would
   # count for a thousandth of a recent match each, so no rating moves, but
-  # fits run several times faster.
+  # fits run faster. A speed setting, verified not to matter, not tuned.
   min_match_weight: 0.001
   # Scorelines are computed on a 0..max_goals grid; 10+ goals for one side is
   # rare enough that the truncated mass is negligible.
@@ -165,7 +175,8 @@ model:
   # Every team's attack and defence gets a Gaussian prior centred on 0 (league
   # average) with this sd, on the log scale. Deliberately weak - worth less
   # than one match of data - it exists to keep the fit well-posed, not to
-  # shrink real teams.
+  # shrink real teams. Chosen a priori; the tuning grid ({0.5, 1, 2}) agreed,
+  # with differences under 0.0004 in log loss.
   rating_prior_sd: 1.0
   promoted_teams:
     # How to rate teams promoted into the season being predicted:
@@ -175,13 +186,12 @@ model:
     #                 they carry a rating earned there
     #   none        - no special handling (kept as a reference point)
     #
-    # Chosen: `prior`. Backtest over 12 seasons, 2012-13..2025-26 (36 promoted
-    # teams; python -m tabletalk evaluate): `prior` beats `none` on log loss
-    # overall and on promoted-team matches, and beats `second_tier` on
-    # promoted-team matches, all with 95% intervals excluding zero. Its
-    # early-season bias (+0.15 goals/game) is the only one not distinguishable
-    # from zero; `second_tier` over-rates promoted teams by +0.39, because
-    # their Championship results flatter them (the winner's curse).
+    # Chosen: `prior`, on the tuning seasons only (2012-13..2017-18): lowest log
+    # loss on promoted-team matches (0.938 vs second_tier 0.948, none 0.961).
+    # On the report seasons it is clearly better than `second_tier` (-0.016 +/-
+    # 0.010) but only modestly, within noise, better than `none` (-0.002 +/- 0.012).
+    # `second_tier` over-rates promoted teams: their Championship results
+    # flatter them (the winner's curse).
     strategy: prior
     # Minimum completed seasons of history needed to estimate the `prior`.
     min_seasons_for_prior: 1
@@ -200,6 +210,13 @@ evaluation:
       all but disappeared (home 1.35 goals/game vs away 1.34; the only season
       in the data with more away wins than home wins), so it tests how the
       model copes with a one-off regime change, not how well it forecasts.
+  # Settings (half-life, ridge sd, promoted-team strategy, simulation
+  # uncertainty) are chosen on `tune` only; headline results are reported on
+  # `report` only. Chronological, so a tuned value never saw a report season.
+  # Protocol and decision rules, written before running: reports/protocols/a1-clean-split.md
+  split:
+    tune: ["2012-13", "2013-14", "2014-15", "2015-16", "2016-17", "2017-18"]
+    report: ["2018-19", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26"]
 
 simulation:
   n_simulations: 10000
@@ -208,14 +225,14 @@ simulation:
   # tabletalk/simulation/uncertainty.py). Without this block, every simulated
   # season uses today's best-estimate ratings for every remaining fixture.
   #
-  # Chosen from a season-level backtest of three versions (12 seasons, 4
-  # checkpoints each; see README "Fixing the early over-confidence"):
-  #   fixed strengths      pre-season 70-99% forecasts came true 71% of the time (forecast 87%)
-  #   + rating uncertainty pre-season: 83% (forecast 86%); pooled log loss better
-  #   + drift as well      no further gain on any pooled measure
-  # Cost: forecasts made mid-to-late season become slightly under-confident
-  # (calibration gap 1.0 -> 1.6 pts); within noise at 50% played, about two
-  # standard errors at 75%.
+  # Chosen on the tuning seasons only (2012-13..2017-18), season-level backtest,
+  # rule: lowest pooled zone log loss (every zone, team and checkpoint):
+  #   fixed strengths        0.1916
+  #   + rating uncertainty   0.1877   <- chosen
+  #   + drift as well        0.1879
+  # Phase 1 made the same choice on all 12 seasons (README "Fixing the early
+  # over-confidence"). Known cost: mid-to-late forecasts are slightly
+  # under-confident.
   strength_uncertainty:
     enabled: true
     # Draw each simulated season's ratings from the fit's own uncertainty

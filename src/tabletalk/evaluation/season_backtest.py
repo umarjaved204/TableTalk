@@ -240,6 +240,19 @@ def summarise_zones(zones: pd.DataFrame, n_simulations: int) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def pooled_zone_log_loss(zones: pd.DataFrame, n_simulations: int) -> float:
+    """Binary log loss over every (season, checkpoint, team, zone) forecast.
+
+    One number for comparing simulator variants. Probabilities are floored at
+    half a simulation, since a zone the model never saw in 5,000 runs is "rare",
+    not "impossible".
+    """
+    floor = 1.0 / (2 * n_simulations)
+    p = np.clip(zones["p_model"].to_numpy(dtype=float), floor, 1 - floor)
+    y = zones["outcome"].to_numpy(dtype=float)
+    return float(-np.mean(y * np.log(p) + (1 - y) * np.log(1 - p)))
+
+
 def summarise_positions(positions: pd.DataFrame) -> pd.DataFrame:
     """Finishing-position accuracy per checkpoint, for each method."""
     rows = []
