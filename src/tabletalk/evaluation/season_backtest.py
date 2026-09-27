@@ -98,7 +98,7 @@ def persistence_order(matches: pd.DataFrame, config: CompetitionConfig, season: 
     teams = sorted(set(rows["home_team"]) | set(rows["away_team"]))
     before = rows.loc[rows["date"] < as_of]
     if before["played"].fillna(False).astype(bool).any():
-        return league_table(before, config, season, teams=teams)["team"].tolist()
+        return league_table(before, config, season, teams=teams, as_of=as_of)["team"].tolist()
     # Pre-season: last season's finishing order, promoted teams at the bottom.
     last = league_table(own, config, previous_season(season))["team"].tolist()
     stayed = [team for team in last if team in teams]

@@ -1,0 +1,63 @@
+# ---------------------------------------------------------------------------
+# Points deductions (and restorations), as data. No deduction is ever
+# hardcoded in Python.
+#
+# One entry per official decision, in the order they happened:
+#   points        change to the team's table total: negative = deducted,
+#                 positive = restored (e.g. reduced on appeal)
+#   date_applied  when it took effect in the official table. A season replayed
+#                 from a date (--as-of, season backtests) applies only entries
+#                 dated strictly before that date, as for match results.
+#   team          canonical name (configs/team_aliases.yaml)
+#   source        the official statement
+#
+# Deductions change the overall points total only. Head-to-head criteria use
+# points won in the matches between tied teams, which a deduction does not
+# touch.
+#
+# Coverage: every season loaded for each competition below. Checked 2026-09-27.
+#   premier_league 2010-11 to 2026-27: only the 2023-24 decisions below. The
+#     earlier Premier League deductions (Middlesbrough 1996-97, Portsmouth
+#     2009-10) fall before the data starts.
+#   Not here, because the competition is never tabulated: Leicester City's six
+#     points in the 2025-26 Championship (Premier League statement, 5 Feb 2026;
+#     https://www.premierleague.com/en/news/4581043). Championship rows are
+#     `context` data for the model only.
+# ---------------------------------------------------------------------------
+
+deductions:
+  - competition: premier_league
+    season: "2023-24"
+    team: Everton
+    points: -10
+    date_applied: "2023-11-17"
+    reason: Breach of Profitability and Sustainability Rules, assessment period ending 2021-22.
+    source: https://www.premierleague.com/en/news/3788486
+
+  - competition: premier_league
+    season: "2023-24"
+    team: Everton
+    points: 4
+    date_applied: "2024-02-26"
+    reason: Appeal Board reduced the 10-point deduction above to 6.
+    source: https://www.premierleague.com/en/news/3912574
+
+  - competition: premier_league
+    season: "2023-24"
+    team: Nottingham Forest
+    points: -4
+    date_applied: "2024-03-18"
+    reason: >-
+      Breach of Profitability and Sustainability Rules, assessment period ending
+      2022-23. Appeal rejected 7 May 2024 (https://www.premierleague.com/en/news/3999776).
+    source: https://www.premierleague.com/en/news/3936397
+
+  - competition: premier_league
+    season: "2023-24"
+    team: Everton
+    points: -2
+    date_applied: "2024-04-08"
+    reason: >-
+      Second breach of Profitability and Sustainability Rules, assessment period
+      ending 2022-23. Everton's appeal was later withdrawn.
+    source: https://www.premierleague.com/en/news/3960088

@@ -113,6 +113,7 @@ gradient derived in the code comments.
 configs/
   competitions/premier_league.yaml   # one file per competition: rules, zones, data sources
   team_aliases.yaml                  # canonical team names + every source's spelling
+  points_deductions.yaml             # official points deductions, dated, with sources
 src/tabletalk/
   config.py             # typed, validated view of a competition config
   paths.py              # where configs and data live
@@ -128,6 +129,7 @@ src/tabletalk/
     fixtures.py         # the remaining fixtures; checking a schedule against the config
     reconcile.py        # merging results with the published fixture list
     dataset.py          # assemble, filter and summarise a competition's matches
+    deductions.py       # points deductions from configs/points_deductions.yaml
   model/
     dixon_coles.py      # likelihood, analytic gradient, fitting, predictions
     promoted.py         # promoted-team strategies: prior / second_tier / none
@@ -247,6 +249,37 @@ Flagged assumptions, recorded in the config file itself:
   flip. The chance of reaching it is negligible.
 - **A2** Zones are league positions only, for the reason above.
 
+### Points deductions
+
+A table is normally the sum of results, but a league can also take points away (or
+give them back on appeal). Those decisions live in a data file,
+[configs/points_deductions.yaml](configs/points_deductions.yaml): one entry per
+official decision, with the season, competition, team, points, the date it took
+effect and a link to the official statement. No deduction appears in Python.
+
+- **Only the overall total changes.** Head-to-head tiebreakers count points won
+  in the matches between the tied teams, which a deduction does not touch (a test
+  checks exactly that).
+- **Dates matter.** A replay from a date (`--as-of`, and every season-backtest
+  checkpoint) applies only decisions dated before it, like results. An appeal is
+  its own dated entry, so Everton's 10 points (17 November 2023) become 6 on 26
+  February 2024, then 8 with the second deduction (8 April 2024).
+- **A typo fails loudly**: a deduction naming a team not in that season raises an
+  error instead of being ignored.
+
+The Premier League has had deductions in one loaded season, 2023-24: Everton −8
+and Nottingham Forest −4. With them, the rebuilt 2023-24 table matches the
+official final table in every row and column (a test checks all 20 rows);
+without them, Everton would be 12th instead of 15th. Earlier Premier League
+deductions (Middlesbrough 1996-97, Portsmouth 2009-10) predate the data.
+Leicester City's six points in 2025-26 were in the Championship, which is model
+input only and never tabulated.
+
+It mattered to the backtest: at the 75% checkpoint of 2023-24 (30 March 2024), the
+real table had Forest 18th on 21 points. The table built without deductions had
+them on 25 and safe, so the "table as it stands" baseline was quietly using a
+table nobody saw at the time.
+
 ## The match model: validation (Phase 1, done)
 
 ### Is the implementation right?
@@ -354,13 +387,17 @@ the clean re-run on the report seasons follows below.
 | promoted team involved | 1,296 | 0.932 | **0.917** | 0.930 |
 | early season (games 1-10), promoted team involved | 340 | 0.930 | **0.904** | 0.932 |
 
-Paired comparisons on the same matches (95% intervals):
+Paired comparisons on the same matches (95% intervals, so "± x" is about two
+standard errors):
 
-- `prior` beats `none` overall (−0.0042 ± 0.0026) and on promoted-team matches
-  (−0.0146 ± 0.0093).
-- `prior` beats `second_tier` on promoted-team matches (−0.0129 ± 0.0073), and by
-  more in the first ten games (−0.028 ± 0.020).
-- `second_tier` is indistinguishable from doing nothing.
+- `prior` minus `none`: −0.0042 ± 0.0026 overall, −0.0146 ± 0.0093 on
+  promoted-team matches.
+- `prior` minus `second_tier`: −0.0129 ± 0.0073 on promoted-team matches,
+  −0.028 ± 0.020 in the first ten games.
+- `second_tier` minus `none`: indistinguishable from zero.
+
+These are in-sample (the strategy was chosen on the same seasons) and small: about
+1.5% of the log loss on the matches concerned.
 
 Bias in forecast goal difference for promoted teams (forecast minus actual, goals
 per game, from the promoted team's side):
@@ -371,7 +408,7 @@ per game, from the promoted team's side):
 | `prior` | **+0.15 ± 0.16** | −0.04 ± 0.10 |
 | `second_tier` | +0.39 ± 0.17 | +0.08 ± 0.10 |
 
-**Why the Championship approach loses: the winner's curse.** A club is promoted
+**Why the Championship approach does worse: the winner's curse.** A club is promoted
 partly *because* its Championship results flattered it, so a rating built from
 those results is biased upward. The clubs `second_tier` got most wrong were the
 ones that ran away with the division: Burnley 2023-24 (forecast −0.39 goals per
@@ -397,19 +434,28 @@ teams), with the settings fixed:
 | `none` | −0.0020 ± 0.0122 | +0.0032 ± 0.0357 |
 | `second_tier` | −0.0161 ± 0.0101 | −0.0315 ± 0.0244 |
 
-**Decision: `prior`, with a weaker claim than Phase 1 made.** Against `second_tier`
-it is better in both halves, and on the report seasons the interval excludes zero.
-Against `none` it is consistently better but modest: ahead in both halves, but on
-the report seasons the difference is well inside the noise. With the 365-day
-half-life an unprotected promoted team starts nearer where it should anyway, so
-there is less for the prior to fix. Eighteen promoted teams per half is not many.
+**Decision: `prior`. It is consistently better but modest**, against both
+alternatives:
+
+| `prior` minus ..., promoted-team matches | tuning seasons | report seasons | seasons where `prior` did better |
+|---|---|---|---|
+| `none` | −0.0224 ± 0.0108 | −0.0020 ± 0.0122 | 10 of 12 |
+| `second_tier` | −0.0097 ± 0.0103 | −0.0161 ± 0.0101 | 10 of 12 |
+
+It comes out ahead in 10 of the 12 seasons against each, which is the
+"consistently"; but the margins are small, and each comparison is inside the
+noise in one of the two halves (against `none` on the report seasons, against
+`second_tier` on the tuning seasons), which is the "modest". It should not be
+described as beating either. With the 365-day half-life an unprotected promoted
+team starts nearer where it should anyway, so there is less for the prior to fix.
+Eighteen promoted teams per half is not many.
 
 A lesson in statistical power along the way: an earlier version of this backtest
 covered only three seasons (nine promoted teams) and could not separate `prior`
 from `none` at all (a difference of −0.0005 ± 0.019). Loading 2010-11 onwards
-quadrupled the sample and turned "no detectable difference" into a clear result.
-With nine teams, the honest conclusion was "we cannot tell", not "it doesn't
-matter".
+quadrupled the sample and turned "no detectable difference" into a consistent,
+if modest, one. With nine teams, the honest conclusion was "we cannot tell", not
+"it doesn't matter".
 
 Open questions, deliberately not tuned against the same test seasons:
 
@@ -536,9 +582,18 @@ added nothing, which suggests strength changes mostly *between* seasons
 Two backtests. The headline figures are from the **6 report seasons** (2018-19,
 2021-22 to 2025-26), with every setting chosen beforehand on the 6 tuning seasons
 (2012-13 to 2017-18). The two COVID-affected seasons are left out of both, a
-decision recorded in the config before any results were seen. Reproduce with
-`python -m tabletalk evaluate` and `python -m tabletalk evaluate-seasons` (both
+decision recorded in the config before any results were seen. Everything below is
+in [the results notebook](notebooks/premier_league_results.ipynb), or reproduce it
+with `python -m tabletalk evaluate`, `evaluate-seasons` and `benchmark` (all
 default to `--split report`).
+
+**How results are worded.** Comparisons are paired (both forecasts scored on the
+same matches) and quoted as a difference ± a 95% interval, which is about two
+standard errors. When that interval includes zero, or a result holds in one half of
+the data but not the other, it is described as "consistently better but modest"
+(if it points the same way in most seasons) or "no detectable difference", never
+as "beats". Season-level cells have no intervals (six seasons are too few to
+estimate one per cell), so they are described, not declared won.
 
 ### How the settings were chosen
 
@@ -574,15 +629,20 @@ invisible out of sample: on the report seasons the 365-day model scores +0.0006 
 |---|---|---|
 | match log loss vs baseline | −9.2% | −9.4% |
 | match calibration gap, home / draw / away (pts) | 1.6 / 0.9 / 1.4 | **3.0** / 1.2 / 1.9 |
-| season zone log loss, pooled | 0.1890 | 0.1870 |
-| season calibration gap, early / later (pts) | 1.1 / 1.6 | **2.1** / 1.6 |
-| relegation at 75% played, vs "table as it stands" | −28.5% | **−43.5%** |
+| season zone log loss, pooled | 0.1890 | 0.1873 |
+| season calibration gap, early / later (pts) | 1.1 / 1.6 | **2.1** / 1.5 |
+| relegation at 75% played, vs "table as it stands" | −28.5%\* | +22.5% |
 | `prior` vs `none`, promoted-team matches | −0.0146 ± 0.0093 | **−0.0020 ± 0.0122** |
 
 The calibration gaps are wider partly because each bin now holds half as many
-matches (the home-win bins that miss are mostly still inside their 95% intervals),
-and the late relegation weakness is worse, which a longer memory would be expected
-to cause (see [what is still wrong](#what-is-still-wrong)).
+matches (the home-win bins that miss are mostly still inside their 95% intervals).
+
+\* Both Phase 1 numbers and the first clean-split run (−43.5%) built tables
+without points deductions, so in 2023-24 the "table as it stands" was not the table
+that was actually standing. See [points deductions](#points-deductions): with the
+real table, the naive baseline gets 2023-24 wrong and the model is ahead on this
+cell. The season-level numbers here are from the corrected run; match-level ones
+are unaffected, since a deduction changes no match result.
 
 ### Match forecasts are well calibrated
 
@@ -606,7 +666,7 @@ calibrated but barely vary: 1,740 of 2,280 fall between 20% and 30%, and none go
 above 36%. Team strengths say who is likely to win, much less whether a match will
 finish level. This is a known property of Dixon-Coles.
 
-### Season forecasts beat both baselines
+### Season forecasts are ahead of both baselines
 
 Each season was replayed from four checkpoints (pre-season, then after 25%, 50%
 and 75% of the matches), simulated 5,000 times from what was known at that
@@ -617,24 +677,26 @@ than each baseline:
 |---|---|---|---|---|---|
 | pre-season | 54.4 | 43.7 | 56.0 | 34.9 | 29.3 |
 | 25% played | 66.6 | 57.4 | 66.4 | 50.5 | 54.8 |
-| 50% played | 65.8 | 77.9 | 85.3 | 65.6 | 66.4 |
-| 75% played | 67.4 | 76.8 | 85.3 | 70.3 | 81.2 |
+| 50% played | 65.8 | 77.9 | 85.3 | 65.7 | 65.9 |
+| 75% played | 67.4 | 76.8 | 85.3 | 70.3 | 79.7 |
 
 | vs **persistence** (the table as it stands) | title | top four | top five | top half | relegation |
 |---|---|---|---|---|---|
 | pre-season | 35.0 | 46.0 | 55.0 | 42.6 | 22.8 |
 | 25% played | 76.2 | 54.5 | 52.8 | 32.5 | 30.9 |
-| 50% played | 67.5 | 29.2 | 58.6 | 26.2 | 35.7 |
-| 75% played | 69.0 | 44.3 | 58.6 | 44.3 | **−43.5** |
+| 50% played | 67.5 | 29.2 | 58.6 | 14.1 | 34.9 |
+| 75% played | 69.0 | 44.3 | 58.6 | 44.3 | 22.5 |
 
 (Six seasons, so six titles and 18 relegations: single cells move a lot with one
-season's surprises.)
+season's surprises. The relegation cell at 75% shows how much: it rests on two
+seasons, 2022-23, where the model lost, and 2023-24, where the table was misleading.)
 
 "Persistence" is the naive pundit: the final table will look like the current
 one (pre-season, last season's table with the promoted teams at the bottom). The
-model beats it everywhere except one cell, discussed below. Finishing positions
-tell the same story: the expected position is 3.1 places off pre-season
-(persistence: 3.3), falling to 1.3 with a quarter of the season left
+model is ahead of it in every cell, by margins that range from large (the title,
+top five) to one season's worth (relegation at 75% played, discussed below). Finishing positions
+tell the same story: the expected position is 3.0 places off pre-season
+(persistence: 3.2), falling to 1.3 with a quarter of the season left
 (persistence: 1.4).
 
 ### How close does it get to the betting market?
@@ -757,12 +819,15 @@ under-confident. Drift added nothing on any pooled measure, so it stays off.
 ### What is still wrong
 
 - **Late in a season, it hedges where the table has already decided.** With a
-  quarter of the season left, the bottom three stayed there in 5 of the 6 report
-  seasons, and the model loses to "the table as it stands" by holding on to
-  ratings: Leicester 2022-23 were in the bottom three and given a 20% relegation
-  chance (they went down). The 365-day half-life makes this worse (−43.5% against
-  −28.5% for Phase 1's 180 days over 12 seasons): the half-life that forecasts
-  single matches best is too slow for a team in genuine decline. This is lag, not width: ratings built partly from
+  quarter of the season left, the bottom three stayed there in 4 of the 6 report
+  seasons. In those, "the table as it stands" is perfect and the model, holding on
+  to ratings, can only be worse: Leicester 2022-23 were in the bottom three and
+  given a 20% relegation chance (they went down). Pooled over the six seasons the
+  model is now ahead (+22.5%), but only because the naive table got 2023-24 wrong
+  (Nottingham Forest were in the bottom three after their deduction and survived).
+  Phase 1's apparent weakness (−28.5%, and −43.5% in the first clean-split run)
+  was partly an artefact of tables built without deductions. The underlying
+  problem is still there: this is lag, not width: ratings built partly from
   last season are slow to catch a genuinely declining team, and uncertainty does
   not fix that. A model where strength changes explicitly over time, rather than
   one half-life doing two jobs, is the principled next step.
@@ -782,7 +847,7 @@ under-confident. Drift added nothing on any pooled measure, so it stays off.
 python -m pytest
 ```
 
-192 tests, no network access required (the integration test skips when the raw
+202 tests, no network access required (the integration test skips when the raw
 data is not cached). They cover the parts that are easy to get subtly wrong and hard
 to notice:
 
@@ -845,7 +910,13 @@ Knockout aggregate and penalty handling will get the same treatment in Phase 3.
 
 - **Nothing about teams beyond results.** No injuries, suspensions, transfers,
   managerial changes, European or cup fixture congestion, or motivation at the end
-  of a season.
+  of a season. Off-pitch pressures (forced player sales, a transfer ban) reach the
+  ratings only through results, as late as any sudden change in strength.
+- **Future points deductions are not anticipated.** Only decisions already
+  announced are applied. A club facing an open charge is simulated as if it will
+  keep every point, so its forecast is too optimistic until a verdict arrives. This
+  may matter more from 2026-27, when the Squad Cost Ratio rules bring automatic
+  deductions for overspending.
 - **Promoted teams start from one shared prior**, however they were built, and it
   weights a promoted team from 2011 the same as one from 2025 although promoted
   sides have been getting weaker. See [Promoted teams](#promoted-teams).
@@ -853,7 +924,8 @@ Knockout aggregate and penalty handling will get the same treatment in Phase 3.
   ground and has drifted downwards for a decade; rho is poorly determined by a
   time-decayed sample.
 - **Ratings lag a genuinely declining team.** Late in a season the model still
-  trusts ratings partly built on last season, where the table has already moved;
+  trusts ratings partly built on last season, where the table has already moved
+  (in 4 of 6 report seasons the bottom three at 75% played was the final one);
   and forecasts made mid-to-late season are slightly under-confident. See
   [what is still wrong](#what-is-still-wrong).
 - **It cannot pick out likely draws.** Draw forecasts are calibrated but almost

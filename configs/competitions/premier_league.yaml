@@ -188,8 +188,10 @@ model:
     #
     # Chosen: `prior`, on the tuning seasons only (2012-13..2017-18): lowest log
     # loss on promoted-team matches (0.938 vs second_tier 0.948, none 0.961).
-    # On the report seasons it is clearly better than `second_tier` (-0.016 +/-
-    # 0.010) but only modestly, within noise, better than `none` (-0.002 +/- 0.012).
+    # Consistently better but modest against both: ahead in 10 of 12 seasons
+    # against each, but each comparison is within noise in one half (vs `none`
+    # on the report seasons, -0.002 +/- 0.012; vs `second_tier` on the tuning
+    # seasons, -0.010 +/- 0.010).
     # `second_tier` over-rates promoted teams: their Championship results
     # flatter them (the winner's curse).
     strategy: prior

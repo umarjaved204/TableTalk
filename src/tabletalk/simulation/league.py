@@ -52,7 +52,16 @@ import pandas as pd
 from ..config import CompetitionConfig, Zone
 from ..data.fixtures import remaining_fixtures, season_teams
 from ..model.dixon_coles import FittedDixonColes
-from .table import SeasonResults, Tiebreaker, _season_criterion, league_table, result_points, season_totals
+from ..data.deductions import points_adjustments
+from .table import (
+    SeasonResults,
+    Tiebreaker,
+    _season_criterion,
+    league_table,
+    result_points,
+    season_totals,
+    with_points_adjustment,
+)
 from .uncertainty import FIXED, StrengthUncertainty, simulate_fixtures
 
 
@@ -146,7 +155,13 @@ class LeagueSimulator:
         season: str | None = None,
         n_simulations: int | None = None,
         seed: int | None = None,
+        as_of: str | pd.Timestamp | None = None,
     ) -> LeagueSimulationResult:
+        """Simulate the season's unplayed fixtures on top of its played ones.
+
+        ``as_of`` only affects points deductions: those dated before it are
+        applied (all of them when None), matching a replay from that date.
+        """
         config = self.config
         season = season or config.current_season
         n_simulations = int(n_simulations or config.simulation.get("n_simulations", 10_000))
@@ -166,7 +181,11 @@ class LeagueSimulator:
 
         season_rows = own.loc[own["season"].astype(str) == season]
         played = SeasonResults.from_matches(season_rows, teams)
-        base = season_totals(played, config.points)
+        # Deductions are a constant per team: add them once, to the starting
+        # points, and every simulated final table inherits them.
+        base = with_points_adjustment(
+            season_totals(played, config.points), points_adjustments(config.id, season, teams, as_of=as_of)
+        )
         fixtures = remaining_fixtures(own, config, season)
 
         # --- 1. simulate every remaining fixture in every run -------------------
@@ -217,7 +236,7 @@ class LeagueSimulator:
                 },
                 index=list(teams),
             ),
-            current_table=league_table(own, config, season, teams=teams),
+            current_table=league_table(own, config, season, teams=teams, as_of=as_of),
             n_remaining=len(fixtures),
             seed=seed,
             model_as_of=self.model.as_of,
@@ -391,7 +410,7 @@ def simulate_league(
         frame.loc[future, ["home_goals", "away_goals"]] = pd.NA
         frame.loc[future, "played"] = False
     result = LeagueSimulator(config, fit.model, uncertainty).simulate(
-        frame, season=season, n_simulations=n_simulations, seed=seed
+        frame, season=season, n_simulations=n_simulations, seed=seed, as_of=as_of
     )
     result.metadata.update({"strategy": fit.strategy, "promoted": fit.promoted, "uncertainty": uncertainty})
     return result

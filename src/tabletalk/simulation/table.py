@@ -49,6 +49,7 @@ import numpy as np
 import pandas as pd
 
 from ..config import KNOWN_TIEBREAKERS, CompetitionConfig, PointsSystem
+from ..data.deductions import points_adjustments
 
 #: Criteria computed from a team's whole season. Higher value ranks higher.
 SEASON_CRITERIA: frozenset[str] = frozenset(
@@ -139,6 +140,18 @@ def season_totals(results: SeasonResults, points: PointsSystem) -> dict[str, np.
     totals = {key: value.astype(int) for key, value in totals.items()}
     totals["goal_difference"] = totals["goals_for"] - totals["goals_against"]
     return totals
+
+
+def with_points_adjustment(totals: Mapping[str, np.ndarray], adjustment: np.ndarray) -> dict[str, np.ndarray]:
+    """``totals`` with ``adjustment`` added to the points column (along the last axis).
+
+    Only the season total changes. Head-to-head criteria are computed from the
+    matches between tied teams (see ``_head_to_head_values``), so a deduction
+    never leaks into them.
+    """
+    out = dict(totals)
+    out["points"] = totals["points"] + adjustment
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -340,8 +353,15 @@ def league_table(
     season: str | None = None,
     *,
     teams: Sequence[str] | None = None,
+    as_of: str | pd.Timestamp | None = None,
+    deductions: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """The table for ``season`` from its played matches, with full tiebreakers.
+
+    Points deductions (``configs/points_deductions.yaml``, or ``deductions``)
+    are applied to the points total; with ``as_of``, only those dated before it,
+    so a table rebuilt at a past date shows what the official one showed then.
+    ``points_deducted`` reports the net change (negative = deducted).
 
     Teams level on every criterion are listed alphabetically rather than by a
     coin flip, as official tables are during a season.
@@ -353,6 +373,8 @@ def league_table(
     results = SeasonResults.from_matches(rows, teams)
     tiebreaker = Tiebreaker.from_config(config, random_tiebreaks=False)
     totals = season_totals(results, config.points)
+    adjustment = points_adjustments(config.id, season, results.teams, as_of=as_of, deductions=deductions)
+    totals = with_points_adjustment(totals, adjustment)
     order = tiebreaker.rank(results, totals)
 
     table = pd.DataFrame(
@@ -366,6 +388,7 @@ def league_table(
             "goals_against": totals["goals_against"][order],
             "goal_difference": totals["goal_difference"][order],
             "points": totals["points"][order],
+            "points_deducted": adjustment[order],
         }
     )
     table.insert(0, "position", range(1, len(table) + 1))
@@ -381,4 +404,5 @@ __all__ = [
     "league_table",
     "result_points",
     "season_totals",
+    "with_points_adjustment",
 ]
