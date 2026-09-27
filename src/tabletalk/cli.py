@@ -51,7 +51,8 @@ def cmd_competitions(args: argparse.Namespace) -> int:
     print(f"{len(ids)} competition config(s):\n")
     for competition_id in ids:
         config = load_competition(competition_id)
-        teams = config.league.n_teams if config.league else "-"
+        current = config.for_season(config.current_season)
+        teams = current.league.n_teams if current.league else "-"
         print(f"  {competition_id:<20} {config.name} ({config.country}) "
               f"- {config.format}, {teams} teams, current season {config.current_season}")
     print(f"\nRegistered data loaders: {', '.join(available_loaders())}")
@@ -87,9 +88,13 @@ def cmd_data_check(args: argparse.Namespace) -> int:
 def _report_config(config) -> None:
     print(f"=== {config.name} ({config.id}) ===")
     print(f"config:   {config.source_path}")
-    print(f"format:   {config.format}, {config.league.n_teams} teams, "
-          f"{config.league.matches_per_team} matches each, "
-          f"{config.points.win}/{config.points.draw}/{config.points.loss} points")
+    current = config.for_season(config.current_season)
+    print(f"format:   {current.format}, {current.league.n_teams} teams, "
+          f"{current.league.matches_per_team} matches each, "
+          f"{current.points.win}/{current.points.draw}/{current.points.loss} points ({config.current_season} rules)")
+    changes = config.raw.get("rule_changes") or []
+    if changes:
+        print(f"rules:    {len(changes)} change(s) over the seasons loaded (config `rule_changes`)")
     print(f"seasons:  {config.seasons[0]} to {config.seasons[-1]} "
           f"({len(config.seasons)}; current: {config.current_season})")
 
@@ -116,11 +121,19 @@ def _report_seasons(matches: pd.DataFrame, config) -> None:
     print(summary.to_string(index=False))
     if not config.league:
         return
-    expected = config.league.total_matches
-    incomplete = summary.loc[summary["played"] != expected, "season"].tolist()
-    if incomplete:
-        print(f"\nseason(s) not at the full {expected} matches: {', '.join(incomplete)} "
-              "(expected for the season in progress)")
+    # Each season is checked against its own rules: team counts can change.
+    for season, played in zip(summary["season"], summary["played"]):
+        rules = config.for_season(season)
+        expected = rules.league.total_matches
+        if played == expected:
+            continue
+        if season == config.current_season:
+            print(f"\n{season}: {played} of {expected} matches played (the season in progress)")
+        elif rules.completed_early:
+            print(f"\n{season}: {played} of {expected} matches, as expected: the season was "
+                  f"stopped early and ranked by {rules.ranking.replace('_', ' ')}")
+        else:
+            print(f"\n{season}: {played} matches, but that season's rules imply {expected}: check the data")
 
 
 def _report_current_season(matches: pd.DataFrame, config) -> None:
@@ -139,9 +152,10 @@ def _report_fixture_list(matches: pd.DataFrame, config) -> None:
         for problem in problems:
             print(f"  - {problem}")
     else:
+        league = config.for_season(config.current_season).league
         print("schedule matches the configured format "
-              f"({config.league.n_teams} teams, {config.league.matches_per_team} matches each, "
-              f"{config.league.total_matches} total)")
+              f"({league.n_teams} teams, {league.matches_per_team} matches each, "
+              f"{league.total_matches} total)")
     upcoming = remaining_fixtures(matches, config)
     if len(upcoming):
         print(f"\nnext fixtures to be simulated ({len(upcoming)} remaining, through "

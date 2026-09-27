@@ -33,14 +33,37 @@ KNOWN_TIEBREAKERS: frozenset[str] = frozenset(
         "goals_scored",
         "goals_conceded",          # fewer conceded ranks higher
         "wins",
+        "away_wins",               # wins away from home across the whole season
         "away_goals_scored",       # total away goals across the whole season
         "head_to_head_points",
         "head_to_head_goal_difference",
         "head_to_head_goals_scored",
         "head_to_head_away_goals",
-        "coin_flip",               # 50/50; stands in for a neutral-ground play-off
+        "coin_flip",               # 50/50 (a drawing of lots, or a stand-in for an unmodelled rule)
+        "playoff_match",           # a one-off match on a neutral ground, simulated with the match model
         "alphabetical",            # deterministic last resort, used in tests
     }
+)
+
+#: How clubs are ordered before any tiebreaker.
+#:   points           - total points (every normal season)
+#:   points_per_match - points divided by matches played, for a season stopped
+#:                      early and decided on the matches that were played
+KNOWN_RANKINGS: frozenset[str] = frozenset({"points", "points_per_match"})
+
+#: How a position play-off is played (see ``PositionPlayoff``):
+#:   neutral            - one match on a neutral ground
+#:   higher_ranked_home - one match at the ground of the club ranked higher on the tiebreakers
+#:   two_legs           - home and away, most goals on aggregate (the higher-ranked club at home second)
+#: A play-off still level at the end is settled 50/50, standing in for penalties.
+KNOWN_PLAYOFF_VENUES: frozenset[str] = frozenset({"neutral", "higher_ranked_home", "two_legs"})
+
+#: Config sections that describe a season's rules, and so may change from one
+#: season to the next (``rule_changes``). Everything else (data sources, model
+#: settings) belongs to the competition as a whole.
+SEASON_RULE_KEYS: tuple[str, ...] = (
+    "league", "points", "tiebreakers", "head_to_head_reapply", "head_to_head_needs_all_meetings",
+    "zones", "ranking", "position_playoffs", "completed_early",
 )
 
 #: What a data source contributes.
@@ -150,6 +173,34 @@ class Zone:
 
 
 @dataclass(frozen=True)
+class PositionPlayoff:
+    """A one-off match that decides one place in the table when clubs are level on points.
+
+    Some leagues do not let tiebreakers decide the positions that matter most:
+    since 2022-23, Serie A plays a match when clubs finish level on points for
+    the title or for the last place above the relegation zone. ``position`` is
+    the higher of the two places at stake (1 for the title; 17 for 17th v 18th):
+    if the clubs ranked there and one place below are level on points, they play,
+    and the winner takes ``position``. With more clubs level, the ordinary
+    tiebreakers decide who occupies those two places first, as the rules say.
+    """
+
+    position: int
+    venue: str
+    label: str
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, Any], n_teams: int) -> "PositionPlayoff":
+        position = int(raw["position"])
+        if not 1 <= position < n_teams:
+            raise ConfigError(f"position play-off at {position} is outside 1..{n_teams - 1}")
+        venue = str(raw.get("venue", "neutral"))
+        if venue not in KNOWN_PLAYOFF_VENUES:
+            raise ConfigError(f"position play-off venue {venue!r}; expected one of {sorted(KNOWN_PLAYOFF_VENUES)}")
+        return cls(position=position, venue=venue, label=str(raw.get("label", f"play-off for {position}")))
+
+
+@dataclass(frozen=True)
 class DataSource:
     """One loader, its role and its parameters (see tabletalk.data.loaders)."""
 
@@ -188,12 +239,45 @@ class CompetitionConfig:
     current_season: str
     league: LeagueFormat | None = None
     head_to_head_reapply: bool = False
+    head_to_head_needs_all_meetings: bool = False
+    ranking: str = "points"
+    position_playoffs: tuple[PositionPlayoff, ...] = ()
+    completed_early: bool = False
     country: str | None = None
     confederation: str | None = None
     model: Mapping[str, Any] = field(default_factory=dict)
     simulation: Mapping[str, Any] = field(default_factory=dict)
     source_path: Path | None = None
     raw: Mapping[str, Any] = field(default_factory=dict)
+
+    # -- rules that change from season to season ---------------------------
+    def for_season(self, season: str | None) -> "CompetitionConfig":
+        """This competition with the rules that applied in ``season``.
+
+        A config states the rules in force at the start of its data at the top
+        level, and later changes under ``rule_changes``, each either
+        ``from_season`` (in force from that season on, until a later change) or
+        ``seasons`` (a one-off, e.g. a season stopped early). Every function that
+        works on one season's table asks for that season's rules through here,
+        so a backtest of 2016-17 uses 2016-17's team count, zones and tiebreakers.
+        """
+        changes = self.raw.get("rule_changes") or []
+        if not changes or season is None:
+            return self
+        from .data.seasons import Season  # imported here: tabletalk.data imports this module
+        merged = {key: value for key, value in self.raw.items() if key != "rule_changes"}
+        start = Season.parse(season).start_year
+        permanent = sorted(
+            (change for change in changes if "from_season" in change),
+            key=lambda change: Season.parse(str(change["from_season"])).start_year,
+        )
+        for change in permanent:
+            if Season.parse(str(change["from_season"])).start_year <= start:
+                merged.update({key: change[key] for key in SEASON_RULE_KEYS if key in change})
+        for change in changes:
+            if season in [str(s) for s in change.get("seasons") or ()]:
+                merged.update({key: change[key] for key in SEASON_RULE_KEYS if key in change})
+        return _build_config(merged, self.source_path, top_level=False)
 
     # -- convenience accessors used by the simulators -----------------------
     def zone(self, zone_id: str) -> Zone:
@@ -289,7 +373,7 @@ def load_competition(competition_id: str, config_dir: Path | None = None) -> Com
     return _build_config(raw, path)
 
 
-def _build_config(raw: Mapping[str, Any], path: Path) -> CompetitionConfig:
+def _build_config(raw: Mapping[str, Any], path: Path, *, top_level: bool = True) -> CompetitionConfig:
     missing = [key for key in ("id", "name", "format", "points") if key not in raw]
     if missing:
         raise ConfigError(f"{path} is missing required key(s): {', '.join(missing)}")
@@ -317,6 +401,11 @@ def _build_config(raw: Mapping[str, Any], path: Path) -> CompetitionConfig:
     zones = tuple(Zone.from_dict(z, n_teams) for z in raw.get("zones", ()))
     _check_unique([z.id for z in zones], f"{path}: duplicate zone id")
 
+    ranking = str(raw.get("ranking", "points"))
+    if ranking not in KNOWN_RANKINGS:
+        raise ConfigError(f"{path}: ranking {ranking!r}; expected one of {sorted(KNOWN_RANKINGS)}")
+    playoffs = tuple(PositionPlayoff.from_dict(item, n_teams) for item in raw.get("position_playoffs") or ())
+
     data_raw: Mapping[str, Any] = raw.get("data") or {}
     sources = tuple(DataSource.from_dict(s) for s in data_raw.get("sources", ()))
     if not sources:
@@ -338,6 +427,10 @@ def _build_config(raw: Mapping[str, Any], path: Path) -> CompetitionConfig:
         current_season=current_season,
         league=league,
         head_to_head_reapply=bool(raw.get("head_to_head_reapply", False)),
+        head_to_head_needs_all_meetings=bool(raw.get("head_to_head_needs_all_meetings", False)),
+        ranking=ranking,
+        position_playoffs=playoffs,
+        completed_early=bool(raw.get("completed_early", False)),
         country=raw.get("country"),
         confederation=raw.get("confederation"),
         model=dict(raw.get("model") or {}),
@@ -356,7 +449,28 @@ def _build_config(raw: Mapping[str, Any], path: Path) -> CompetitionConfig:
             f"loaded by the data sources {config.seasons}"
         )
     _check_evaluation_split(config, path)
+    if top_level:
+        _check_rule_changes(config, path)
     return config
+
+
+def _check_rule_changes(config: CompetitionConfig, path: Path) -> None:
+    """Validate every season-specific rule set now, not when a backtest reaches it."""
+    for number, change in enumerate(config.raw.get("rule_changes") or [], start=1):
+        where = f"{path}: rule_changes entry {number}"
+        if ("from_season" in change) == ("seasons" in change):
+            raise ConfigError(f"{where} needs exactly one of `from_season` or `seasons`")
+        unknown = set(change) - set(SEASON_RULE_KEYS) - {"from_season", "seasons", "reason", "source"}
+        if unknown:
+            raise ConfigError(f"{where} changes {sorted(unknown)}, which are not season rules "
+                              f"(allowed: {', '.join(SEASON_RULE_KEYS)})")
+        if not change.get("reason"):
+            raise ConfigError(f"{where} needs a `reason`")
+        affected = [str(change["from_season"])] if "from_season" in change else [str(s) for s in change["seasons"]]
+        for season in affected:
+            if season not in config.seasons:
+                raise ConfigError(f"{where} refers to season {season!r}, which is not loaded")
+            config.for_season(season)  # builds, and so validates, that season's rules
 
 
 def _check_evaluation_split(config: CompetitionConfig, path: Path) -> None:

@@ -52,6 +52,7 @@ import pandas as pd
 from ..config import CompetitionConfig, Zone
 from ..data.fixtures import remaining_fixtures, season_teams
 from ..model.dixon_coles import FittedDixonColes
+from ..data.awarded import apply_awarded_results
 from ..data.deductions import points_adjustments
 from .table import (
     SeasonResults,
@@ -161,9 +162,10 @@ class LeagueSimulator:
 
         ``as_of`` only affects points deductions: those dated before it are
         applied (all of them when None), matching a replay from that date.
+        The season's own rules apply (``config.for_season``).
         """
-        config = self.config
-        season = season or config.current_season
+        season = season or self.config.current_season
+        config = self.config.for_season(season)
         n_simulations = int(n_simulations or config.simulation.get("n_simulations", 10_000))
         if seed is None:
             seed = config.simulation.get("random_seed")
@@ -180,7 +182,8 @@ class LeagueSimulator:
         n_teams = len(teams)
 
         season_rows = own.loc[own["season"].astype(str) == season]
-        played = SeasonResults.from_matches(season_rows, teams)
+        # The table counts awarded results; the model was fitted on the played ones.
+        played = SeasonResults.from_matches(apply_awarded_results(season_rows, config.id, as_of=as_of), teams)
         # Deductions are a constant per team: add them once, to the starting
         # points, and every simulated final table inherits them.
         base = with_points_adjustment(
@@ -207,13 +210,16 @@ class LeagueSimulator:
             sim_home_goals, sim_away_goals = self._sample_scores(fixtures, n_simulations, rng)
 
         # --- 2. final totals for every team in every run --------------------------
-        totals = self._final_totals(base, home_idx, away_idx, sim_home_goals, sim_away_goals, n_teams)
+        totals = self._final_totals(base, home_idx, away_idx, sim_home_goals, sim_away_goals, n_teams, config.points)
 
         # --- 3. rank every simulated table ---------------------------------------
-        tiebreaker = Tiebreaker.from_config(config, rng=rng)
+        play_match = self._match_player(rng)
+        tiebreaker = Tiebreaker.from_config(config, rng=rng, play_match=play_match)
         order, exact = self._rank(
             totals, tiebreaker, played, home_idx, away_idx, sim_home_goals, sim_away_goals
         )
+        # --- 4. position play-offs (e.g. Serie A's title and 17th v 18th) -------
+        order = self._play_position_playoffs(order, totals["points"], teams, config, self._tie_player(rng))
         positions = np.empty_like(order)
         np.put_along_axis(positions, order, np.arange(1, n_teams + 1)[None, :], axis=1)
 
@@ -244,6 +250,75 @@ class LeagueSimulator:
         )
 
     # -- internals ------------------------------------------------------------
+    def _match_player(self, rng: np.random.Generator):
+        """A one-off match between two clubs, drawn from the match model.
+
+        Used for play-offs, which happen in a tiny share of simulated seasons.
+        Simplification: it uses the fitted (best-estimate) ratings, not the
+        ratings drawn for that simulated season. A draw is settled 50/50, as a
+        stand-in for extra time and penalties.
+        """
+        model = self.model
+
+        def play(home: str, away: str, neutral: bool) -> str:
+            p_home, p_draw, _ = model.outcome_probabilities(home, away, neutral=neutral)
+            u = rng.random()
+            if u < p_home:
+                return home
+            if u < p_home + p_draw:
+                return home if rng.random() < 0.5 else away
+            return away
+
+        return play
+
+    def _tie_player(self, rng: np.random.Generator):
+        """A position play-off between the higher- and lower-ranked club, in the configured format.
+
+        One match (neutral, or at the higher-ranked club's ground) or two legs
+        with aggregate goals; scores are drawn from the match model's score
+        matrix with best-estimate ratings. Level at the end: 50/50 (penalties).
+        """
+        model = self.model
+        play_match = self._match_player(rng)
+
+        def goals(home: str, away: str) -> tuple[int, int]:
+            matrix = model.score_matrix(home, away)
+            cell = int(np.searchsorted(np.cumsum(matrix.ravel()), rng.random(), side="right"))
+            return divmod(min(cell, matrix.size - 1), matrix.shape[1])
+
+        def play(higher: str, lower: str, venue: str) -> str:
+            if venue != "two_legs":
+                return play_match(higher, lower, venue == "neutral")
+            first_home, first_away = goals(lower, higher)    # lower-ranked club at home first
+            second_home, second_away = goals(higher, lower)
+            higher_total, lower_total = first_away + second_home, first_home + second_away
+            if higher_total != lower_total:
+                return higher if higher_total > lower_total else lower
+            return higher if rng.random() < 0.5 else lower
+
+        return play
+
+    @staticmethod
+    def _play_position_playoffs(order, points, teams, config, play_tie) -> np.ndarray:
+        """Settle each configured play-off place by a match wherever the two clubs are level on points.
+
+        The clubs ranked at ``position`` and one place below play; the ordinary
+        tiebreakers have already decided which clubs those are when more are
+        level, as the rules require.
+        """
+        if not config.position_playoffs:
+            return order
+        order = order.copy()
+        for playoff in config.position_playoffs:
+            upper = order[:, playoff.position - 1]
+            lower = order[:, playoff.position]
+            runs = np.flatnonzero(points[np.arange(len(order)), upper] == points[np.arange(len(order)), lower])
+            for run in runs:
+                higher, lower_team = teams[upper[run]], teams[lower[run]]
+                if play_tie(higher, lower_team, playoff.venue) == lower_team:
+                    order[run, playoff.position - 1], order[run, playoff.position] = lower[run], upper[run]
+        return order
+
     def _sample_scores(
         self, fixtures: pd.DataFrame, n_simulations: int, rng: np.random.Generator
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -277,6 +352,7 @@ class LeagueSimulator:
         home_goals: np.ndarray,
         away_goals: np.ndarray,
         n_teams: int,
+        points=None,
     ) -> dict[str, np.ndarray]:
         """Played totals plus simulated ones, as (runs, teams) arrays.
 
@@ -289,7 +365,7 @@ class LeagueSimulator:
         away_matrix = np.zeros((n_fixtures, n_teams))
         home_matrix[np.arange(n_fixtures), home_idx] = 1.0
         away_matrix[np.arange(n_fixtures), away_idx] = 1.0
-        points = self.config.points
+        points = points or self.config.points
 
         def add(home_values, away_values, base_key):
             simulated = home_values.T.astype(float) @ home_matrix + away_values.T.astype(float) @ away_matrix
@@ -303,6 +379,7 @@ class LeagueSimulator:
             "wins": add((home_goals > away_goals), (away_goals > home_goals), "wins"),
             "draws": add((home_goals == away_goals), (home_goals == away_goals), "draws"),
             "away_goals": add(zeros, away_goals, "away_goals"),
+            "away_wins": add(zeros, (away_goals > home_goals), "away_wins"),
         }
         totals["goal_difference"] = totals["goals_for"] - totals["goals_against"]
         return totals
@@ -343,6 +420,8 @@ class LeagueSimulator:
                 away=np.concatenate([played.away, away_idx]),
                 home_goals=np.concatenate([played.home_goals, sim_home_goals[:, run]]),
                 away_goals=np.concatenate([played.away_goals, sim_away_goals[:, run]]),
+                outcome=None if played.outcome is None
+                else np.concatenate([played.outcome, np.full(len(home_idx), -1)]),
             )
             run_totals = {name: values[run] for name, values in totals.items()}
             row = list(order[run])

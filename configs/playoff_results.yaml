@@ -1,0 +1,19 @@
+# ---------------------------------------------------------------------------
+# Position play-offs that were actually played (as data, like deductions).
+#
+# A league that settles a place with a one-off match (Serie A since 2022-23:
+# the title, and 17th v 18th) needs the real result to rebuild a past final
+# table. Simulated seasons play these matches with the match model instead.
+#
+#   winner / loser  canonical club names (configs/team_aliases.yaml)
+#   source          a report of the match
+# ---------------------------------------------------------------------------
+
+playoffs:
+  - competition: serie_a
+    season: "2022-23"
+    winner: Hellas Verona
+    loser: Spezia
+    score: "3-1 (Spezia the nominal home side, at a neutral ground in Reggio Emilia)"
+    date: "2023-06-11"
+    source: https://www.larena.it/argomenti/sport/hellas-verona/spezia-hellas-verona-reggio-emilia-spareggio-risultato-1.10108916

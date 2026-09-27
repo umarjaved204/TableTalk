@@ -19,6 +19,13 @@
 #   premier_league 2010-11 to 2026-27: only the 2023-24 decisions below. The
 #     earlier Premier League deductions (Middlesbrough 1996-97, Portsmouth
 #     2009-10) fall before the data starts.
+#   bundesliga 2010-11 to 2026-27: none (every final table matches the official one).
+#   la_liga 2010-11 to 2026-27: Almería 2014-15 only (every other final table
+#     matches the official one).
+#   serie_a 2010-11 to 2026-27: the entries below. Wikipedia's tables also show
+#     Lazio -1 (2017-18) and -2 (2018-19); both are errors (Lazio finished on
+#     72, level with Inter, in 2017-18, and on 59 in 2018-19), so they are not here.
+#   ligue_1 2010-11 to 2026-27: the entries below.
 #   Not here, because the competition is never tabulated: Leicester City's six
 #     points in the 2025-26 Championship (Premier League statement, 5 Feb 2026;
 #     https://www.premierleague.com/en/news/4581043). Championship rows are
@@ -61,3 +68,154 @@ deductions:
       Second breach of Profitability and Sustainability Rules, assessment period
       ending 2022-23. Everton's appeal was later withdrawn.
     source: https://www.premierleague.com/en/news/3960088
+
+  - competition: la_liga
+    season: "2014-15"
+    team: Almería
+    points: -3
+    date_applied: "2015-05-26"
+    reason: >-
+      FIFA Disciplinary Committee sanction for a late payment to Aalborg BK
+      (transfer of Michael Jakobsen). Took effect when Almería withdrew their
+      appeal to the Court of Arbitration for Sport, after the last matchday.
+      Source is a reprint of the CAS media release of 26 May 2015. Found by
+      checking every rebuilt La Liga table against the official one.
+    source: https://www.infobae.com/aroundtherings/federations/fifa/2021/07/12/ud-almera-sad-has-withdrawn-its-appeal
+
+  # --- Serie A. Every entry found by comparing the rebuilt final tables with the
+  # official ones. Dates are when the decision took effect; where only an
+  # approximate date was found, the reason says so.
+  - competition: serie_a
+    season: "2010-11"
+    team: Bologna
+    points: -1
+    date_applied: "2010-12-02"
+    reason: Unpaid IRPEF tax withholdings on players' wages (May-June 2010).
+    source: https://sport.sky.it/calcio/2010/12/02/bologna_fan_club_penalizzazione_porcedda_inibito
+  - competition: serie_a
+    season: "2010-11"
+    team: Bologna
+    points: -2
+    date_applied: "2011-05-22"
+    reason: >-
+      A further 2 points (the season's total was 3). DATE NOT FOUND: recorded at
+      the last matchday; 2010-11 is not replayed in any backtest.
+    source: https://it.wikipedia.org/wiki/Bologna_Football_Club_1909_2010-2011
+  - competition: serie_a
+    season: "2011-12"
+    team: Atalanta
+    points: -6
+    date_applied: "2011-08-09"
+    reason: 2011 betting scandal (calcioscommesse); decided before the season.
+    source: https://en.wikipedia.org/wiki/2011%E2%80%9312_Italian_football_scandal
+  - competition: serie_a
+    season: "2012-13"
+    team: Siena
+    points: -6
+    date_applied: "2012-08-22"
+    reason: 2011-12 betting scandal; imposed in August 2012, before the season (approximate date).
+    source: https://it.wikipedia.org/wiki/Serie_A_2012-2013
+  - competition: serie_a
+    season: "2012-13"
+    team: Atalanta
+    points: -2
+    date_applied: "2012-08-22"
+    reason: 2011-12 betting scandal; imposed in August 2012, before the season (approximate date).
+    source: https://it.wikipedia.org/wiki/Serie_A_2012-2013
+  - competition: serie_a
+    season: "2012-13"
+    team: Sampdoria
+    points: -1
+    date_applied: "2012-08-22"
+    reason: 2011-12 betting scandal; imposed in August 2012, before the season (approximate date).
+    source: https://it.wikipedia.org/wiki/Serie_A_2012-2013
+  - competition: serie_a
+    season: "2012-13"
+    team: Torino
+    points: -1
+    date_applied: "2012-08-22"
+    reason: 2011-12 betting scandal; imposed in August 2012, before the season (approximate date).
+    source: https://it.wikipedia.org/wiki/Serie_A_2012-2013
+  - competition: serie_a
+    season: "2014-15"
+    team: Parma
+    points: -1
+    date_applied: "2014-12-09"
+    reason: Partial payment of IRPEF tax withholdings.
+    source: https://it.wikipedia.org/wiki/Parma_Football_Club_2014-2015
+  - competition: serie_a
+    season: "2014-15"
+    team: Parma
+    points: -4
+    date_applied: "2015-02-16"
+    reason: >-
+      Unpaid wages. The official final table (19 points) implies 7 points in
+      total; the Italian Wikipedia's breakdown adds to 8, so how the February
+      and March decisions split is uncertain.
+    source: https://it.wikipedia.org/wiki/Parma_Football_Club_2014-2015
+  - competition: serie_a
+    season: "2014-15"
+    team: Parma
+    points: -2
+    date_applied: "2015-03-14"
+    reason: Unpaid wages (further sanction).
+    source: https://it.wikipedia.org/wiki/Parma_Football_Club_2014-2015
+  - competition: serie_a
+    season: "2018-19"
+    team: Chievo Verona
+    points: -3
+    date_applied: "2018-09-13"
+    reason: False accounting (inflated transfer valuations).
+    source: https://www.football-italia.net/127901/chievo-get-three-point-deduction
+  - competition: serie_a
+    season: "2022-23"
+    team: Juventus
+    points: -15
+    date_applied: "2023-01-20"
+    reason: Inflated transfer valuations (plusvalenze); FIGC Federal Court of Appeal.
+    source: https://www.goal.com/it/notizie/caso-plusvalenze-stangata-per-la-juve-15-punti-di-penalizzazione/blt74200fd78d68d1d6
+  - competition: serie_a
+    season: "2022-23"
+    team: Juventus
+    points: 15
+    date_applied: "2023-04-20"
+    reason: CONI Guarantee Board annulled the -15 and sent the case back.
+    source: https://www.corrieredellosport.it/news/calcio/serie-a/juve/processo-juventus/2023/04/20-106711098/sentenza_juve_clamoroso_ridati_i_15_punti_cosa_succede_adesso
+  - competition: serie_a
+    season: "2022-23"
+    team: Juventus
+    points: -10
+    date_applied: "2023-05-22"
+    reason: FIGC Federal Court of Appeal's new sanction in the plusvalenze case.
+    source: https://sport.sky.it/calcio/serie-a/2023/05/22/juve-plusvalenze-sentenza-processo-news
+
+  # --- Ligue 1. Found by comparing the rebuilt final tables with the official
+  # ones. Each was a firm deduction, the rest of the sanction suspended.
+  - competition: ligue_1
+    season: "2012-13"
+    team: AC Ajaccio
+    points: -2
+    date_applied: "2012-06-21"
+    reason: Incidents at Ajaccio v Lyon in May 2012; applied from the first matchday of 2012-13.
+    source: https://www.europe1.fr/sport/Foot-deux-points-de-penalite-pour-Ajaccio-855414
+  - competition: ligue_1
+    season: "2021-22"
+    team: Nice
+    points: -1
+    date_applied: "2021-09-08"
+    reason: Pitch invasion at Nice v Marseille (22 August 2021); the match was replayed.
+    source: https://www.cnews.fr/sport/2021-09-08/nice-om-la-lfp-va-prononcer-ses-sanctions-1123814
+  - competition: ligue_1
+    season: "2021-22"
+    team: Lyon
+    points: -1
+    date_applied: "2021-12-08"
+    reason: Bottle thrown at Dimitri Payet at Lyon v Marseille (21 November 2021); the match was replayed.
+    source: https://www.eurosport.fr/football/ligue-1/2021-2022/ol-om-un-point-retire-pour-lyon-et-match-a-rejouer-a-huis-clos-le-verdict-de-la-commission-de-discip_sto8664304/story.shtml
+  - competition: ligue_1
+    season: "2023-24"
+    team: Montpellier
+    points: -1
+    date_applied: "2023-10-25"
+    reason: Firecracker thrown at the Clermont goalkeeper (8 October 2023); the match was replayed.
+    source: https://www.lfp.fr/article/commission-de-discipline-les-decisions-du-25-octobre-2023

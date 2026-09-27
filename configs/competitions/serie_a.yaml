@@ -1,0 +1,178 @@
+# ---------------------------------------------------------------------------
+# Serie A (Italy, men).
+#
+# Added in Phase 2. Serie A's tie rules are set each season by an FIGC ruling
+# that departs from art. 51 of the federation's rules (NOIF), so they are
+# versioned by season below (`rule_changes`). Checked 2026-09-27; see
+# `verification`.
+# ---------------------------------------------------------------------------
+
+id: serie_a
+name: Serie A
+country: Italy
+confederation: UEFA
+gender: men
+
+format: league
+
+league:
+  n_teams: 20
+  meetings_per_pair: 2
+  matches_per_team: 38
+  neutral_venue: false
+
+points:
+  win: 3
+  draw: 1
+  loss: 0
+
+# The "classifica avulsa" (FIGC C.U. 23/A of 12 July 2019, for 2019-20; the
+# same criteria in every later ruling): clubs level on points are ranked by
+#   a) points in the matches among all of them, b) goal difference in those
+#   matches, c) overall goal difference, d) goals scored, e) a drawing of lots.
+# Head-to-head first, like Spain, and computed once over all the clubs level
+# (no re-application is described).
+tiebreakers:
+  - head_to_head_points
+  - head_to_head_goal_difference
+  - goal_difference
+  - goals_scored
+  - coin_flip          # "sorteggio": a drawing of lots, so a coin flip is exact
+
+head_to_head_reapply: false
+
+zones:
+  - id: title
+    label: Win the title
+    positions: [1]
+  - id: top_four
+    label: Top four
+    positions: [1, 2, 3, 4]
+  - id: top_five
+    label: Top five
+    positions: [1, 2, 3, 4, 5]
+  - id: top_half
+    label: Top half
+    positions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  - id: relegation
+    label: Relegation to Serie B
+    positions: [18, 19, 20]
+
+# From 2022-23, a tie on points for the title, or for 17th v 18th, is settled by
+# a play-off instead (the other places still use the classifica avulsa, which
+# also decides which two clubs play when more are level).
+rule_changes:
+  - from_season: "2022-23"
+    reason: >-
+      Play-offs reintroduced for the title and for 17th v 18th. Format taken
+      from the relegation play-off actually played (Spezia v Verona, one match
+      at a neutral ground, 11 June 2023); the 2022-23 ruling itself was not
+      found, so the title format that season is assumed to be the same.
+    source: https://www.ilmattino.it/sport/calcio/spareggio_salvezza_spezia_hellas_verona_domenica_11_giugno_reggio_emilia_dacia_arena-7446580.html
+    position_playoffs:
+      - {position: 1, venue: neutral, label: title play-off}
+      - {position: 17, venue: neutral, label: relegation play-off}
+  - from_season: "2023-24"
+    reason: >-
+      FIGC ruling for 2023-24 (C.U. 23/A), repeated for 2024-25 (214/A),
+      2025-26 (331/A) and 2026-27 (244/A): the title play-off is one match at
+      the ground of the club ranked higher on the classifica avulsa; 17th v 18th
+      is two legs, most goals on aggregate, then penalties.
+    source: https://figc.it/media/208461/23-deroga-art-51-noif-determinazione-classifica-campionato-serie-a-ss-2023-2024.pdf
+    position_playoffs:
+      - {position: 1, venue: higher_ranked_home, label: title play-off}
+      - {position: 17, venue: two_legs, label: relegation play-off}
+
+data:
+  current_season: "2026-27"
+  sources:
+    - loader: football_data_uk
+      role: results
+      params:
+        division: I1
+        odds_preference: [PSC, AvgC]
+        seasons: ["2010-11", "2011-12", "2012-13", "2013-14", "2014-15", "2015-16",
+                  "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22",
+                  "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"]
+    - loader: openfootball
+      role: fixtures
+      params:
+        league_code: it.1
+        seasons: ["2026-27"]
+        ref: master
+    # Serie B results: model input only, never tabulated.
+    - loader: football_data_uk
+      role: context
+      params:
+        division: I2
+        competition: serie_b
+        seasons: ["2010-11", "2011-12", "2012-13", "2013-14", "2014-15", "2015-16",
+                  "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22",
+                  "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"]
+
+# Premier League settings, not re-tuned for Italy.
+model:
+  time_decay_half_life_days: 365
+  min_match_weight: 0.001
+  max_goals: 10
+  rating_prior_sd: 1.0
+  promoted_teams:
+    strategy: prior
+    min_seasons_for_prior: 1
+
+evaluation:
+  exclude_seasons:
+    "2019-20": >-
+      COVID: suspended on 9 March 2020; the last twelve matchdays were played
+      behind closed doors from 20 June 2020.
+    "2020-21": >-
+      COVID: played behind closed doors.
+  split:
+    tune: ["2012-13", "2013-14", "2014-15", "2015-16", "2016-17", "2017-18"]
+    report: ["2018-19", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26"]
+
+simulation:
+  n_simulations: 10000
+  random_seed: 20260929
+  strength_uncertainty:
+    enabled: true
+    parameter_uncertainty: true
+    drift: none
+
+verification:
+  checked_on: "2026-09-27"
+  sources:
+    ruling_2019_20: https://www.figc.it/media/97700/23-deroga-art-51-noif-classifica-avulsa-serie-a-2019-2020.pdf
+    ruling_2023_24: https://figc.it/media/208461/23-deroga-art-51-noif-determinazione-classifica-campionato-serie-a-ss-2023-2024.pdf
+    ruling_2024_25: https://www.figc.it/media/233508/214-deroga-art-51-noif-determinazione-classifica-campionato-serie-a-ss-2024-2025.pdf
+    ruling_2025_26: https://www.figc.it/media/274515/331-deroga-art-51-noif-determinazione-classifica-campionato-serie-a-ss-2025-2026.pdf
+    ruling_2026_27: https://files.figc.it/version/c:ZmUzYzk0MzUtMzU0Zi00:YTk3YzZiZGEtYmExYi00/244%20-%20Deroga%20art.%2051%20NOIF%20-%20Determinazione%20classifica%20Campionato%20Serie%20A%20ss%202026%20-%202027.pdf
+  confirmed:
+    - "Classifica avulsa criteria as listed (FIGC rulings for 2019-20, 2023-24, 2024-25, 2025-26, 2026-27)."
+    - "Title and 17th-v-18th play-off formats from 2023-24 (FIGC rulings)."
+    - "Final tables rebuilt from the data are compared with the official ones for every season (tests/test_official_tables.py)."
+  assumptions:
+    - id: A1
+      text: >-
+        Seasons 2010-11 to 2018-19 use the same classifica avulsa as the 2019-20
+        ruling (each season had its own ruling; those were not found). Checked by
+        comparing every rebuilt final table with the official one.
+    - id: A2
+      text: >-
+        2022-23: the ruling was not found; both play-offs are taken to be one
+        match at a neutral ground, the format of the relegation play-off that was
+        actually played.
+    - id: A3
+      text: >-
+        Play-offs are simulated with best-estimate ratings, not the ratings drawn
+        for that simulated season, and a tie still level at the end is settled
+        50/50 (penalties).
+    - id: A4
+      text: >-
+        From 2026-27 no play-off is held if one of the clubs is in a European
+        final (FIGC C.U. 244/A); European competitions are not modelled, so the
+        play-off is always simulated.
+    - id: A5
+      text: >-
+        Zones are league positions only; European places depend on the Coppa
+        Italia winner and UEFA coefficients.

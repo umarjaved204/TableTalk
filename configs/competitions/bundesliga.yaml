@@ -1,0 +1,190 @@
+# ---------------------------------------------------------------------------
+# Bundesliga (Germany, men) competition config.
+#
+# Added in Phase 2 by config and data only: nothing Bundesliga-specific is in
+# Python. Rules checked 2026-09-27 against the DFL Spielordnung (SpOL); see
+# `verification` at the bottom for what was confirmed, where, and what is an
+# explicit assumption.
+# ---------------------------------------------------------------------------
+
+id: bundesliga
+name: Bundesliga
+country: Germany
+confederation: UEFA
+gender: men
+
+format: league
+
+league:
+  # 18 clubs in every season loaded (2010-11 to 2026-27); see verification C1.
+  n_teams: 18
+  meetings_per_pair: 2
+  matches_per_team: 34
+  neutral_venue: false
+
+points:          # SpOL § 2 Nr. 3 a)
+  win: 3
+  draw: 1
+  loss: 0
+
+# SpOL § 2 Nr. 3 c), in this order:
+#   1) goal difference  2) goals scored
+#   3) "das Gesamtergebnis aus Hin- und Rückspiel im direkten Vergleich": the
+#      aggregate score of the two meetings, i.e. head-to-head goal difference
+#      (NOT head-to-head points, as in the Premier League)
+#   4) away goals in those meetings  5) away goals over the whole season
+#   6) a play-off match on a neutral ground, simulated (assumption A1)
+tiebreakers:
+  - goal_difference
+  - goals_scored
+  - head_to_head_goal_difference
+  - head_to_head_away_goals
+  - away_goals_scored
+  - playoff_match
+
+# The SpOL words criteria 3 and 4 for a pair of clubs and says nothing about
+# three or more; see assumption A2. No re-application step is described.
+head_to_head_reapply: false
+
+# Plain league positions (no "qualifies for Europe" claims; see A3).
+zones:
+  - id: title
+    label: Win the title
+    positions: [1]
+  - id: top_four
+    label: Top four
+    positions: [1, 2, 3, 4]
+  - id: top_five
+    label: Top five
+    positions: [1, 2, 3, 4, 5]
+  - id: top_half
+    label: Top half
+    positions: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  - id: relegation_playoff
+    label: Finish in the relegation play-off place
+    positions: [16]
+    note: >-
+      16th plays the 2. Bundesliga's third-placed club over two legs to stay up
+      (SpOL § 3 Nr. 2). The play-off itself is not simulated: this zone is the
+      probability of finishing in that place.
+  - id: relegation
+    label: Relegation to the 2. Bundesliga
+    positions: [17, 18]
+
+data:
+  current_season: "2026-27"
+  sources:
+    - loader: football_data_uk
+      role: results
+      params:
+        division: D1
+        # Market benchmark only (never a model input); see premier_league.yaml.
+        odds_preference: [PSC, AvgC]
+        seasons: ["2010-11", "2011-12", "2012-13", "2013-14", "2014-15", "2015-16",
+                  "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22",
+                  "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"]
+    - loader: openfootball
+      role: fixtures
+      params:
+        league_code: de.1
+        seasons: ["2026-27"]
+        ref: master
+    # 2. Bundesliga results: model input only (never tabulated), for the
+    # `second_tier` promoted-team strategy.
+    - loader: football_data_uk
+      role: context
+      params:
+        division: D2
+        competition: bundesliga_2
+        seasons: ["2010-11", "2011-12", "2012-13", "2013-14", "2014-15", "2015-16",
+                  "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22",
+                  "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"]
+
+# Premier League settings by default (half-life and ridge sd chosen on the
+# Premier League's tuning seasons). Not re-tuned for the Bundesliga.
+model:
+  time_decay_half_life_days: 365
+  min_match_weight: 0.001
+  max_goals: 10
+  rating_prior_sd: 1.0
+  promoted_teams:
+    # The Premier League's choice; the Bundesliga's own comparison is in the
+    # README. Clubs promoted through the relegation play-off count as promoted:
+    # they are simply the clubs not in last season's Bundesliga.
+    strategy: prior
+    min_seasons_for_prior: 1
+
+evaluation:
+  exclude_seasons:
+    "2019-20": >-
+      COVID: suspended after 13 March 2020; the last nine matchdays were played
+      behind closed doors from 16 May 2020.
+    "2020-21": >-
+      COVID: almost the whole season was played behind closed doors (a few
+      early matches admitted a small, capped crowd), so it tests a one-off
+      regime without crowds rather than normal forecasting.
+  # Same seasons as the Premier League, for a like-for-like comparison.
+  split:
+    tune: ["2012-13", "2013-14", "2014-15", "2015-16", "2016-17", "2017-18"]
+    report: ["2018-19", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26"]
+
+simulation:
+  n_simulations: 10000
+  random_seed: 20260927
+  # As for the Premier League: rating uncertainty on, drift off.
+  strength_uncertainty:
+    enabled: true
+    parameter_uncertainty: true
+    drift: none
+
+verification:
+  checked_on: "2026-09-27"
+  sources:
+    spielordnung_2026: https://media.dfl.de/sites/2/2026/03/Spielordnung-SpOL-2026-03-06-Stand.pdf
+    spielordnung_2019: https://media.dfl.de/sites/2/2019/09/Spielordnung-SpOL-2019-08-22-Stand.pdf
+    relegation_since_2008: https://de.wikipedia.org/wiki/Fu%C3%9Fball-Bundesliga
+  confirmed:
+    - "3 points for a win, 1 for a draw (SpOL § 2 Nr. 3 a), editions of 22.08.2019 and 06.03.2026)."
+    - "Tiebreakers: goal difference, goals scored, aggregate head-to-head score, head-to-head away goals, all away goals, then a play-off on a neutral ground (SpOL § 2 Nr. 3 c), identical in the 2019 and 2026 editions)."
+    - "Bottom two relegated; 16th plays two relegation matches against the 2. Bundesliga's third (SpOL § 3 Nr. 2, 2019 and 2026 editions; played every season since 2008-09)."
+    - "No points deduction in the Bundesliga in any loaded season (the last ones were 1993-94, 1999-2000 and 2003-04). A start-of-season deduction for negative equity has been possible since 2024-25; none has been applied (kicker, Sky Sport reporting on Schalke 04 in 2025-26). The rebuilt 2025-26 final table matches the official one exactly (tests/test_bundesliga.py)."
+  unconfirmed:
+    - id: C1
+      text: >-
+        The SpOL (§ 3 Nr. 1) only fixes 32 to 36 clubs across both divisions,
+        not 18 in the Bundesliga. 18 is confirmed by the data (every season
+        2010-11 to 2026-27 has 18 clubs) and by the fixture list, not by a
+        rule text.
+    - id: C2
+      text: >-
+        The tiebreaker text was checked in the 2019 and 2026 editions only. For
+        2010-11 to 2018-19 no official edition was found; the same order is
+        assumed. Every rebuilt final table 2010-11 to 2025-26 matches the official
+        one (tests/test_official_tables.py), which confirms the first two
+        criteria, but no final-table tie in those seasons reached the head-to-head
+        ones, so they are unconfirmed for the early seasons.
+  assumptions:
+    - id: A1
+      text: >-
+        The last criterion, a play-off on a neutral ground, is simulated as a
+        match from the match model with no home advantage (best-estimate
+        ratings; a draw settled 50/50 for extra time and penalties), as for the
+        Premier League. Two clubs level on all five earlier criteria is
+        vanishingly rare.
+    - id: A2
+      text: >-
+        For three or more clubs level on points, goal difference and goals
+        scored, the head-to-head criteria are computed from the mini-table of
+        matches among all of them (no re-application). The rule text is written
+        for two clubs.
+    - id: A3
+      text: >-
+        Zones are league positions only; European places depend on the DFB-Pokal
+        winner and UEFA coefficients, which are out of scope.
+    - id: A4
+      text: >-
+        During a season the SpOL uses head-to-head criteria only once both
+        meetings have been played, and otherwise lists clubs on a shared place.
+        TableTalk's in-season table applies the full chain regardless. This only
+        affects the order of clubs level on points, goal difference and goals in
+        a mid-season table, never a simulated final table.

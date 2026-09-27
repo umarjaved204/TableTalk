@@ -185,7 +185,7 @@ def season_backtest(
                     }
                 )
             )
-            for zone in config.zones:
+            for zone in config.for_season(season).zones:
                 in_zone = np.isin(actual, zone.positions)
                 persistence_in_zone = np.isin(naive_position, zone.positions)
                 for i, team in enumerate(teams):

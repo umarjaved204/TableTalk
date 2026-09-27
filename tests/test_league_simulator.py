@@ -110,6 +110,8 @@ def test_probabilities_are_consistent(four_team_config):
 _CHAINS = {
     "premier_league": "[goal_difference, goals_scored, head_to_head_points, head_to_head_away_goals, alphabetical]",
     "head_to_head_first": "[head_to_head_points, head_to_head_goal_difference, goal_difference, goals_scored, alphabetical]",
+    # A season-wide criterion *after* the head-to-head block (total away goals).
+    "bundesliga": "[goal_difference, goals_scored, head_to_head_goal_difference, head_to_head_away_goals, away_goals_scored, alphabetical]",
 }
 
 

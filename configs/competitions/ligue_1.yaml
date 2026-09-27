@@ -1,0 +1,221 @@
+# ---------------------------------------------------------------------------
+# Ligue 1 (France, men).
+#
+# Added in Phase 2. The format changed five times in the seasons loaded, so the
+# rules are versioned by season (`rule_changes`). Checked 2026-09-27; see
+# `verification`, and every rebuilt final table is compared with the official
+# one (tests/test_official_tables.py).
+# ---------------------------------------------------------------------------
+
+id: ligue_1
+name: Ligue 1
+country: France
+confederation: UEFA
+gender: men
+
+format: league
+
+# --- Rules at the start of the data (2010-11) --------------------------------
+league:
+  n_teams: 20
+  meetings_per_pair: 2
+  matches_per_team: 38
+  neutral_venue: false
+
+points:
+  win: 3
+  draw: 1
+  loss: 0
+
+# LFP tiebreakers until 2024-25 (the list the LFP replaced in 2025-26, as
+# reported by ligue1.com and Orange, July-August 2025): overall goal
+# difference; then, among the clubs level, points, goal difference, goals and
+# away goals in their meetings; then overall goals and away goals; then the
+# fair-play ranking, which is not modelled (coin flip; assumption A1).
+tiebreakers:
+  - goal_difference
+  - head_to_head_points
+  - head_to_head_goal_difference
+  - head_to_head_goals_scored
+  - head_to_head_away_goals
+  - goals_scored
+  - away_goals_scored
+  - coin_flip
+
+head_to_head_reapply: false
+# LFP rule: the head-to-head criteria apply only once both meetings between the
+# clubs level have been played; otherwise the next criteria decide. Irrelevant
+# in a complete season; decisive in 2019-20, which was stopped early.
+head_to_head_needs_all_meetings: true
+
+zones:
+  - {id: title, label: Win the title, positions: [1]}
+  - {id: top_four, label: Top four, positions: [1, 2, 3, 4]}
+  - {id: top_five, label: Top five, positions: [1, 2, 3, 4, 5]}
+  - {id: top_half, label: Top half, positions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  - {id: relegation, label: Relegation to Ligue 2, positions: [18, 19, 20]}
+
+rule_changes:
+  - from_season: "2016-17"
+    reason: >-
+      The relegation play-off returned: 18th plays a Ligue 2 club over two legs;
+      19th and 20th go down.
+    source: https://en.wikipedia.org/wiki/Ligue_1
+    zones:
+      - {id: title, label: Win the title, positions: [1]}
+      - {id: top_four, label: Top four, positions: [1, 2, 3, 4]}
+      - {id: top_five, label: Top five, positions: [1, 2, 3, 4, 5]}
+      - {id: top_half, label: Top half, positions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+      - {id: relegation_playoff, label: Finish in the relegation play-off place, positions: [18]}
+      - {id: relegation, label: Relegation to Ligue 2, positions: [19, 20]}
+  - seasons: ["2019-20"]
+    reason: >-
+      COVID: the LFP stopped the season on 30 April 2020 after 28 matchdays and
+      ranked clubs on points per match played; 19th and 20th were relegated and
+      no play-off was held.
+    source: https://en.wikipedia.org/wiki/2019%E2%80%9320_Ligue_1
+    ranking: points_per_match
+    completed_early: true
+    # Clubs level on points per match were separated on their two meetings when
+    # both had been played (Nice above Reims), otherwise on goal difference
+    # (Lyon above Montpellier, Dijon above Saint-Etienne). Assumption A4.
+    tiebreakers:
+      - head_to_head_points
+      - head_to_head_goal_difference
+      - goal_difference
+      - goals_scored
+      - coin_flip
+    zones:
+      - {id: title, label: Win the title, positions: [1]}
+      - {id: top_four, label: Top four, positions: [1, 2, 3, 4]}
+      - {id: top_five, label: Top five, positions: [1, 2, 3, 4, 5]}
+      - {id: top_half, label: Top half, positions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+      - {id: relegation, label: Relegation to Ligue 2, positions: [19, 20]}
+  - seasons: ["2022-23"]
+    reason: Four clubs relegated, to shrink the league to 18; no play-off.
+    source: https://en.wikipedia.org/wiki/2022%E2%80%9323_Ligue_1
+    zones:
+      - {id: title, label: Win the title, positions: [1]}
+      - {id: top_four, label: Top four, positions: [1, 2, 3, 4]}
+      - {id: top_five, label: Top five, positions: [1, 2, 3, 4, 5]}
+      - {id: top_half, label: Top half, positions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+      - {id: relegation, label: Relegation to Ligue 2, positions: [17, 18, 19, 20]}
+  - from_season: "2023-24"
+    reason: 18 clubs; 16th plays a Ligue 2 club in the play-off; 17th and 18th go down.
+    source: https://en.wikipedia.org/wiki/Ligue_1
+    league: {n_teams: 18, meetings_per_pair: 2, matches_per_team: 34, neutral_venue: false}
+    zones:
+      - {id: title, label: Win the title, positions: [1]}
+      - {id: top_four, label: Top four, positions: [1, 2, 3, 4]}
+      - {id: top_five, label: Top five, positions: [1, 2, 3, 4, 5]}
+      - {id: top_half, label: Top half, positions: [1, 2, 3, 4, 5, 6, 7, 8, 9]}
+      - {id: relegation_playoff, label: Finish in the relegation play-off place, positions: [16]}
+      - {id: relegation, label: Relegation to Ligue 2, positions: [17, 18]}
+  - from_season: "2025-26"
+    reason: >-
+      New LFP tiebreakers (away goals dropped): overall goal difference; points
+      and goal difference in the meetings of the clubs level; overall goals;
+      wins; away wins; fewest cards (not modelled); drawing of lots.
+    source: https://ligue1.com/fr/articles/l1_article_2830-en-cas-d-egalite-au-classement-modifications-des-criteres
+    tiebreakers:
+      - goal_difference
+      - head_to_head_points
+      - head_to_head_goal_difference
+      - goals_scored
+      - wins
+      - away_wins
+      - coin_flip
+
+data:
+  current_season: "2026-27"
+  sources:
+    - loader: football_data_uk
+      role: results
+      params:
+        division: F1
+        odds_preference: [PSC, AvgC]
+        seasons: ["2010-11", "2011-12", "2012-13", "2013-14", "2014-15", "2015-16",
+                  "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22",
+                  "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"]
+    - loader: openfootball
+      role: fixtures
+      params:
+        league_code: fr.1
+        seasons: ["2026-27"]
+        ref: master
+    # Ligue 2 results: model input only, never tabulated.
+    - loader: football_data_uk
+      role: context
+      params:
+        division: F2
+        competition: ligue_2
+        seasons: ["2010-11", "2011-12", "2012-13", "2013-14", "2014-15", "2015-16",
+                  "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22",
+                  "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"]
+
+# Premier League settings, not re-tuned for France.
+model:
+  time_decay_half_life_days: 365
+  min_match_weight: 0.001
+  max_goals: 10
+  rating_prior_sd: 1.0
+  promoted_teams:
+    strategy: prior
+    min_seasons_for_prior: 1
+
+evaluation:
+  exclude_seasons:
+    "2019-20": >-
+      COVID: stopped on 30 April 2020 after 28 of 38 matchdays and decided on
+      points per match, so there is no full season to forecast.
+    "2020-21": >-
+      COVID: almost entirely behind closed doors (small, capped crowds in the
+      first weeks only).
+  split:
+    tune: ["2012-13", "2013-14", "2014-15", "2015-16", "2016-17", "2017-18"]
+    report: ["2018-19", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26"]
+
+simulation:
+  n_simulations: 10000
+  random_seed: 20260930
+  strength_uncertainty:
+    enabled: true
+    parameter_uncertainty: true
+    drift: none
+
+verification:
+  checked_on: "2026-09-27"
+  sources:
+    tiebreak_change_2025: https://ligue1.com/fr/articles/l1_article_2830-en-cas-d-egalite-au-classement-modifications-des-criteres
+    tiebreak_change_report: https://sports.orange.fr/football/ligue-1/article/la-lfp-adopte-un-nouveau-critere-de-departage-au-classement-exclu-CNT000002k7Dix.html
+    format_history: https://en.wikipedia.org/wiki/Ligue_1
+  confirmed:
+    - "Tiebreakers before and from 2025-26 (ligue1.com, 8 July 2025; Orange, 9 August 2025)."
+    - "Format by season (clubs, relegation places, play-off place) from each season's official final table; every rebuilt final table is compared with the official one."
+  assumptions:
+    - id: A1
+      text: >-
+        The fair-play ranking (until 2024-25) and the fewest-cards criterion
+        (from 2025-26) need card data the results source does not carry, so they
+        become a coin flip, as does the final drawing of lots.
+    - id: A2
+      text: >-
+        The pre-2025 tiebreaker list is taken as in force for every season from
+        2010-11 (the LFP's older regulations were not found); checked by
+        comparing every rebuilt final table with the official one.
+    - id: A3
+      text: >-
+        Head-to-head criteria for three or more clubs are computed once over all
+        of them (no re-application), as the rule text describes no second pass.
+    - id: A4
+      text: >-
+        2019-20 is ranked on points per match; clubs level on that are separated
+        by their head-to-head record where both meetings had been played, as
+        reported for Nice above Reims
+        (https://www.culturepsg.com/news/ligue1/le-classement-final-de-la-l1-2019-2020-publie/31968),
+        and otherwise by goal difference and goals. The LFP's decision text was
+        not found; this reading reproduces the official final table exactly.
+    - id: A5
+      text: >-
+        Zones are league positions only; the relegation play-off against a Ligue
+        2 club is reported as a zone (finishing in that place), not simulated.

@@ -1,0 +1,50 @@
+# ---------------------------------------------------------------------------
+# Results changed off the pitch (a match awarded, e.g. for an ineligible player).
+#
+# Tables use the awarded score; the match model keeps the score actually
+# played. Dated like deductions: a replay from before the decision shows the
+# result as it stood then. Found by comparing every rebuilt final table with
+# the official one (tests/test_official_tables.py).
+# ---------------------------------------------------------------------------
+
+awarded:
+  - competition: serie_a
+    season: "2020-21"
+    home_team: Hellas Verona
+    away_team: Roma
+    home_goals: 3
+    away_goals: 0
+    date_applied: "2020-09-22"
+    reason: >-
+      Played 0-0 on 19 September 2020; awarded 3-0 to Verona by the sporting
+      judge because Roma fielded Amadou Diawara, who was not on their squad
+      list. Roma's appeal was rejected.
+    source: https://sport.sky.it/calcio/serie-a/2020/09/22/verona-roma-3-0-tavolino-diawara
+
+  # --- Ligue 1: a forfeit counts as a win for the other side with no goals
+  # counted (recorded 0-0), so `result` decides the points.
+  - competition: ligue_1
+    season: "2013-14"
+    home_team: Nantes
+    away_team: SC Bastia
+    home_goals: 0
+    away_goals: 0
+    result: away_win
+    date_applied: "2014-02-12"
+    reason: >-
+      Nantes won 2-0 on the first matchday but had fielded Abdoulaye Touré, who
+      was suspended; the match was awarded to Bastia (LFP decision of 11 Sep
+      2013, confirmed on appeal; final on 12 Feb 2014, the date used here).
+    source: https://www.eurosport.fr/football/ligue-1/2013-2014/ligue-1-match-perdu-sur-tapis-vert-pour-le-fc-nantes-contre-bastia_sto3881022/story.shtml
+  - competition: ligue_1
+    season: "2016-17"
+    home_team: SC Bastia
+    away_team: Lyon
+    home_goals: 0
+    away_goals: 0
+    result: away_win
+    date_applied: "2017-05-04"
+    reason: >-
+      Abandoned at 0-0 at half-time on 16 April 2017 after crowd trouble; the LFP
+      disciplinary commission awarded the match to Lyon on 4 May 2017.
+    source: https://www.franceinfo.fr/sports/foot/ligue-1/apres-les-echauffourees-contre-lyon-bastia-perd-le-match-sur-tapis-vert-mais-echappe-au-retrait-de-points_2176401.html

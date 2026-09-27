@@ -48,7 +48,7 @@ tiebreakers:
   - goals_scored             # Rule C.17.2
   - head_to_head_points      # Rule C.17.3: points in matches between the tied teams
   - head_to_head_away_goals  # Rule C.17.4: away goals in those matches
-  - coin_flip                # See assumption A1 below.
+  - playoff_match            # A play-off at a neutral ground; see assumption A1.
 
 # Whether a head-to-head stage that splits a tied group only partly is run
 # again on the teams still level, using only the matches among them (UEFA
@@ -257,10 +257,11 @@ verification:
       text: >-
         The real final tiebreaker is a one-off play-off at a neutral ground,
         used only when the title, European qualification or relegation is at
-        stake. We approximate it with a 50/50 coin flip. The probability of
-        two teams being level on points, goal difference, goals scored and
-        head-to-head record is tiny, so this has no practical effect on the
-        reported numbers.
+        stake. The simulator plays it wherever it is reached, as a match drawn
+        from the match model with no home advantage (best-estimate ratings; a
+        draw settled 50/50 for extra time and penalties), and a displayed table
+        lists such clubs alphabetically. Two clubs level on points, goal
+        difference, goals scored and head-to-head record is vanishingly rare.
     - id: A2
       text: >-
         Zones are reported as league positions only. Mapping a position to a

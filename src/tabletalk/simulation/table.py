@@ -43,17 +43,23 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import groupby
-from typing import Mapping, Sequence
+from typing import Callable, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
 
 from ..config import KNOWN_TIEBREAKERS, CompetitionConfig, PointsSystem
+from ..data.awarded import apply_awarded_results
 from ..data.deductions import points_adjustments
+from ..data.playoffs import recorded_playoff_winner
+
+#: Plays one match and says who won: ``play_match(home, away, neutral)`` returns
+#: the winner's name. The simulator builds one from the match model.
+PlayMatch = Callable[[str, str, bool], str]
 
 #: Criteria computed from a team's whole season. Higher value ranks higher.
 SEASON_CRITERIA: frozenset[str] = frozenset(
-    {"goal_difference", "goals_scored", "goals_conceded", "wins", "away_goals_scored"}
+    {"goal_difference", "goals_scored", "goals_conceded", "wins", "away_wins", "away_goals_scored"}
 )
 #: Criteria computed from the matches among the tied teams only.
 HEAD_TO_HEAD_CRITERIA: frozenset[str] = frozenset(
@@ -65,7 +71,7 @@ HEAD_TO_HEAD_CRITERIA: frozenset[str] = frozenset(
     }
 )
 #: Criteria that do not depend on results at all.
-ORDERING_CRITERIA: frozenset[str] = frozenset({"coin_flip", "alphabetical"})
+ORDERING_CRITERIA: frozenset[str] = frozenset({"coin_flip", "playoff_match", "alphabetical"})
 
 assert SEASON_CRITERIA | HEAD_TO_HEAD_CRITERIA | ORDERING_CRITERIA == KNOWN_TIEBREAKERS, (
     "every tiebreaker the config accepts must be implemented here"
@@ -84,6 +90,11 @@ class SeasonResults:
     ``teams[i]`` is the name of team ``i``; ``home[k]`` and ``away[k]`` are the
     team indices of match ``k``. Array form keeps the simulator fast: a
     simulated season is just a different set of goal arrays.
+
+    ``outcome`` is almost always None: a result follows from its goals. It is
+    set for a match awarded off the pitch where the win counts but the goals do
+    not (France's "match perdu par pénalité", recorded 0-0): per match, -1 means
+    "from the goals", 0 home win, 1 draw, 2 away win.
     """
 
     teams: tuple[str, ...]
@@ -91,18 +102,34 @@ class SeasonResults:
     away: np.ndarray
     home_goals: np.ndarray
     away_goals: np.ndarray
+    outcome: np.ndarray | None = None
 
     @classmethod
     def from_matches(cls, matches: pd.DataFrame, teams: Sequence[str] | None = None) -> "SeasonResults":
         played = matches.loc[matches["played"].fillna(False).astype(bool)]
         names = tuple(sorted(teams if teams is not None else set(played["home_team"]) | set(played["away_team"])))
         index = {team: i for i, team in enumerate(names)}
+        outcome = None
+        if "forced_outcome" in played.columns and played["forced_outcome"].notna().any():
+            outcome = played["forced_outcome"].fillna(-1).to_numpy(dtype=int)
         return cls(
             teams=names,
             home=played["home_team"].map(index).to_numpy(dtype=int),
             away=played["away_team"].map(index).to_numpy(dtype=int),
             home_goals=played["home_goals"].to_numpy(dtype=int),
             away_goals=played["away_goals"].to_numpy(dtype=int),
+            outcome=outcome,
+        )
+
+    def subset(self, keep: np.ndarray) -> "SeasonResults":
+        """The same season restricted to the matches where ``keep`` is True."""
+        return SeasonResults(
+            teams=self.teams,
+            home=self.home[keep],
+            away=self.away[keep],
+            home_goals=self.home_goals[keep],
+            away_goals=self.away_goals[keep],
+            outcome=None if self.outcome is None else self.outcome[keep],
         )
 
     @property
@@ -127,6 +154,11 @@ def season_totals(results: SeasonResults, points: PointsSystem) -> dict[str, np.
         return np.bincount(h, home_values, n) + np.bincount(a, away_values, n)
 
     home_win, draw, away_win = (hg > ag), (hg == ag), (hg < ag)
+    if results.outcome is not None:
+        forced = results.outcome >= 0
+        home_win = np.where(forced, results.outcome == 0, home_win)
+        draw = np.where(forced, results.outcome == 1, draw)
+        away_win = np.where(forced, results.outcome == 2, away_win)
     totals = {
         "played": per_team(np.ones_like(hg), np.ones_like(ag)),
         "wins": per_team(home_win, away_win),
@@ -135,11 +167,28 @@ def season_totals(results: SeasonResults, points: PointsSystem) -> dict[str, np.
         "goals_for": per_team(hg, ag),
         "goals_against": per_team(ag, hg),
         "away_goals": np.bincount(a, ag, n),
-        "points": per_team(result_points(hg, ag, points), result_points(ag, hg, points)),
+        "away_wins": np.bincount(a, away_win, n),
+        "points": per_team(
+            np.where(home_win, points.win, np.where(draw, points.draw, points.loss)),
+            np.where(away_win, points.win, np.where(draw, points.draw, points.loss)),
+        ),
     }
     totals = {key: value.astype(int) for key, value in totals.items()}
     totals["goal_difference"] = totals["goals_for"] - totals["goals_against"]
     return totals
+
+
+def _apply_recorded_playoffs(order, results, totals, config, season) -> list[int]:
+    """Swap two clubs level on points at a play-off position if the lower one won the play-off."""
+    order = list(order)
+    for playoff in config.position_playoffs:
+        upper, lower = order[playoff.position - 1], order[playoff.position]
+        if totals["points"][upper] != totals["points"][lower]:
+            continue
+        winner = recorded_playoff_winner(config.id, season, results.teams[upper], results.teams[lower])
+        if winner == results.teams[lower]:
+            order[playoff.position - 1], order[playoff.position] = lower, upper
+    return order
 
 
 def with_points_adjustment(totals: Mapping[str, np.ndarray], adjustment: np.ndarray) -> dict[str, np.ndarray]:
@@ -169,6 +218,8 @@ def _season_criterion(name: str, totals: Mapping[str, np.ndarray]) -> np.ndarray
         return -totals["goals_against"]  # fewer conceded is better
     if name == "wins":
         return totals["wins"]
+    if name == "away_wins":
+        return totals["away_wins"]
     if name == "away_goals_scored":
         return totals["away_goals"]
     raise KeyError(name)
@@ -181,13 +232,7 @@ def _head_to_head_values(
     members = np.zeros(results.n_teams, dtype=bool)
     members[list(group)] = True
     among = members[results.home] & members[results.away]
-    mini = SeasonResults(
-        teams=results.teams,
-        home=results.home[among],
-        away=results.away[among],
-        home_goals=results.home_goals[among],
-        away_goals=results.away_goals[among],
-    )
+    mini = results.subset(among)
     totals = season_totals(mini, points)
     column = {
         "head_to_head_points": totals["points"],
@@ -218,6 +263,12 @@ class Tiebreaker:
     reapply_head_to_head: bool = False
     rng: np.random.Generator | None = None
     random_tiebreaks: bool = True
+    play_match: PlayMatch | None = None
+    #: Some leagues (France) use head-to-head criteria only when every club in
+    #: the tied group has met every other the full number of times; otherwise
+    #: they move on to the next criterion. Matters mid-season, and in a season
+    #: stopped early; never in a complete season.
+    needs_all_meetings: int = 0
 
     def __post_init__(self) -> None:
         unknown = [c for c in self.chain if c not in KNOWN_TIEBREAKERS]
@@ -233,16 +284,28 @@ class Tiebreaker:
             chain=config.tiebreakers,
             points=config.points,
             reapply_head_to_head=config.head_to_head_reapply,
+            needs_all_meetings=config.league.meetings_per_pair
+            if config.head_to_head_needs_all_meetings and config.league else 0,
             **kwargs,
         )
 
     # -- public ---------------------------------------------------------------
-    def rank(self, results: SeasonResults, totals: Mapping[str, np.ndarray] | None = None) -> list[int]:
-        """Team indices from first to last."""
+    def rank(
+        self,
+        results: SeasonResults,
+        totals: Mapping[str, np.ndarray] | None = None,
+        primary: np.ndarray | None = None,
+    ) -> list[int]:
+        """Team indices from first to last.
+
+        ``primary`` is what clubs are ordered by before any tiebreaker: points
+        by default, points per match for a season stopped early.
+        """
         totals = totals if totals is not None else season_totals(results, self.points)
-        by_points = sorted(range(results.n_teams), key=lambda team: -totals["points"][team])
+        key = totals["points"] if primary is None else primary
+        by_key = sorted(range(results.n_teams), key=lambda team: -key[team])
         ranked: list[int] = []
-        for _, group in groupby(by_points, key=lambda team: totals["points"][team]):
+        for _, group in groupby(by_key, key=lambda team: key[team]):
             ranked.extend(self.resolve(list(group), results, totals, start=0))
         return ranked
 
@@ -288,6 +351,8 @@ class Tiebreaker:
         end = start
         while end < len(self.chain) and self.chain[end] in HEAD_TO_HEAD_CRITERIA:
             end += 1
+        if self.needs_all_meetings and not self._all_met(group, results):
+            return self.resolve(group, results, totals, start=end)
 
         partition = [list(group)]
         for name in self.chain[start:end]:
@@ -307,6 +372,14 @@ class Tiebreaker:
                 out.extend(self.resolve(part, results, totals, start=end))
         return out
 
+    def _all_met(self, group: Sequence[int], results: SeasonResults) -> bool:
+        """Has every pair in ``group`` played each other the full number of times?"""
+        members = np.zeros(results.n_teams, dtype=bool)
+        members[list(group)] = True
+        among = members[results.home] & members[results.away]
+        pairs = len(group) * (len(group) - 1) // 2
+        return int(among.sum()) >= pairs * self.needs_all_meetings
+
     @staticmethod
     def _split(group: Sequence[int], values: Mapping[int, float]) -> list[list[int]]:
         """Order ``group`` by ``values`` (highest first) and cut it into runs of equal value."""
@@ -320,7 +393,13 @@ class Tiebreaker:
         if name in SEASON_CRITERIA:
             column = _season_criterion(name, totals)
             return {team: float(column[team]) for team in group}
-        if name == "coin_flip" and self.random_tiebreaks:
+        if name == "playoff_match" and self.random_tiebreaks and self.play_match and len(group) == 2:
+            first, second = group
+            winner = self.play_match(results.teams[first], results.teams[second], True)
+            return {first: float(results.teams[first] == winner), second: float(results.teams[second] == winner)}
+        if name in {"coin_flip", "playoff_match"} and self.random_tiebreaks:
+            # A play-off between three or more clubs (never scheduled in
+            # practice) falls back to a random order.
             draws = self.rng.random(len(group))
             return {team: float(draw) for team, draw in zip(group, draws)}
         # alphabetical (or a coin flip shown as alphabetical): earlier name ranks higher
@@ -358,6 +437,13 @@ def league_table(
 ) -> pd.DataFrame:
     """The table for ``season`` from its played matches, with full tiebreakers.
 
+    Uses the rules in force that season (``config.for_season``): its points
+    system, tiebreakers and, for a season stopped early, points per match.
+    Results awarded off the pitch (``configs/awarded_results.yaml``) replace the
+    played score.
+    A position play-off that was actually played (``configs/playoff_results.yaml``)
+    decides the places it was played for.
+
     Points deductions (``configs/points_deductions.yaml``, or ``deductions``)
     are applied to the points total; with ``as_of``, only those dated before it,
     so a table rebuilt at a past date shows what the official one showed then.
@@ -367,7 +453,9 @@ def league_table(
     coin flip, as official tables are during a season.
     """
     season = season or config.current_season
+    config = config.for_season(season)
     rows = matches.loc[matches["season"].astype(str) == season]
+    rows = apply_awarded_results(rows, config.id, as_of=as_of)
     if teams is None:
         teams = sorted(set(rows["home_team"]) | set(rows["away_team"]))
     results = SeasonResults.from_matches(rows, teams)
@@ -375,7 +463,11 @@ def league_table(
     totals = season_totals(results, config.points)
     adjustment = points_adjustments(config.id, season, results.teams, as_of=as_of, deductions=deductions)
     totals = with_points_adjustment(totals, adjustment)
-    order = tiebreaker.rank(results, totals)
+    primary = None
+    if config.ranking == "points_per_match":
+        primary = totals["points"] / np.maximum(totals["played"], 1)
+    order = tiebreaker.rank(results, totals, primary)
+    order = _apply_recorded_playoffs(order, results, totals, config, season)
 
     table = pd.DataFrame(
         {

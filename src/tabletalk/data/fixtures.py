@@ -44,6 +44,7 @@ def remaining_fixtures(
     schedule, so later work can be round-aware.
     """
     season = season or config.current_season
+    config = config.for_season(season)
     rows = season_rows(matches, season)
     upcoming = rows.loc[~rows["played"].fillna(False).astype(bool)]
     if upcoming.empty and not rows.empty:
@@ -63,6 +64,7 @@ def season_progress(
 ) -> dict[str, int]:
     """How far through the season we are, counted from the schedule itself."""
     season = season or config.current_season
+    config = config.for_season(season)
     rows = season_rows(matches, season)
     played = int(rows["played"].fillna(False).astype(bool).sum())
     scheduled = len(rows)
@@ -81,7 +83,7 @@ def check_fixture_list(
     than raising, so ``tabletalk data check`` can report everything at once.
     """
     season = season or config.current_season
-    league = config.league
+    league = config.for_season(season).league
     rows = season_rows(matches, season)
     problems: list[str] = []
 

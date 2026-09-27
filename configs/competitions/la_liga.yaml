@@ -1,0 +1,164 @@
+# ---------------------------------------------------------------------------
+# La Liga (Spain, men): Campeonato Nacional de Liga de Primera División.
+#
+# Added in Phase 2 by config and data only. Rules checked 2026-09-27 against the
+# RFEF's "Normas Reguladoras y Bases de Competición" for Primera and Segunda
+# División (editions for 2019-20, 2020-21 and 2025-26). See `verification`.
+# ---------------------------------------------------------------------------
+
+id: la_liga
+name: La Liga
+country: Spain
+confederation: UEFA
+gender: men
+
+format: league
+
+league:
+  n_teams: 20            # Bases de Competición 2025-26, art. 6
+  meetings_per_pair: 2
+  matches_per_team: 38   # art. 7
+  neutral_venue: false
+
+points:                  # art. 7
+  win: 3
+  draw: 1
+  loss: 0
+
+# Bases de Competición 2025-26, art. 10 (Reglamento General art. 201 in older
+# editions). Head-to-head comes FIRST in Spain, before overall goal difference.
+#
+# Two clubs level: 1) goal difference in their meetings, 2) overall goal
+# difference, 3) goals scored, 4) fair-play ranking, 5) play-off on a neutral
+# ground.
+# Three or more: 1) points in a mini-league of their meetings, 2) goal
+# difference in those meetings, 3) overall goal difference, 4) goals scored,
+# 5) fair play, 6) play-off on a neutral ground.
+#
+# One chain covers both: for two clubs, head-to-head points then head-to-head
+# goal difference always gives the same order as head-to-head goal difference
+# alone (a club that took more points from the two meetings also has the better
+# goal difference in them). Fair play and the play-off are not modelled: see
+# assumptions A1 and A2.
+tiebreakers:
+  - head_to_head_points
+  - head_to_head_goal_difference
+  - goal_difference
+  - goals_scored
+  - coin_flip
+
+# The 2025-26 text: if the mini-league leaves exactly two clubs level, criterion
+# 2 is applied "between them"; implemented as UEFA-style re-application. See A3.
+head_to_head_reapply: true
+
+zones:
+  - id: title
+    label: Win the title
+    positions: [1]
+  - id: top_four
+    label: Top four
+    positions: [1, 2, 3, 4]
+  - id: top_five
+    label: Top five
+    positions: [1, 2, 3, 4, 5]
+  - id: top_half
+    label: Top half
+    positions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  - id: relegation
+    label: Relegation to Segunda División
+    positions: [18, 19, 20]   # art. 8.7; no relegation play-off in Primera
+
+data:
+  current_season: "2026-27"
+  sources:
+    - loader: football_data_uk
+      role: results
+      params:
+        division: SP1
+        odds_preference: [PSC, AvgC]
+        seasons: ["2010-11", "2011-12", "2012-13", "2013-14", "2014-15", "2015-16",
+                  "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22",
+                  "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"]
+    - loader: openfootball
+      role: fixtures
+      params:
+        league_code: es.1
+        seasons: ["2026-27"]
+        ref: master
+    # Segunda División results: model input only, never tabulated.
+    - loader: football_data_uk
+      role: context
+      params:
+        division: SP2
+        competition: la_liga_2
+        seasons: ["2010-11", "2011-12", "2012-13", "2013-14", "2014-15", "2015-16",
+                  "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22",
+                  "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"]
+
+# Premier League settings, not re-tuned for Spain.
+model:
+  time_decay_half_life_days: 365
+  min_match_weight: 0.001
+  max_goals: 10
+  rating_prior_sd: 1.0
+  promoted_teams:
+    # Clubs promoted through Segunda's play-off count as promoted, like the
+    # direct ones: they are the clubs not in last season's Primera.
+    strategy: prior
+    min_seasons_for_prior: 1
+
+evaluation:
+  exclude_seasons:
+    "2019-20": >-
+      COVID: suspended in March 2020; the last eleven matchdays were played
+      behind closed doors from 11 June 2020.
+    "2020-21": >-
+      COVID: played behind closed doors, apart from small, capped crowds in a
+      few regions in the final matchdays.
+  split:
+    tune: ["2012-13", "2013-14", "2014-15", "2015-16", "2016-17", "2017-18"]
+    report: ["2018-19", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26"]
+
+simulation:
+  n_simulations: 10000
+  random_seed: 20260928
+  strength_uncertainty:
+    enabled: true
+    parameter_uncertainty: true
+    drift: none
+
+verification:
+  checked_on: "2026-09-27"
+  sources:
+    bases_2025_26: https://rfef.es/sites/default/files/2025-06/1._CNL_Primera_y_Segunda_Division.pdf
+    bases_2020_21: https://rfef.es/sites/default/files/pdf/circulares/primera_y_segunda_division.pdf
+    bases_2019_20: https://rfef.es/sites/default/files/images19/001_primera_y_segunda_division.pdf
+  confirmed:
+    - "20 clubs, 38 matchdays, 3/1/0 points (Bases 2025-26 arts. 6-7)."
+    - "18th, 19th and 20th relegated; no relegation play-off (art. 8.7; same in 2019-20 and 2020-21)."
+    - "Tiebreakers head-to-head first, as listed above (art. 10; the same criteria in the 2019-20 and 2020-21 editions)."
+    - "Final tables rebuilt from the data match Wikipedia's official tables, order and points, in every season 2010-11 to 2025-26 (tests/test_la_liga.py), so no points deduction was applied in any of them."
+  assumptions:
+    - id: A1
+      text: >-
+        The fair-play ranking needs card and sanction data that the results
+        source does not carry, so it is not modelled: after goals scored, ties
+        go to a coin flip. Clubs level on head-to-head record, goal difference
+        and goals scored are rare.
+    - id: A2
+      text: >-
+        The final criterion, a play-off on a neutral ground, is approximated by
+        the same coin flip (as for the Premier League and the Bundesliga).
+    - id: A3
+      text: >-
+        Three or more clubs level: both head-to-head criteria are applied to the
+        whole group first, then re-applied to any smaller group still level
+        (UEFA style). The 2025-26 text can also be read as returning to the pair
+        straight after mini-league points; the 2019-20 and 2020-21 texts say
+        neither. In 2010-11 to 2025-26 there were 14 three-way ties on points and
+        the two readings never gave a different order; every final table matches
+        the official one with the rule as implemented.
+    - id: A4
+      text: >-
+        Zones are league positions only; European places depend on the Copa del
+        Rey winner and UEFA coefficients.

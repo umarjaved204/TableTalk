@@ -50,7 +50,7 @@ def cmd_ratings(args: argparse.Namespace) -> int:
     if fit.strategy == "prior" and fit.prior is not None:
         print(fit.prior.describe())
     elif fit.strategy == "second_tier":
-        print("rated jointly with the Championship (context data); see division offsets above")
+        print("rated jointly with the second tier (context data); see division offsets above")
     else:
         print("no special handling: promoted teams start as an average team")
 
@@ -227,9 +227,20 @@ def cmd_evaluate_seasons(args: argparse.Namespace) -> int:
     print("Brier score skill (% better than the baseline; higher is better)")
     for baseline in ("uniform", "persistence"):
         pivot = zones.pivot(index="checkpoint", columns="zone", values=f"skill_vs_{baseline}_pct")
-        pivot = pivot.loc[zones["checkpoint"].unique(), [zone.id for zone in config.zones]]
+        # Zones can differ between seasons (e.g. a relegation play-off place
+        # that some seasons did not have): show every zone that occurs.
+        zone_order = list(dict.fromkeys(
+            zone.id for season in seasons for zone in config.for_season(season).zones
+        ))
+        pivot = pivot.loc[zones["checkpoint"].unique(), [z for z in zone_order if z in pivot.columns]]
         print(f"\nvs {baseline}" + (" (knows nothing)" if baseline == "uniform" else " (the table as it stands)"))
         print(pivot.round(1).to_string())
+    # A % improvement over a perfect baseline is undefined (NaN above). The
+    # model cannot beat a perfect forecast, so say so rather than leave a blank.
+    perfect = zones.loc[zones["brier_persistence"] == 0]
+    for row in perfect.itertuples(index=False):
+        print(f"  NaN = the table as it stands was exactly right ({row.zone}, {row.checkpoint}); "
+              f"the model's Brier score there is {row.brier_model:.4f}, i.e. it did worse")
 
     print("\nfinishing position (lower is better): ranked probability score, and average error in places")
     print(backtest.position_summary().round(3).to_string(index=False))
@@ -481,7 +492,7 @@ def cmd_simulate(args: argparse.Namespace) -> int:
             "pts": summary["points_now"],
             "exp pts": summary["expected_points"].round(1),
             "range (10-90%)": [f"{lo:.0f}-{hi:.0f}" for lo, hi in zip(summary["points_p10"], summary["points_p90"])],
-            **{zone.id.replace("_", " "): summary[zone.id].map(_percent) for zone in config.zones},
+            **{zone.id.replace("_", " "): summary[zone.id].map(_percent) for zone in config.for_season(season).zones},
         },
         index=summary.index,
     )
