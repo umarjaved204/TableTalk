@@ -11,11 +11,13 @@ from typing import Any, Type
 
 from ...config import CompetitionConfig, DataSource
 from .base import MatchLoader
+from .football_data_org import FootballDataOrgLoader
 from .football_data_uk import FootballDataUKLoader
 from .openfootball import OpenFootballLoader
 
 _REGISTRY: dict[str, Type[MatchLoader]] = {
     FootballDataUKLoader.name: FootballDataUKLoader,
+    FootballDataOrgLoader.name: FootballDataOrgLoader,
     OpenFootballLoader.name: OpenFootballLoader,
 }
 
@@ -68,6 +70,7 @@ def build_loaders(
 __all__ = [
     "MatchLoader",
     "FootballDataUKLoader",
+    "FootballDataOrgLoader",
     "OpenFootballLoader",
     "available_loaders",
     "register_loader",

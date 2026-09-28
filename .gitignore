@@ -22,3 +22,6 @@ notebooks/*.html
 
 # Ad-hoc exports from `--save` written to the project root.
 /*.csv
+
+# Local secrets (e.g. FOOTBALL_DATA_API_KEY). Never commit an API key.
+.env

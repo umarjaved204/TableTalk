@@ -5,6 +5,7 @@ Phase 1 commands:
     python -m tabletalk competitions
     python -m tabletalk data fetch --competition premier_league [--refresh]
     python -m tabletalk data check --competition premier_league
+    python -m tabletalk data compare-fixtures --all
     python -m tabletalk ratings    --competition premier_league [--strategy prior]
     python -m tabletalk evaluate   --competition premier_league [--seasons 2024-25 2025-26]
     python -m tabletalk simulate   --competition premier_league [--n-simulations 10000]
@@ -83,6 +84,76 @@ def cmd_data_check(args: argparse.Namespace) -> int:
     _report_team_history(matches, config)
     _report_assumptions(config)
     return 1 if unknown else 0
+
+
+def cmd_data_compare_fixtures(args: argparse.Namespace) -> int:
+    """Which source should be primary for this season's fixtures?
+
+    Measures the criteria in reports/protocols/step1-fixture-source.md and
+    applies its decision rule (written before this was first run).
+    """
+    from .data.source_comparison import decide, kickoff_disagreements, score_source
+
+    ids = available_competitions() if args.all else [args.competition]
+    scores = {}
+    for competition_id in ids:
+        config = load_competition(competition_id)
+        season = config.current_season
+        loaders = {
+            loader.name: loader for loader in build_loaders(config)
+            if loader.name in ("openfootball", "football_data_org")
+        }
+        reference = next(
+            (loader for loader in build_loaders(config, role="results") if loader.name == "football_data_uk"),
+            None,
+        )
+        missing = [name for name in ("openfootball", "football_data_org") if name not in loaders]
+        if missing or reference is None:
+            raise ConfigError(
+                f"{config.id}: compare-fixtures needs openfootball, football_data_org and "
+                f"football_data_uk sources in the config; missing {missing or ['football_data_uk']}"
+            )
+        results = reference.load(refresh=args.refresh)
+        frames = {name: loaders[name].load(refresh=args.refresh) for name in ("openfootball", "football_data_org")}
+        pair = tuple(
+            score_source(name, frames[name], results, config, season,
+                         kickoffs_in_utc=loaders[name].kickoff_times_in_utc)
+            for name in ("openfootball", "football_data_org")
+        )
+        scores[config.id] = pair
+        _print_comparison(config, season, pair, kickoff_disagreements(
+            frames["openfootball"], frames["football_data_org"], season))
+
+    primary, reasons = decide(scores)
+    print("\n=== decision (rule in reports/protocols/step1-fixture-source.md) ===")
+    for reason in reasons:
+        print(f"  {reason}")
+    print(f"primary fixture source: {primary}")
+    return 0
+
+
+def _print_comparison(config, season, pair, disagreements) -> None:
+    print(f"\n=== {config.name} {season} ===")
+    rows = [
+        ("matches listed", *(score.matches for score in pair)),
+        ("C1 schedule passes checks", *("yes" if s.c1_pass else f"NO ({len(s.c1_problems)})" for s in pair)),
+        ("C2 played-date mismatches", *(f"{len(s.c2_mismatches)} of {s.c2_compared}" for s in pair)),
+        ("C3 confirmed UTC kick-offs", *(f"{s.c3_confirmed_utc} of {s.c3_upcoming}" for s in pair)),
+        ("C4 marks postponements", *("yes" if s.c4_explicit_postponements else "no" for s in pair)),
+        ("postponed right now", *(s.postponed_now for s in pair)),
+    ]
+    print(pd.DataFrame(rows, columns=["criterion", *(s.source for s in pair)]).to_string(index=False))
+    for score in pair:
+        for problem in score.c1_problems:
+            print(f"  C1 {score.source}: {problem}")
+        if len(score.c2_mismatches):
+            print(f"  C2 {score.source}, first date mismatches:")
+            print(score.c2_mismatches.head(10).to_string(index=False))
+    print(f"upcoming matches where the UTC kick-offs differ: {len(disagreements)} "
+          "(openfootball converted from local time; recheck once played)")
+    if len(disagreements):
+        print(disagreements.rename(columns={"kickoff_a": "openfootball", "kickoff_b": "football_data_org"})
+              .head(10).to_string(index=False))
 
 
 def _report_config(config) -> None:
@@ -221,6 +292,14 @@ def build_parser() -> argparse.ArgumentParser:
     _add_competition_arg(check)
     check.add_argument("--refresh", action="store_true", help="re-download instead of using the raw cache")
     check.set_defaults(func=cmd_data_check)
+
+    compare = data_sub.add_parser(
+        "compare-fixtures", help="compare openfootball and football-data.org as the fixture source"
+    )
+    _add_competition_arg(compare)
+    compare.add_argument("--all", action="store_true", help="all configured competitions")
+    compare.add_argument("--refresh", action="store_true", help="re-download instead of using the raw cache")
+    compare.set_defaults(func=cmd_data_compare_fixtures)
 
     add_model_commands(subparsers, _add_competition_arg)
 

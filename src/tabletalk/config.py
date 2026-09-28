@@ -73,9 +73,13 @@ SEASON_RULE_KEYS: tuple[str, ...] = (
 #:              ratings and never simulated or tabulated (e.g. the second tier,
 #:              so promoted teams arrive with a rating). Rows carry their own
 #:              competition id, set by the source's `competition` param.
+#:   check    - a second opinion: its scores must agree with the results (a
+#:              mismatch stops the run), but neither its scores nor its schedule
+#:              are used for anything else.
 #: A competition needs at least one results source, and one fixtures source to be
-#: simulable mid-season.
-KNOWN_SOURCE_ROLES: frozenset[str] = frozenset({"results", "fixtures", "context"})
+#: simulable mid-season. At most one source may be the fixture list: two
+#: schedules would list every match twice.
+KNOWN_SOURCE_ROLES: frozenset[str] = frozenset({"results", "fixtures", "context", "check"})
 
 #: Competition formats, each handled by one simulator.
 KNOWN_FORMATS: frozenset[str] = frozenset({"league", "knockout", "hybrid"})
@@ -412,6 +416,11 @@ def _build_config(raw: Mapping[str, Any], path: Path, *, top_level: bool = True)
         raise ConfigError(f"{path}: no data sources configured")
     if not any(source.role == "results" for source in sources):
         raise ConfigError(f"{path}: at least one data source must have role `results`")
+    if sum(source.role == "fixtures" for source in sources) > 1:
+        raise ConfigError(
+            f"{path}: more than one data source has role `fixtures`; list one "
+            "fixture list and give any other schedule source role `check`"
+        )
     current_season = str(data_raw.get("current_season") or "")
     if not current_season:
         raise ConfigError(f"{path}: data.current_season is required")

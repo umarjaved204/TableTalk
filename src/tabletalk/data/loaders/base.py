@@ -31,6 +31,10 @@ class MatchLoader(ABC):
     #: Registry key used in competition configs (``data.sources[].loader``).
     name: str = ""
 
+    #: True when the source itself states kick-off times in UTC (so a
+    #: ``kickoff_utc`` column needs no timezone assumption).
+    kickoff_times_in_utc: bool = False
+
     def __init__(
         self,
         competition: str,

@@ -39,8 +39,13 @@ MATCH_COLUMNS: tuple[str, ...] = (
 
 #: Columns a source may add. Carried through if present, never required.
 #: ``matchday`` is the round the fixture list puts a match in; ``stage`` matters
-#: from Phase 3 on (league phase / quarter-final / final).
-OPTIONAL_COLUMNS: tuple[str, ...] = ("matchday", "stage", "source")
+#: from Phase 3 on (league phase / quarter-final / final). A live-season source
+#: may add ``kickoff_utc`` (tz-aware UTC timestamp), ``status`` (the source's
+#: own match status, e.g. POSTPONED) and ``source_id`` (the source's match id,
+#: stable when a match is rescheduled).
+OPTIONAL_COLUMNS: tuple[str, ...] = (
+    "matchday", "stage", "source", "kickoff_utc", "status", "source_id"
+)
 
 _DTYPES: dict[str, str] = {
     "competition": "string",

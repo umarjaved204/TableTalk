@@ -19,7 +19,7 @@ import pandas as pd
 from ..config import CompetitionConfig, load_competition
 from ..paths import PROCESSED_DATA_DIR, ensure_dir
 from .loaders import build_loaders
-from .reconcile import combine_results_and_fixtures
+from .reconcile import check_scores_agree, combine_results_and_fixtures, merge_results_sources
 from .schema import empty_match_frame, validate_matches
 
 logger = logging.getLogger(__name__)
@@ -54,6 +54,13 @@ def load_matches(
     fixtures = _load_role(config, "fixtures", refresh=refresh, strict_names=strict_names)
 
     results = validate_matches(results, source=f"{config.id} results")
+    # Cross-check sources: their scores must agree with the results, nothing more.
+    checks = [
+        (loader.name, loader.load(refresh=refresh, strict_names=strict_names))
+        for loader in build_loaders(config, role="check")
+    ]
+    if checks:
+        check_scores_agree([("results", results), *checks], label=f"{config.id} cross-check")
     if fixtures.empty:
         logger.warning(
             "%s: no `role: fixtures` data source, so no upcoming fixtures are loaded; "
@@ -101,10 +108,13 @@ def _load_role(
     for loader in build_loaders(config, role=role):
         frame = loader.load(refresh=refresh, strict_names=strict_names)
         logger.info("%s: loaded %d %s rows via %s", config.id, len(frame), role, loader.name)
-        frames.append(frame)
+        frames.append((loader.name, frame))
     if not frames:
         return empty_match_frame()
-    stacked = pd.concat(frames, ignore_index=True)
+    if role == "results":
+        # Overlapping results sources must agree on every score they share.
+        return merge_results_sources(frames, label=f"{config.id} results")
+    stacked = pd.concat([frame for _, frame in frames], ignore_index=True)
     # Sources with the same role can overlap; the first one in config order wins.
     before = len(stacked)
     stacked = stacked.drop_duplicates(

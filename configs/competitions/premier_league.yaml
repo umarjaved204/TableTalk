@@ -117,16 +117,42 @@ data:
           - "2024-25"
           - "2025-26"
           - "2026-27"
-    # The published 2026-27 fixture list, with real dates. Past seasons need no
-    # schedule, so only the current season is listed here.
-    - loader: openfootball
+    # Current-season results from the football-data.org API (key from the
+    # FOOTBALL_DATA_API_KEY environment variable). Can be ahead of
+    # football-data.co.uk. Wherever both have a result, the scores must agree
+    # or the run stops (tabletalk.data.reconcile). Code from the API's lookup
+    # table, checked 2026-09-28.
+    - loader: football_data_org
+      role: results
+      params:
+        competition_code: PL
+        seasons:
+          - "2026-27"
+    # The fixture list: the same API, read once per run (the response is
+    # cached in memory). Primary for the schedule by the rule in
+    # reports/protocols/step1-fixture-source.md (2026-09-28): UTC kick-offs,
+    # explicit postponements, same played-match dates as openfootball.
+    - loader: football_data_org
       role: fixtures
+      params:
+        competition_code: PL
+        seasons:
+          - "2026-27"
+    # openfootball, formerly the fixture list, kept as a cross-check: its
+    # scores must agree with the results or the run stops. Past seasons need no
+    # schedule, so only the current season is listed for either.
+    - loader: openfootball
+      role: check
       params:
         league_code: en.1
         seasons:
           - "2026-27"
         # `ref` can be pinned to a commit SHA for a fully reproducible run.
         ref: master
+        # The file's kick-off times are local with no zone; this turns them into
+        # UTC (assumption: they are the league's local time; checked against
+        # football-data.org's UTC times by `data compare-fixtures`).
+        timezone: Europe/London
     # Championship results: never simulated or tabulated, only used by the match
     # model so that promoted teams arrive with a rating earned in the second
     # tier (promoted-team strategy `second_tier`, below).

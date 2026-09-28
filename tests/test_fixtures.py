@@ -20,7 +20,11 @@ from tabletalk.data.fixtures import (
     season_progress,
 )
 from tabletalk.data.loaders.openfootball import OpenFootballLoader
-from tabletalk.data.reconcile import ReconciliationError, combine_results_and_fixtures
+from tabletalk.data.reconcile import (
+    ReconciliationError,
+    SourceMismatchError,
+    combine_results_and_fixtures,
+)
 from tabletalk.data.seasons import Season
 
 # ---------------------------------------------------------------------------
@@ -114,17 +118,35 @@ def test_reconcile_replaces_scheduled_rows_with_results(four_team_config):
     assert ("B", "A") in pairs and ("D", "C") in pairs
 
 
-def test_reconcile_keeps_the_results_source_score(four_team_config):
-    """The fixture source's own scores are ignored, so scores have one owner."""
-    results = make_matches([("A", "B", 2, 1)])
+def _schedule_with_score(home_goals: int, away_goals: int) -> pd.DataFrame:
     schedule = _full_schedule()
     target = (schedule["home_team"] == "A") & (schedule["away_team"] == "B")
-    schedule.loc[target, ["home_goals", "away_goals", "played"]] = [9, 9, True]
+    schedule.loc[target, ["home_goals", "away_goals", "played"]] = [home_goals, away_goals, True]
+    return schedule
 
-    combined = combine_results_and_fixtures(results, schedule, four_team_config)
+
+def test_reconcile_accepts_a_fixture_list_score_that_agrees(four_team_config):
+    results = make_matches([("A", "B", 2, 1)])
+    combined = combine_results_and_fixtures(results, _schedule_with_score(2, 1), four_team_config)
     played = combined.loc[combined["played"].astype(bool)]
     assert len(played) == 1
     assert (played.iloc[0]["home_goals"], played.iloc[0]["away_goals"]) == (2, 1)
+
+
+def test_reconcile_stops_when_the_fixture_list_score_disagrees(four_team_config):
+    """Two sources, two different scores: one is wrong, so nothing is published."""
+    results = make_matches([("A", "B", 2, 1)])
+    with pytest.raises(SourceMismatchError, match="A v B: results 2-1, fixtures 9-9"):
+        combine_results_and_fixtures(results, _schedule_with_score(9, 9), four_team_config)
+
+
+def test_reconcile_ignores_a_result_only_one_source_has(four_team_config):
+    """A lagging source is not a disagreement: a score only the fixture list has
+    is not used (scores come from results sources) and does not stop the run."""
+    combined = combine_results_and_fixtures(
+        make_matches([("C", "D", 0, 0)]), _schedule_with_score(3, 3), four_team_config
+    )
+    assert int(combined["played"].sum()) == 1
 
 
 def test_reconcile_carries_matchday_onto_results(four_team_config):

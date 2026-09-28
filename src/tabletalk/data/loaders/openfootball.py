@@ -73,6 +73,11 @@ class OpenFootballLoader(MatchLoader):
             directory names use the same convention.
         ref: git ref to fetch from (default ``master``). Pin a commit SHA for a
             fully reproducible run.
+        timezone: IANA timezone of the kick-off times in the file, e.g.
+            ``Europe/London``. The files give local times with no zone; with
+            this set, the loader adds a ``kickoff_utc`` column. Assumption,
+            checked against football-data.org's UTC times: the times are the
+            league's local time.
     """
 
     name = "openfootball"
@@ -91,6 +96,7 @@ class OpenFootballLoader(MatchLoader):
         cache_dir = self.params.get("cache_dir")
         self.cache_dir: Path = Path(cache_dir) if cache_dir else RAW_DATA_DIR / self.name
         self.timeout: int = int(self.params.get("timeout_seconds", 30))
+        self.timezone: str | None = self.params.get("timezone")
 
     # -- fetching -----------------------------------------------------------
     def json_url(self, season: Season) -> str:
@@ -119,6 +125,7 @@ class OpenFootballLoader(MatchLoader):
                 records.append(
                     {
                         "date": match.get("date"),
+                        "time": match.get("time"),
                         "season": season.label,
                         "home_team": match.get("team1"),
                         "away_team": match.get("team2"),
@@ -168,6 +175,8 @@ class OpenFootballLoader(MatchLoader):
                 "source": self.name,
             }
         )
+        if self.timezone:
+            out["kickoff_utc"] = _kickoff_utc(frame["date"], frame["time"], self.timezone)
 
         undated = out["date"].isna() & out["played"].fillna(False).astype(bool)
         if int(undated.sum()):
@@ -178,6 +187,16 @@ class OpenFootballLoader(MatchLoader):
             )
             out = out.loc[~undated]
         return out.reset_index(drop=True)
+
+
+def _kickoff_utc(dates: pd.Series, times: pd.Series, timezone: str) -> pd.Series:
+    """Local date + local time -> UTC timestamp; NaT where the time is missing."""
+    local = pd.to_datetime(
+        dates.astype("string") + " " + times.astype("string"), format="%Y-%m-%d %H:%M", errors="coerce"
+    )
+    # A kick-off inside the one-hour autumn clock change would be ambiguous;
+    # none is ever scheduled then, so NaT (not a guess) is the right answer.
+    return local.dt.tz_localize(timezone, ambiguous="NaT", nonexistent="NaT").dt.tz_convert("UTC")
 
 
 def _full_time_score(score: Any) -> tuple[int | None, int | None]:
