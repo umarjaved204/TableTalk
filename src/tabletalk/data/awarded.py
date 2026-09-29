@@ -28,6 +28,11 @@ AWARDED_RESULTS_FILE = CONFIG_DIR / "awarded_results.yaml"
 _REQUIRED = ("competition", "season", "home_team", "away_team", "home_goals", "away_goals", "date_applied", "source")
 _RESULTS = {"home_win": 0, "draw": 1, "away_win": 2}
 
+#: Marks a field the nightly run's draft entry leaves for a person to fill in
+#: (see tabletalk.pipeline.awarded). An entry still containing it is refused, so
+#: a draft pasted unchecked cannot pass as a confirmed decision.
+PLACEHOLDER = "TO FILL IN"
+
 
 class AwardedResultError(ValueError):
     """Raised when the awarded-results file is malformed."""
@@ -48,6 +53,12 @@ def _load(path: Path) -> pd.DataFrame:
         missing = [key for key in _REQUIRED if entry.get(key) in (None, "")]
         if missing:
             raise AwardedResultError(f"{path}: entry {number} is missing {missing}")
+        unfilled = [key for key, value in entry.items() if PLACEHOLDER in str(value)]
+        if unfilled:
+            raise AwardedResultError(
+                f"{path}: entry {number} still has draft placeholders in {unfilled}; "
+                "check the league's decision and fill them in"
+            )
         result = entry.get("result")
         if result is not None and result not in _RESULTS:
             raise AwardedResultError(f"{path}: entry {number} result {result!r}; expected one of {sorted(_RESULTS)}")
@@ -100,4 +111,4 @@ def apply_awarded_results(
     return out
 
 
-__all__ = ["AWARDED_RESULTS_FILE", "AwardedResultError", "apply_awarded_results", "load_awarded_results"]
+__all__ = ["AWARDED_RESULTS_FILE", "PLACEHOLDER", "AwardedResultError", "apply_awarded_results", "load_awarded_results"]

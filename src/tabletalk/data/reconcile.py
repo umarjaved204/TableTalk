@@ -83,15 +83,22 @@ def check_scores_agree(sources: list[tuple[str, pd.DataFrame]], *, label: str) -
     Every disagreement is listed at once, so one run shows the whole problem.
     """
     scores: dict[str, list[tuple[str, int, int]]] = {}
+    awarded: set[str] = set()
     for name, frame in sources:
         played = _played(frame)
-        for key, home, away in zip(meeting_key(played), played["home_goals"], played["away_goals"]):
+        keys = meeting_key(played)
+        if "status" in played.columns:
+            awarded.update(keys[(played["status"] == "AWARDED").fillna(False).astype(bool)])
+        for key, home, away in zip(keys, played["home_goals"], played["away_goals"]):
             scores.setdefault(key, []).append((name, int(home), int(away)))
 
+    # A match a source marks AWARDED can legitimately differ: one source has the
+    # score played on the pitch, the other the result given by the league. Those
+    # are handled by tabletalk.pipeline.awarded, not treated as an error.
     mismatches = [
         (key, entries)
         for key, entries in sorted(scores.items())
-        if len({(home, away) for _, home, away in entries}) > 1
+        if key not in awarded and len({(home, away) for _, home, away in entries}) > 1
     ]
     if mismatches:
         lines = []

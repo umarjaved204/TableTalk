@@ -1200,13 +1200,86 @@ leagues**: each league is fitted separately, so a rating is relative to that
 league's own average, and nothing puts two leagues on one scale (a Phase 3
 problem).
 
+## How the daily update works
+
+One command runs the whole cycle for all five leagues:
+
+```
+python -m tabletalk update                      # fetch, check, refit, simulate, write
+python -m tabletalk update --no-refresh         # same, from cached data (no downloads)
+python -m tabletalk update --competitions serie_a --n-simulations 1000
+```
+
+It needs a free football-data.org API key in the environment variable
+`FOOTBALL_DATA_API_KEY` (register at football-data.org). The key is read from
+the environment only: never put it in a file in this repository.
+
+For each league, in order:
+
+1. **Fetch** the current season from every source. History comes from the local
+   cache, because it does not change: re-downloading 17 seasons every night
+   would add minutes and prove nothing.
+2. **Load and cross-check.** Current-season results come from football-data.co.uk
+   and football-data.org, the fixture list from football-data.org, and
+   openfootball is a second opinion. The run stops if a team name does not map,
+   or if two sources give different scores for the same match.
+3. **Check the fixture list** against the league's rules (teams, matches, home
+   and away).
+4. **Awarded matches** (results decided off the pitch) never stop the run. The
+   model never learns from an awarded score: it uses the score played on the
+   pitch when football-data.co.uk has it, and otherwise leaves the match out.
+   If the result is not yet in `configs/awarded_results.yaml`, the table uses
+   football-data.org's result, the snapshot is marked **provisional**, and the
+   run report contains a draft entry. A person checks the league's decision,
+   fills in the reason, date and source, and adds it. A draft pasted without
+   being filled in is refused.
+5. **Refit and simulate**, with a random seed made from the date and the league,
+   so the same day's run can be repeated exactly.
+6. **Safety checks** on the outputs (listed in [contracts/README.md](contracts/README.md#guarantees)),
+   then a check that the file matches the data contract.
+
+A league is written only if every step passed. A league that failed keeps its
+previous files, the other leagues still update, and the command exits with an
+error. A full run takes about 1.5 minutes on a laptop.
+
+**What it writes** (`outputs/`, not tracked by git; where it will be published
+is decided with the scheduling step):
+
+```
+outputs/latest/<league>.json         newest snapshot for each league
+outputs/latest/index.json            what the last run did, per league
+outputs/latest/run_report.md         the same, for a person
+outputs/history/<time>/...           every run, kept unchanged
+```
+
+The format is the **data contract**: [contracts/README.md](contracts/README.md)
+explains every field, and [contracts/snapshot.schema.json](contracts/snapshot.schema.json)
+is the machine-checkable version. The website is built against the contract,
+not against the Python code.
+
+**If a run fails:** read `outputs/latest/run_report.md` (or the command's
+output). It names the league and every problem found. Nothing needs undoing:
+the league's previous files are untouched.
+
+- *Unmapped team name*: add the name to `configs/team_aliases.yaml`, and check
+  it with `python -m tabletalk data check -c <league>`.
+- *Sources disagree about a score*: look up the real result, then wait for the
+  wrong source to be corrected. Don't override it.
+- *Fixture list does not match the config*: usually a source mid-update; run
+  again later. If it persists, compare the sources with
+  `python -m tabletalk data compare-fixtures -c <league>`.
+- *A safety check on the outputs*: this is a bug, not bad data. Don't publish
+  around it.
+
+Then run `python -m tabletalk update` again.
+
 ## Tests
 
 ```
 python -m pytest
 ```
 
-245 tests, no network access required (the integration test skips when the raw
+300 tests, no network access required (the integration test skips when the raw
 data is not cached). They cover the parts that are easy to get subtly wrong and hard
 to notice:
 

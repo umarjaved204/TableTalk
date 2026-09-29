@@ -453,6 +453,7 @@ def simulate_league(
     prior=None,
     fixed_strengths: bool = False,
     strength_uncertainty: dict | None = None,
+    model_matches: pd.DataFrame | None = None,
 ) -> LeagueSimulationResult:
     """Fit the match model and simulate the season in one call.
 
@@ -466,6 +467,12 @@ def simulate_league(
     block, or ``strength_uncertainty`` if given (same keys, for comparing
     variants); ``fixed_strengths=True`` switches it off (today's ratings for
     every run).
+
+    ``model_matches``, if given, is what the match model is fitted on, while
+    ``matches`` still builds the table and the fixtures. The two differ only
+    when a result counts in the table but is not a score played on the pitch
+    (an awarded match not yet confirmed; see tabletalk.pipeline.awarded).
+    The fitted model is returned in ``result.metadata["model"]``.
     """
     from ..model.promoted import fit_competition_model
 
@@ -477,7 +484,7 @@ def simulate_league(
         settings = config.simulation.get("strength_uncertainty") or {}
     wants_uncertainty = bool(settings) and bool(settings.get("enabled", True)) and not fixed_strengths
     fit = fit_competition_model(
-        config, matches, context, season=season, as_of=as_of, strategy=strategy, prior=prior,
+        config, matches if model_matches is None else model_matches, context, season=season, as_of=as_of, strategy=strategy, prior=prior,
         compute_covariance=wants_uncertainty and bool(settings.get("parameter_uncertainty", True)),
     )
     uncertainty = StrengthUncertainty.from_config(settings, fit.model) if wants_uncertainty else FIXED
@@ -491,5 +498,7 @@ def simulate_league(
     result = LeagueSimulator(config, fit.model, uncertainty).simulate(
         frame, season=season, n_simulations=n_simulations, seed=seed, as_of=as_of
     )
-    result.metadata.update({"strategy": fit.strategy, "promoted": fit.promoted, "uncertainty": uncertainty})
+    result.metadata.update(
+        {"strategy": fit.strategy, "promoted": fit.promoted, "uncertainty": uncertainty, "model": fit.model}
+    )
     return result

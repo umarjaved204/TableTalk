@@ -63,7 +63,7 @@ import requests
 
 from ...paths import RAW_DATA_DIR, ensure_dir
 from ..seasons import Season
-from .base import MatchLoader
+from .base import MatchLoader, should_download
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +230,7 @@ class FootballDataOrgLoader(MatchLoader):
         path = self.cache_path(season)
         if url in _RUN_CACHE:
             return _RUN_CACHE[url]
-        if refresh or not path.exists():
+        if should_download(refresh, season, path):
             content = self._download(url)
             ensure_dir(path.parent)
             path.write_bytes(content)

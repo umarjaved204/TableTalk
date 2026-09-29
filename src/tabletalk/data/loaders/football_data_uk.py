@@ -43,7 +43,7 @@ import requests
 
 from ...paths import RAW_DATA_DIR, ensure_dir
 from ..seasons import Season
-from .base import MatchLoader
+from .base import MatchLoader, should_download
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ class FootballDataUKLoader(MatchLoader):
         frames: list[pd.DataFrame] = []
         for season in self.seasons:
             path = self.cache_path(season)
-            if refresh or not path.exists():
+            if should_download(refresh, season, path):
                 self._download(season, path)
             frame = _read_csv_tolerantly(path)
             missing = [column for column in _USED_COLUMNS if column not in frame.columns]

@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tabletalk/contracts/snapshot.schema.json",
+  "title": "TableTalk league snapshot",
+  "description": "One league's state and predictions after one run of `python -m tabletalk update`. Contract version 1.0.0; see contracts/README.md for the meaning of every field and the versioning rules.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "competition", "generated_at", "data_through", "latest_result",
+               "provisional", "notices", "run", "sources", "zones", "table", "teams", "upcoming_matches"],
+  "$defs": {
+    "probability": {"type": "number", "minimum": 0, "maximum": 1},
+    "date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+    "utc_time": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+    "team": {"type": "string", "minLength": 1}
+  },
+  "properties": {
+    "contract_version": {"const": "1.0.0"},
+    "competition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "country", "season"],
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "country": {"type": "string"},
+        "season": {"type": "string", "pattern": "^\\d{4}(-\\d{2})?$"}
+      }
+    },
+    "generated_at": {"$ref": "#/$defs/utc_time"},
+    "data_through": {"oneOf": [{"$ref": "#/$defs/date"}, {"type": "null"}]},
+    "latest_result": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["date", "home_team", "away_team", "home_goals", "away_goals"],
+          "properties": {
+            "date": {"$ref": "#/$defs/date"},
+            "home_team": {"$ref": "#/$defs/team"},
+            "away_team": {"$ref": "#/$defs/team"},
+            "home_goals": {"type": "integer", "minimum": 0},
+            "away_goals": {"type": "integer", "minimum": 0}
+          }
+        }
+      ]
+    },
+    "provisional": {"type": "boolean"},
+    "notices": {"type": "array", "items": {"type": "string"}},
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seed", "seed_rule", "n_simulations", "code_commit", "code_dirty", "config_hash",
+                   "config_files", "model"],
+      "properties": {
+        "seed": {"type": "integer", "minimum": 0},
+        "seed_rule": {"type": "string"},
+        "n_simulations": {"type": "integer", "minimum": 1},
+        "code_commit": {"type": ["string", "null"]},
+        "code_dirty": {"type": ["boolean", "null"]},
+        "config_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "config_files": {"type": "array", "items": {"type": "string"}},
+        "model": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fitted_through", "promoted_strategy", "promoted_teams", "strength_uncertainty",
+                       "match_predictions"],
+          "properties": {
+            "fitted_through": {"oneOf": [{"$ref": "#/$defs/date"}, {"type": "null"}]},
+            "promoted_strategy": {"type": "string"},
+            "promoted_teams": {"type": "array", "items": {"$ref": "#/$defs/team"}},
+            "strength_uncertainty": {"type": "string"},
+            "match_predictions": {"type": "string"}
+          }
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["loader", "role", "params"],
+        "properties": {
+          "loader": {"type": "string"},
+          "role": {"enum": ["results", "fixtures", "context", "check"]},
+          "params": {"type": "object"}
+        }
+      }
+    },
+    "zones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "positions"],
+        "properties": {
+          "id": {"type": "string"},
+          "label": {"type": "string"},
+          "positions": {"type": "array", "items": {"type": "integer", "minimum": 1}, "minItems": 1}
+        }
+      }
+    },
+    "table": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["position", "team", "played", "won", "drawn", "lost", "goals_for", "goals_against",
+                     "goal_difference", "points", "points_deducted"],
+        "properties": {
+          "position": {"type": "integer", "minimum": 1},
+          "team": {"$ref": "#/$defs/team"},
+          "played": {"type": "integer", "minimum": 0},
+          "won": {"type": "integer", "minimum": 0},
+          "drawn": {"type": "integer", "minimum": 0},
+          "lost": {"type": "integer", "minimum": 0},
+          "goals_for": {"type": "integer", "minimum": 0},
+          "goals_against": {"type": "integer", "minimum": 0},
+          "goal_difference": {"type": "integer"},
+          "points": {"type": "integer"},
+          "points_deducted": {"type": "integer"}
+        }
+      }
+    },
+    "teams": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["team", "position_now", "points_now", "expected_points", "points_p10", "points_p90",
+                     "expected_position", "zones", "finishing_positions"],
+        "properties": {
+          "team": {"$ref": "#/$defs/team"},
+          "position_now": {"type": "integer", "minimum": 1},
+          "points_now": {"type": "integer"},
+          "expected_points": {"type": "number"},
+          "points_p10": {"type": "number"},
+          "points_p90": {"type": "number"},
+          "expected_position": {"type": "number", "minimum": 1},
+          "zones": {"type": "object", "additionalProperties": {"$ref": "#/$defs/probability"}},
+          "finishing_positions": {"type": "array", "items": {"$ref": "#/$defs/probability"}, "minItems": 1}
+        }
+      }
+    },
+    "upcoming_matches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["match_id", "matchday", "date", "kickoff_utc", "status", "home_team", "away_team",
+                     "probabilities", "expected_goals", "likely_scorelines"],
+        "properties": {
+          "match_id": {"type": ["string", "null"]},
+          "matchday": {"type": ["string", "null"]},
+          "date": {"oneOf": [{"$ref": "#/$defs/date"}, {"type": "null"}]},
+          "kickoff_utc": {"oneOf": [{"$ref": "#/$defs/utc_time"}, {"type": "null"}]},
+          "status": {"type": ["string", "null"]},
+          "home_team": {"$ref": "#/$defs/team"},
+          "away_team": {"$ref": "#/$defs/team"},
+          "probabilities": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["home", "draw", "away"],
+            "properties": {
+              "home": {"$ref": "#/$defs/probability"},
+              "draw": {"$ref": "#/$defs/probability"},
+              "away": {"$ref": "#/$defs/probability"}
+            }
+          },
+          "expected_goals": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["home", "away"],
+            "properties": {
+              "home": {"type": "number", "exclusiveMinimum": 0},
+              "away": {"type": "number", "exclusiveMinimum": 0}
+            }
+          },
+          "likely_scorelines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["home", "away", "probability"],
+              "properties": {
+                "home": {"type": "integer", "minimum": 0},
+                "away": {"type": "integer", "minimum": 0},
+                "probability": {"$ref": "#/$defs/probability"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

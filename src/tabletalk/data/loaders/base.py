@@ -11,12 +11,27 @@ not editing anything that already works.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Mapping
+from pathlib import Path
+from typing import Any, Collection, Mapping, Union
 
 import pandas as pd
 
 from ..normalise import TeamNameNormaliser, default_normaliser
 from ..schema import validate_matches
+
+#: ``refresh`` is either True/False (every season, or none) or a collection of
+#: season labels to re-download, e.g. ``{"2026-27"}``: a nightly run needs the
+#: season in progress, not 17 seasons of unchanging history.
+Refresh = Union[bool, Collection[str]]
+
+
+def should_download(refresh: Refresh, season: Any, path: Path) -> bool:
+    """Download when there is no cached copy, or when ``refresh`` asks for this season."""
+    if not path.exists():
+        return True
+    if isinstance(refresh, bool):
+        return refresh
+    return str(getattr(season, "label", season)) in {str(label) for label in refresh}
 
 
 class MatchLoader(ABC):

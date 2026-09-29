@@ -56,7 +56,7 @@ import requests
 
 from ...paths import RAW_DATA_DIR, ensure_dir
 from ..seasons import Season
-from .base import MatchLoader
+from .base import MatchLoader, should_download
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +114,7 @@ class OpenFootballLoader(MatchLoader):
         records: list[dict[str, Any]] = []
         for season in self.seasons:
             path = self.cache_path(season)
-            if refresh or not path.exists():
+            if should_download(refresh, season, path):
                 self._download(season, path)
             payload = json.loads(path.read_text(encoding="utf-8"))
             matches = payload.get("matches")

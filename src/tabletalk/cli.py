@@ -6,6 +6,7 @@ Phase 1 commands:
     python -m tabletalk data fetch --competition premier_league [--refresh]
     python -m tabletalk data check --competition premier_league
     python -m tabletalk data compare-fixtures --all
+    python -m tabletalk update [--competitions premier_league serie_a] [--no-refresh]
     python -m tabletalk ratings    --competition premier_league [--strategy prior]
     python -m tabletalk evaluate   --competition premier_league [--seasons 2024-25 2025-26]
     python -m tabletalk simulate   --competition premier_league [--n-simulations 10000]
@@ -156,6 +157,22 @@ def _print_comparison(config, season, pair, disagreements) -> None:
               .head(10).to_string(index=False))
 
 
+def cmd_update(args: argparse.Namespace) -> int:
+    """The daily cycle for every league: fetch, check, refit, simulate, write."""
+    from pathlib import Path
+
+    from .pipeline.update import DEFAULT_OUTPUT_DIR, run_update
+
+    out_dir = Path(args.out) if args.out else DEFAULT_OUTPUT_DIR
+    outcomes = run_update(
+        args.competitions or None, out_dir=out_dir, refresh=not args.no_refresh,
+        n_simulations=args.n_simulations,
+    )
+    print((out_dir / "latest" / "run_report.md").read_text(encoding="utf-8"))
+    print(f"outputs in {out_dir}")
+    return 0 if all(outcome.ok for outcome in outcomes) else 1
+
+
 def _report_config(config) -> None:
     print(f"=== {config.name} ({config.id}) ===")
     print(f"config:   {config.source_path}")
@@ -302,6 +319,15 @@ def build_parser() -> argparse.ArgumentParser:
     compare.set_defaults(func=cmd_data_compare_fixtures)
 
     add_model_commands(subparsers, _add_competition_arg)
+
+    update = subparsers.add_parser(
+        "update", help="daily cycle: fetch, check, refit, simulate and write snapshots for every league"
+    )
+    update.add_argument("--competitions", nargs="*", default=None, help="default: every configured league")
+    update.add_argument("--out", default=None, help="output directory (default: outputs/)")
+    update.add_argument("--no-refresh", action="store_true", help="use cached data only (no downloads)")
+    update.add_argument("--n-simulations", type=int, default=None, help="default: from each config")
+    update.set_defaults(func=cmd_update)
 
     return parser
 
