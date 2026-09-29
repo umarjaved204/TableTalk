@@ -103,7 +103,11 @@ match's probabilities would suggest.
 One JSON object per line, oldest first. Lines are only ever added. Each line's
 `prev` is the sha256 of the line before it (64 zeros for the first line), so
 editing, reordering or deleting any line breaks the chain, and the pipeline
-refuses to go on. The `event` field says what a line records:
+refuses to go on. The chain shows the log was not edited; it does not show
+when a line was written. The `data` branch's commit history, which is
+protected against force-pushes and deletion, is strong evidence of when each
+line was published (not proof: it rests on GitHub's records). The `event`
+field says what a line records:
 
 | `event` | Meaning | Main fields |
 |---|---|---|

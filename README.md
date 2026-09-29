@@ -1297,9 +1297,12 @@ drops, scheduled runs at the start of each hour. You can also start it by hand
 **Where the files live: the `data` branch.** Each run checks out the `data`
 branch, runs the update on it (so the lock store carries on from last night),
 and commits the result there as `github-actions[bot]`. The workflow never
-writes to `main`. Each commit on `data` is one nightly run, so the branch's
-public history shows when every prediction was published: that is the evidence
-that locks came before kick-off.
+writes to `main`. Each commit on `data` is one nightly run and links to the
+Actions run that made it. The branch is protected against force-pushes and
+deletion, so its public history cannot be quietly rewritten. That makes it
+strong evidence of when every prediction was published, and so that locks came
+before kick-off. It is not proof: it rests on GitHub's records and on the
+protection staying on.
 
 The website reads the files straight from that branch, e.g.
 
@@ -1311,7 +1314,10 @@ https://cdn.jsdelivr.net/gh/umarjaved204/TableTalk@data/latest/index.json   (CDN
 **Set-up (once):** add the API key as a repository secret named
 `FOOTBALL_DATA_API_KEY` (Settings, Secrets and variables, Actions, New
 repository secret). The workflow's `permissions: contents: write` lets it push
-to `data`.
+to `data`. Then protect `data`: Settings, Rules, Rulesets, a branch ruleset
+(here `protect-data`) targeting `data`, with only **Restrict deletions** and
+**Block force pushes** ticked and an empty bypass list. Normal pushes, which
+add a commit on top, still work, so the bot is not blocked.
 
 **When a run fails:**
 - *How you are told:* GitHub emails whoever last changed the `cron` lines in
@@ -1320,18 +1326,24 @@ to `data`.
   late", or a locking problem. Whatever passed is still published first, and a
   failed league keeps its previous files.
 - *What to do:* fix the cause as described above, then start the workflow by
-  hand with **force** ticked. Never rewrite or force-push the `data` branch: its
-  history is the evidence.
+  hand with **force** ticked. Never switch off the `data` branch's protection
+  to rewrite it: its history is the evidence of timing.
 
 **GitHub limits that matter** (checked 2026-09-29):
 - The repository is public, so Actions minutes are free (a private repository
   would get 2,000 minutes a month; a run takes a few minutes).
 - Scheduled runs can be delayed or dropped at busy times. That is what the
   backup run and the six-hour margin are for.
-- In a public repository, scheduled workflows are switched off after 60 days
-  with no repository activity. GitHub does not define "activity", so the
-  nightly commits to `data` may not count. If it happens (most likely in the
-  summer break), re-enable it in the Actions tab.
+- **Scheduled runs stop after 60 days without activity.** In a public
+  repository, GitHub switches off scheduled workflows when the repository has
+  had no activity for 60 days. GitHub does not say exactly what counts, so do
+  not rely on the bot's nightly commits to `data`; a commit to `main` is the
+  safe way to keep the repository active. The summer break is the likely time.
+  To check:
+  `gh workflow list --all` shows `Daily update` as `disabled_inactivity`. To
+  re-enable: Actions tab, **Daily update** in the list on the left, **Enable
+  workflow** (or `gh workflow enable daily-update.yml`). Then start one run by
+  hand, since the missed nights are not made up.
 - A job can run for at most 6 hours; this one takes a few minutes. The cache of
   past seasons' raw files is about 24 MB, well under the 10 GB limit.
 
@@ -1357,9 +1369,12 @@ ever added to.
   disk, the strictest reading.
 - **Every lock records the model version**: the code commit and a fingerprint
   of the configs. A later model change never rewrites the past.
-- **The log cannot be quietly edited.** Each line carries a fingerprint (sha256)
-  of the line before it, so changing or deleting any old line breaks the chain,
-  and the pipeline stops.
+- **Edits to the log show.** Each line carries a fingerprint (sha256) of the
+  line before it, so changing or deleting any old line breaks the chain, and
+  the pipeline stops. The chain shows the log was not edited; it does not show
+  when lines were written. For timing, the evidence is the protected public
+  history of the `data` branch, where every night's copy of the log is kept:
+  strong evidence, not proof.
 
 **Honesty rule.** Matches played before the pipeline first ran cannot have
 genuine locks, so they have none, and they never count as missed. Backtests

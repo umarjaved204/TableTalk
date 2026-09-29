@@ -2,8 +2,9 @@
 #
 # Publishes to the `data` branch of this repository (storage option A, chosen
 # 2026-09-29). Only the bot (github-actions[bot]) commits there; `main` is never
-# written by this workflow. Each commit on `data` is one run, so the branch's
-# public history shows when every prediction was published.
+# written by this workflow. Each commit on `data` is one run. The branch is
+# protected (ruleset `protect-data`: no force-pushes, no deletion), so its
+# public history is strong evidence of when every prediction was published.
 #
 # Timing: the earliest kick-off in the five leagues is 10:30 UTC (Serie A,
 # 12:30 in Italy in summer). The main run starts at 04:37 UTC, off the hour
