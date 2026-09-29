@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://tabletalk/contracts/snapshot.schema.json",
   "title": "TableTalk league snapshot",
-  "description": "One league's state and predictions after one run of `python -m tabletalk update`. Contract version 1.0.0; see contracts/README.md for the meaning of every field and the versioning rules.",
+  "description": "One league's state and predictions after one run of `python -m tabletalk update`. Contract version 1.x; see contracts/README.md for the meaning of every field and the versioning rules.",
   "type": "object",
   "additionalProperties": false,
   "required": ["contract_version", "competition", "generated_at", "data_through", "latest_result",
@@ -14,7 +14,7 @@
     "team": {"type": "string", "minLength": 1}
   },
   "properties": {
-    "contract_version": {"const": "1.0.0"},
+    "contract_version": {"type": "string", "pattern": "^1\\.\\d+\\.\\d+$"},
     "competition": {
       "type": "object",
       "additionalProperties": false,

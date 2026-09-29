@@ -1,9 +1,10 @@
-# TableTalk data contract, version 1.0.0
+# TableTalk data contract, version 1.1.0
 
 This folder describes the files `python -m tabletalk update` writes. The website
 is built against these files and this document, not against the Python code.
 The machine-readable versions are [snapshot.schema.json](snapshot.schema.json)
-and [index.schema.json](index.schema.json) (JSON Schema, draft 2020-12). Every
+[index.schema.json](index.schema.json) and
+[track_record.schema.json](track_record.schema.json) (JSON Schema, draft 2020-12). Every
 file is checked against its schema before it is written. A file that fails the
 check is never published.
 
@@ -14,7 +15,13 @@ latest/index.json                 what the last run did, per league (read this f
 latest/<competition>.json         the newest snapshot for each league
 latest/run_report.md              the same as index.json, written for a person
 history/<YYYY-MM-DDTHHMMZ>/...    every run's files, kept unchanged
+track_record/locks.jsonl          every locked prediction, append-only (the evidence)
+track_record/summary.json         locked predictions scored against results
+track_record/report.md            the same, written for a person
 ```
+
+`track_record/pending.json` and `meta.json` are working files for the
+pipeline, not part of the contract.
 
 `<competition>` is a config id: `premier_league`, `bundesliga`, `la_liga`,
 `serie_a`, `ligue_1`. The history folder name is the run's start time in UTC.
@@ -91,6 +98,38 @@ strength. The season chances (`teams[]`) also allow for uncertainty in those
 strengths, which is why they are a little less extreme than repeating each
 match's probabilities would suggest.
 
+## track_record/locks.jsonl (the lock log)
+
+One JSON object per line, oldest first. Lines are only ever added. Each line's
+`prev` is the sha256 of the line before it (64 zeros for the first line), so
+editing, reordering or deleting any line breaks the chain, and the pipeline
+refuses to go on. The `event` field says what a line records:
+
+| `event` | Meaning | Main fields |
+|---|---|---|
+| `lock` | The last prediction made before this match kicked off | `lock_id` (`<match_id>#<attempt>`), `match_id`, `competition`, `season`, teams, `listed_kickoff_utc` (the kick-off as listed when predicting), `predicted_at` (when the prediction was written), `data_as_of`, `snapshot` (the history file it came from), `model` (`code_commit`, `code_dirty`, `config_hash`), `probabilities`, `expected_goals`, `likely_scorelines`, `recorded_at` |
+| `void` | That lock will not be scored: `reason` is `postponed`, `suspended`, `cancelled` or `removed from the fixture list` | `lock_id`, `reason`, `recorded_at` |
+| `invalid` | That lock was not made before the actual kick-off, so it is never scored | `lock_id`, `reason`, `actual_kickoff_utc`, `recorded_at` |
+| `missed` | A match played after the pipeline went live that no run predicted in time | `match_id`, teams, `actual_kickoff_utc`, `recorded_at` |
+
+A match postponed and replayed has two locks (`#1` voided, `#2` scored).
+
+## track_record/summary.json
+
+| Field | Meaning |
+|---|---|
+| `live_since` | When the pipeline first ran with this lock log. Matches before it have no locks |
+| `chain_verified` | Always `true`: the file is only written after the lock log's chain checks out |
+| `counts` | Locks, voided, invalid, missed, scored, awaiting a result, awarded (not scored) |
+| `competitions[]` | `id` (`all` for every league together, then each league), `n` scored, and `comparisons[]` |
+| `.comparisons[]` | Against `base rates` and against the `market`: average log loss of each, `diff` (model minus other; negative = model better), `ci95` (95% interval), the difference in each half of the matches in date order, `verdict`, and `matches_needed` (roughly how many matches it would take to detect a gap the size the backtest found) |
+| `.verdict` | One of: `no scored matches yet`, `too few matches to compare`, `no detectable difference` (interval includes zero), `model better` / `model worse` (interval excludes zero and both halves agree), `consistently better but modest` / `consistently worse but modest` (interval excludes zero but one half disagrees) |
+| `calibration[]` | For home, draw and away forecasts: probability bin, how many, average forecast, how often it happened, 95% interval |
+| `matches[]` | Every scored match: lock id, teams, kick-off, when predicted, probabilities, score, log loss, code commit |
+
+Only live locks are scored. Backtest results and any predictions made after
+the fact are never included.
+
 ## Guarantees
 
 These are checked before any file is written. If one fails, the league's
@@ -111,3 +150,6 @@ previous files stay as they were and `index.json` says `kept_previous`.
 - **PATCH** (1.0.x): wording in this document only; files unchanged.
 - **MINOR** (1.x.0): new fields added. Existing fields keep their name and meaning, so a website written for 1.0 keeps working.
 - **MAJOR** (x.0.0): a field removed, renamed or changing meaning. The website must be updated. Snapshots in `history/` keep the version they were written with.
+
+History: 1.0.0 (2026-09-29) snapshots and index; 1.1.0 (2026-09-29) adds the
+lock log and the track record.

@@ -1250,6 +1250,8 @@ outputs/latest/<league>.json         newest snapshot for each league
 outputs/latest/index.json            what the last run did, per league
 outputs/latest/run_report.md         the same, for a person
 outputs/history/<time>/...           every run, kept unchanged
+outputs/track_record/locks.jsonl     locked predictions (see below)
+outputs/track_record/summary.json    the live track record
 ```
 
 The format is the **data contract**: [contracts/README.md](contracts/README.md)
@@ -1270,8 +1272,71 @@ the league's previous files are untouched.
   `python -m tabletalk data compare-fixtures -c <league>`.
 - *A safety check on the outputs*: this is a bug, not bad data. Don't publish
   around it.
+- *Lock log hash chain broken*: someone or something edited
+  `track_record/locks.jsonl`. Restore it from its published copy; never "fix"
+  a line by hand.
 
 Then run `python -m tabletalk update` again.
+
+### Locking predictions before kick-off
+
+A forecast is only worth checking if it was made before the match. So every
+run's predictions go through one rule, and the result is a log that is only
+ever added to.
+
+- **The lock is the last prediction made before kick-off.** Each run replaces
+  a match's pending prediction with its newest one, until the match starts.
+  At the first run after that, the pending prediction becomes the match's lock.
+- **Moved earlier?** The lock is whatever the last run before the *new*
+  kick-off produced. If no run predicted it in time, the match is recorded as
+  **missed**. Nothing is ever back-dated.
+- **Postponed?** The lock is kept and marked **void**. Once the match has a new
+  date, it gets a new lock before the new kick-off. Both stay in the log; only
+  the second is scored. Suspended and cancelled matches are voided the same way.
+- **Checked against the real kick-off.** Whether a lock came first is checked
+  against the kick-off time reported once the match has started, not the one we
+  saw when predicting. A lock that turns out to be from after kick-off is marked
+  **invalid** and never scored. "Made" means when the prediction was written to
+  disk, the strictest reading.
+- **Every lock records the model version**: the code commit and a fingerprint
+  of the configs. A later model change never rewrites the past.
+- **The log cannot be quietly edited.** Each line carries a fingerprint (sha256)
+  of the line before it, so changing or deleting any old line breaks the chain,
+  and the pipeline stops.
+
+**Honesty rule.** Matches played before the pipeline first ran cannot have
+genuine locks, so they have none, and they never count as missed. Backtests
+(which predict past matches using only earlier data) are reported separately in
+this README and are never mixed into the live track record.
+
+### The live track record
+
+```
+python -m tabletalk track-record              # score locks that have results
+python -m tabletalk track-record --refresh    # download the latest results and odds first
+```
+
+The nightly `update` also runs it. It scores every valid lock that has a result
+against two alternatives, on the same matches:
+
+- **base rates**: the league's historical home/draw/away frequencies, i.e.
+  knowing nothing about the teams;
+- **the market**: closing odds from football-data.co.uk with the margin
+  removed. They reach those files a few days after each match, so this
+  comparison trails by a few days.
+
+It also shows calibration: when the model says 60%, does it happen about 60% of
+the time? Results follow the project's wording rule: a difference is quoted as
+mean difference ± 95% interval. If the interval includes zero it is "no
+detectable difference", and if it holds in only one half of the matches it is
+"consistently better but modest". It is never "beats".
+
+**Early on, expect wide intervals.** The backtest found a gap of about 0.08 in
+log loss against base rates and 0.02 against the market, and one match's
+result swings log loss by far more than that. So a small live sample cannot
+detect those gaps. The report works out, from the live matches' own spread,
+roughly how many matches each comparison needs. "No detectable difference" in
+October means "not enough matches yet", not "no better".
 
 ## Tests
 
@@ -1279,7 +1344,7 @@ Then run `python -m tabletalk update` again.
 python -m pytest
 ```
 
-300 tests, no network access required (the integration test skips when the raw
+317 tests, no network access required (the integration test skips when the raw
 data is not cached). They cover the parts that are easy to get subtly wrong and hard
 to notice:
 

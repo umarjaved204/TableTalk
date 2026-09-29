@@ -2,12 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://tabletalk/contracts/index.schema.json",
   "title": "TableTalk run index",
-  "description": "What the latest run did for each league, and where its snapshot is. Contract version 1.0.0; see contracts/README.md.",
+  "description": "What the latest run did for each league, and where its snapshot is. Contract version 1.x; see contracts/README.md.",
   "type": "object",
   "additionalProperties": false,
   "required": ["contract_version", "generated_at", "history_path", "competitions"],
   "properties": {
-    "contract_version": {"const": "1.0.0"},
+    "contract_version": {"type": "string", "pattern": "^1\\.\\d+\\.\\d+$"},
     "generated_at": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
     "history_path": {"type": "string"},
     "competitions": {

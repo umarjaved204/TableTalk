@@ -284,11 +284,12 @@ def real_run(tmp_path_factory, premier_league):
         if any(not loader.cache_path(season).exists() for season in loader.seasons):
             pytest.skip("raw data not cached; run `python -m tabletalk update` once first")
     out = tmp_path_factory.mktemp("outputs")
-    outcomes = run_update(
+    result = run_update(
         ["premier_league"], out_dir=out, refresh=False, n_simulations=300,
-        now=pd.Timestamp("2026-09-29T04:00:00Z"),
+        now=pd.Timestamp("2026-09-29T04:00:00Z"), locked_at=pd.Timestamp("2026-09-29T04:01:00Z"),
     )
-    return outcomes[0], out
+    assert result.track_record_error is None, result.track_record_error
+    return result.outcomes[0], out
 
 
 def test_real_run_writes_a_snapshot_that_follows_the_contract(real_run):
@@ -301,6 +302,20 @@ def test_real_run_writes_a_snapshot_that_follows_the_contract(real_run):
     for match in snapshot["upcoming_matches"]:
         total = sum(match["probabilities"].values())
         assert abs(total - 1) < 1e-5
+
+
+def test_real_run_hands_every_upcoming_prediction_to_the_lock_store(real_run):
+    """Every match still to come with a known day is pending a lock, with its model version."""
+    _, out = real_run
+    pending = json.loads((out / "track_record" / "pending.json").read_text(encoding="utf-8"))
+    snapshot = json.loads((out / "latest" / "premier_league.json").read_text(encoding="utf-8"))
+    assert set(pending) == {m["match_id"] for m in snapshot["upcoming_matches"]}
+    entry = next(iter(pending.values()))
+    assert entry["predicted_at"] == "2026-09-29T04:01:00Z"
+    assert entry["snapshot"] == "history/2026-09-29T0400Z/premier_league.json"
+    assert entry["model"]["config_hash"] == snapshot["run"]["config_hash"]
+    summary = json.loads((out / "track_record" / "summary.json").read_text(encoding="utf-8"))
+    assert summary["live_since"] == "2026-09-29T04:01:00Z"
 
 
 def test_a_broken_snapshot_breaks_the_contract(real_run):

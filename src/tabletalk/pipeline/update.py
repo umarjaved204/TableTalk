@@ -24,6 +24,12 @@ Files (``<out>`` defaults to ``outputs/``):
     <out>/latest/index.json                what the last run did, per league
     <out>/latest/run_report.md             the same, for a person
     <out>/history/<YYYY-MM-DDTHHMMZ>/...   every run's files, never overwritten
+    <out>/track_record/locks.jsonl         locked predictions, append-only (pipeline.locks)
+    <out>/track_record/summary.json        the live track record (pipeline.track_record)
+
+After the snapshots are written, each league that updated goes through the
+locking rule, and the track record is scored again. A problem there (e.g. the
+lock log's hash chain is broken) fails the run, but never touches snapshots.
 """
 
 from __future__ import annotations
@@ -45,6 +51,7 @@ from ..simulation import league_table
 from ..simulation.league import simulate_league
 from . import checks
 from .awarded import review_awarded
+from .locks import LockStore, update_locks
 from .snapshot import CONTRACT_VERSION, LeagueRun, build_snapshot, run_seed, validate
 
 logger = logging.getLogger(__name__)
@@ -70,6 +77,7 @@ class LeagueOutcome:
     seconds: float = 0.0
     awarded_drafts: str = ""
     notices: list[str] = field(default_factory=list)
+    fixtures: pd.DataFrame | None = None  # the fixture source's rows, for locking
 
     @property
     def ok(self) -> bool:
@@ -162,7 +170,18 @@ def run_league(
         provisional=review.provisional,
         notices=notices,
     )
+    run.fixtures = api
     return run, review.draft_entries(config.id)
+
+
+@dataclass
+class RunResult:
+    outcomes: list[LeagueOutcome]
+    track_record_error: str | None = None
+
+    @property
+    def ok(self) -> bool:
+        return all(outcome.ok for outcome in self.outcomes) and self.track_record_error is None
 
 
 def run_update(
@@ -172,8 +191,13 @@ def run_update(
     refresh: bool = True,
     n_simulations: int | None = None,
     now: pd.Timestamp | None = None,
-) -> list[LeagueOutcome]:
-    """Run every league, then write the ones that passed. Never raises for a league's failure."""
+    locked_at: pd.Timestamp | None = None,
+) -> RunResult:
+    """Run every league, write the ones that passed, then lock and score.
+
+    Never raises for a league's failure. ``locked_at`` (tests only) stands in
+    for the moment the predictions were written.
+    """
     now = (now or pd.Timestamp.now(tz="UTC")).tz_convert("UTC").floor("s")
     run_date = now.strftime("%Y-%m-%d")
     outcomes = []
@@ -188,6 +212,7 @@ def run_update(
             if contract:
                 raise SafetyCheckError(config.id, [f"data contract: {problem}" for problem in contract])
             outcome.snapshot, outcome.awarded_drafts, outcome.notices = snapshot, drafts, run.notices
+            outcome.fixtures = run.fixtures
         # A league's failure must not stop the others, and must be reported
         # whatever it was: this is the pipeline's boundary.
         except Exception as exc:  # noqa: BLE001
@@ -195,8 +220,38 @@ def run_update(
             outcome.error = f"{type(exc).__name__}: {exc}"
         outcome.seconds = time.perf_counter() - started
         outcomes.append(outcome)
-    write_outputs(outcomes, out_dir=out_dir, generated_at=now)
-    return outcomes
+    history = write_outputs(outcomes, out_dir=out_dir, generated_at=now)
+    return RunResult(outcomes, _lock_and_score(outcomes, out_dir, history, now, locked_at))
+
+
+def _lock_and_score(outcomes, out_dir: Path, history: Path, now, locked_at) -> str | None:
+    """Apply the locking rule to every league that updated, then rescore the track record."""
+    from .track_record import write_track_record
+
+    store = LockStore(out_dir / "track_record")
+    written_at = (locked_at or pd.Timestamp.now(tz="UTC")).tz_convert("UTC").floor("s")
+    try:
+        for outcome in outcomes:
+            if outcome.ok and outcome.fixtures is not None:
+                update_locks(
+                    store, competition=outcome.competition, snapshot=outcome.snapshot,
+                    fixtures=outcome.fixtures, predicted_at=written_at,
+                    snapshot_file=f"{history.relative_to(out_dir).as_posix()}/{outcome.competition}.json",
+                )
+        write_track_record(store, out_dir, generated_at=now)
+    # The run's boundary: report any failure here, whatever it was.
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("locking / track record failed")
+        error = f"{type(exc).__name__}: {exc}"
+        note = (
+            f"\n## Locks and track record: FAILED\n\n{error}\n\n"
+            "The snapshots above were written. Existing locks were not edited (the log is append-only).\n"
+        )
+        for directory in (history, out_dir / "latest"):
+            report = directory / "run_report.md"
+            _write_text(report, report.read_text(encoding="utf-8") + note)
+        return error
+    return None
 
 
 def write_outputs(outcomes: list[LeagueOutcome], *, out_dir: Path, generated_at: pd.Timestamp) -> Path:

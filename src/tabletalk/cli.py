@@ -7,6 +7,7 @@ Phase 1 commands:
     python -m tabletalk data check --competition premier_league
     python -m tabletalk data compare-fixtures --all
     python -m tabletalk update [--competitions premier_league serie_a] [--no-refresh]
+    python -m tabletalk track-record [--refresh]
     python -m tabletalk ratings    --competition premier_league [--strategy prior]
     python -m tabletalk evaluate   --competition premier_league [--seasons 2024-25 2025-26]
     python -m tabletalk simulate   --competition premier_league [--n-simulations 10000]
@@ -170,7 +171,23 @@ def cmd_update(args: argparse.Namespace) -> int:
     )
     print((out_dir / "latest" / "run_report.md").read_text(encoding="utf-8"))
     print(f"outputs in {out_dir}")
-    return 0 if all(outcome.ok for outcome in outcomes) else 1
+    return 0 if outcomes.ok else 1
+
+
+def cmd_track_record(args: argparse.Namespace) -> int:
+    """Score the locked predictions that have results, and write the track record."""
+    from pathlib import Path
+
+    from .pipeline.locks import LockStore
+    from .pipeline.track_record import render, write_track_record
+    from .pipeline.update import DEFAULT_OUTPUT_DIR
+
+    out_dir = Path(args.out) if args.out else DEFAULT_OUTPUT_DIR
+    store = LockStore(out_dir / "track_record")
+    summary = write_track_record(store, out_dir, generated_at=pd.Timestamp.now(tz="UTC").floor("s"), refresh=args.refresh)
+    print(render(summary))
+    print(f"written to {store.directory}")
+    return 0
 
 
 def _report_config(config) -> None:
@@ -328,6 +345,11 @@ def build_parser() -> argparse.ArgumentParser:
     update.add_argument("--no-refresh", action="store_true", help="use cached data only (no downloads)")
     update.add_argument("--n-simulations", type=int, default=None, help="default: from each config")
     update.set_defaults(func=cmd_update)
+
+    track = subparsers.add_parser("track-record", help="score locked predictions against results")
+    track.add_argument("--out", default=None, help="output directory (default: outputs/)")
+    track.add_argument("--refresh", action="store_true", help="download the latest results and odds first")
+    track.set_defaults(func=cmd_track_record)
 
     return parser
 

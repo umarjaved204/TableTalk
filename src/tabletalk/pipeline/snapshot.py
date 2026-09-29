@@ -24,7 +24,7 @@ from ..data.deductions import DEDUCTIONS_FILE
 from ..data.playoffs import PLAYOFF_RESULTS_FILE
 from ..paths import PROJECT_ROOT, TEAM_ALIASES_FILE
 
-CONTRACT_VERSION = "1.0.0"
+CONTRACT_VERSION = "1.1.0"
 CONTRACTS_DIR = PROJECT_ROOT / "contracts"
 N_SCORELINES = 5
 DECIMALS = 6
@@ -106,6 +106,7 @@ class LeagueRun:
     latest_result: pd.Series | None
     provisional: bool
     notices: list[str]
+    fixtures: pd.DataFrame | None = None
 
 
 def build_snapshot(run: LeagueRun, *, generated_at: pd.Timestamp) -> dict:

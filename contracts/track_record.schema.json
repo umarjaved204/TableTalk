@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tabletalk/contracts/track_record.schema.json",
+  "title": "TableTalk live track record",
+  "description": "Locked predictions scored against results (track_record/summary.json). Contract version 1.1.0+; see contracts/README.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "generated_at", "live_since", "chain_verified", "counts", "competitions",
+               "calibration", "matches", "notes"],
+  "$defs": {
+    "utc_time": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+    "number_or_null": {"type": ["number", "null"]},
+    "probability": {"type": "number", "minimum": 0, "maximum": 1}
+  },
+  "properties": {
+    "contract_version": {"type": "string", "pattern": "^1\\.\\d+\\.\\d+$"},
+    "generated_at": {"$ref": "#/$defs/utc_time"},
+    "live_since": {"oneOf": [{"$ref": "#/$defs/utc_time"}, {"type": "null"}]},
+    "chain_verified": {"const": true},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locks", "voided", "invalid", "missed", "scored", "awaiting_result", "awarded_not_scored"],
+      "properties": {
+        "locks": {"type": "integer", "minimum": 0},
+        "voided": {"type": "integer", "minimum": 0},
+        "invalid": {"type": "integer", "minimum": 0},
+        "missed": {"type": "integer", "minimum": 0},
+        "scored": {"type": "integer", "minimum": 0},
+        "awaiting_result": {"type": "integer", "minimum": 0},
+        "awarded_not_scored": {"type": "integer", "minimum": 0}
+      }
+    },
+    "competitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "n", "comparisons"],
+        "properties": {
+          "id": {"type": "string"},
+          "n": {"type": "integer", "minimum": 0},
+          "comparisons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["against", "n", "model_log_loss", "other_log_loss", "diff", "ci95", "first_half",
+                           "second_half", "verdict", "matches_needed"],
+              "properties": {
+                "against": {"enum": ["base rates", "market"]},
+                "n": {"type": "integer", "minimum": 0},
+                "model_log_loss": {"$ref": "#/$defs/number_or_null"},
+                "other_log_loss": {"$ref": "#/$defs/number_or_null"},
+                "diff": {"$ref": "#/$defs/number_or_null"},
+                "ci95": {"$ref": "#/$defs/number_or_null"},
+                "first_half": {"$ref": "#/$defs/number_or_null"},
+                "second_half": {"$ref": "#/$defs/number_or_null"},
+                "verdict": {"enum": ["no scored matches yet", "too few matches to compare", "no detectable difference",
+                                     "model better", "model worse", "consistently better but modest",
+                                     "consistently worse but modest"]},
+                "matches_needed": {"type": ["integer", "null"]}
+              }
+            }
+          }
+        }
+      }
+    },
+    "calibration": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["outcome", "bin", "n", "mean_forecast", "observed", "ci_low", "ci_high", "gap"],
+        "properties": {
+          "outcome": {"enum": ["home", "draw", "away"]},
+          "bin": {"type": "string"},
+          "n": {"type": "integer", "minimum": 1},
+          "mean_forecast": {"$ref": "#/$defs/probability"},
+          "observed": {"$ref": "#/$defs/probability"},
+          "ci_low": {"$ref": "#/$defs/probability"},
+          "ci_high": {"$ref": "#/$defs/probability"},
+          "gap": {"type": "number"}
+        }
+      }
+    },
+    "matches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["lock_id", "competition", "home_team", "away_team", "kickoff_utc", "predicted_at",
+                     "probabilities", "home_goals", "away_goals", "log_loss", "code_commit"],
+        "properties": {
+          "lock_id": {"type": "string"},
+          "competition": {"type": "string"},
+          "home_team": {"type": "string"},
+          "away_team": {"type": "string"},
+          "kickoff_utc": {"oneOf": [{"$ref": "#/$defs/utc_time"}, {"type": "null"}]},
+          "predicted_at": {"$ref": "#/$defs/utc_time"},
+          "probabilities": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["home", "draw", "away"],
+            "properties": {
+              "home": {"$ref": "#/$defs/probability"},
+              "draw": {"$ref": "#/$defs/probability"},
+              "away": {"$ref": "#/$defs/probability"}
+            }
+          },
+          "home_goals": {"type": "integer", "minimum": 0},
+          "away_goals": {"type": "integer", "minimum": 0},
+          "log_loss": {"type": "number", "minimum": 0},
+          "code_commit": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "notes": {"type": "array", "items": {"type": "string"}}
+  }
+}
