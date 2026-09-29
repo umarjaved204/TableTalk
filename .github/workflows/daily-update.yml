@@ -41,14 +41,18 @@ concurrency:
 
 jobs:
   update:
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest, so the runner image cannot change under us
+    # (ubuntu-latest moves to Ubuntu 26 on 19 Oct 2026, during the trial).
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
+    # Actions are pinned to exact releases (all on Node 24), so their code
+    # cannot change during the trial either.
     steps:
       - name: Check out the code (main)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
           cache: pip
@@ -60,7 +64,7 @@ jobs:
       # Past seasons never change, so keep the raw downloads between runs. The
       # current season is downloaded fresh every time regardless.
       - name: Restore cached raw data
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: data/raw
           key: raw-${{ github.run_id }}
