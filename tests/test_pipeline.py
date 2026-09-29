@@ -326,3 +326,88 @@ def test_a_broken_snapshot_breaks_the_contract(real_run):
     problems = validate(snapshot)
     assert any("table" in p for p in problems)
     assert any("1.7" in p for p in problems)
+
+
+# ---------------------------------------------------------------------------
+# Staleness: results that should have arrived but have not
+# ---------------------------------------------------------------------------
+
+NOW = pd.Timestamp("2026-10-14T04:30:00Z")
+TWO_DAYS = pd.Timedelta(days=2)
+
+
+def _fixture_rows(*rows):
+    """(home, status, kickoff or None, date) tuples -> a fixture-source frame."""
+    return pd.DataFrame(
+        {
+            "home_team": [r[0] for r in rows], "away_team": ["Opponent"] * len(rows),
+            "status": [r[1] for r in rows],
+            "kickoff_utc": [pd.Timestamp(r[2]) if r[2] else pd.NaT for r in rows],
+            "date": [pd.Timestamp(r[3]) for r in rows],
+        }
+    )
+
+
+def test_an_international_break_is_not_stale():
+    """No matches for three weeks: no results are due, so nothing is flagged."""
+    fixtures = _fixture_rows(
+        ("A", "FINISHED", "2026-09-20T14:00:00Z", "2026-09-20"),
+        ("B", "TIMED", "2026-10-17T14:00:00Z", "2026-10-17"),
+    )
+    assert checks.check_staleness(fixtures, NOW, max_age=TWO_DAYS) == []
+
+
+def test_a_match_days_past_its_kickoff_without_a_result_is_flagged():
+    fixtures = _fixture_rows(("Late FC", "TIMED", "2026-10-10T14:00:00Z", "2026-10-10"))
+    problems = checks.check_staleness(fixtures, NOW, max_age=TWO_DAYS)
+    assert problems and "Late FC v Opponent" in problems[0]
+
+
+def test_a_recent_match_without_a_result_is_not_flagged_yet():
+    fixtures = _fixture_rows(("A", "TIMED", "2026-10-13T19:00:00Z", "2026-10-13"))
+    assert checks.check_staleness(fixtures, NOW, max_age=TWO_DAYS) == []
+
+
+def test_postponed_and_suspended_matches_explain_a_missing_result():
+    fixtures = _fixture_rows(
+        ("A", "POSTPONED", "2026-10-04T14:00:00Z", "2026-10-04"),
+        ("B", "SUSPENDED", "2026-10-04T14:00:00Z", "2026-10-04"),
+        ("C", "CANCELLED", "2026-10-04T14:00:00Z", "2026-10-04"),
+    )
+    assert checks.check_staleness(fixtures, NOW, max_age=TWO_DAYS) == []
+
+
+def test_a_match_with_only_a_date_counts_from_the_end_of_that_day():
+    fixtures = _fixture_rows(("A", "SCHEDULED", None, "2026-10-11"), ("B", "SCHEDULED", None, "2026-10-12"))
+    problems = checks.check_staleness(fixtures, NOW, max_age=TWO_DAYS)
+    assert len(problems) == 1 and "1 match(es)" in problems[0]
+
+
+def test_a_flagged_league_still_writes_but_fails_the_run():
+    from tabletalk.pipeline.update import RunResult
+
+    flagged = LeagueOutcome("aa", "A league", snapshot={"upcoming_matches": []}, warnings=["Results may be late: ..."])
+    assert flagged.ok  # its files are written
+    assert not RunResult([flagged]).ok  # but the scheduled run fails, so a person is told
+
+
+# ---------------------------------------------------------------------------
+# The scheduled backup run
+# ---------------------------------------------------------------------------
+
+
+def test_backup_run_skips_only_after_a_complete_run_today(tmp_path):
+    from tabletalk.pipeline.update import updated_today
+
+    morning = pd.Timestamp("2026-10-10T04:40:00Z")
+    backup = pd.Timestamp("2026-10-10T07:40:00Z")
+    assert not updated_today(tmp_path, backup)  # nothing published yet
+
+    write_outputs([LeagueOutcome("aa", "A", snapshot=_snapshot("aa", "2026-10-10T04:40:00Z"))],
+                  out_dir=tmp_path, generated_at=morning)
+    assert updated_today(tmp_path, backup)
+    assert not updated_today(tmp_path, pd.Timestamp("2026-10-11T07:40:00Z"))  # that was yesterday
+    assert (tmp_path / "README.md").exists()  # the data branch explains itself
+
+    write_outputs([LeagueOutcome("aa", "A", error="boom")], out_dir=tmp_path, generated_at=morning)
+    assert not updated_today(tmp_path, backup)  # a failed league means the backup tries again

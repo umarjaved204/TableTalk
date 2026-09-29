@@ -1272,11 +1272,68 @@ the league's previous files are untouched.
   `python -m tabletalk data compare-fixtures -c <league>`.
 - *A safety check on the outputs*: this is a bug, not bad data. Don't publish
   around it.
+- *"Results may be late"* (a warning, not a failure: the files are still
+  written, but the run is marked failed so you are told). A match that kicked
+  off more than 2 days ago (`--stale-after-days`) still has no result and was
+  not postponed. It is judged from the fixture list, so an international
+  break never triggers it. Usually the source is slow; if it lasts, check the
+  match was really played and compare the sources.
 - *Lock log hash chain broken*: someone or something edited
   `track_record/locks.jsonl`. Restore it from its published copy; never "fix"
   a line by hand.
 
 Then run `python -m tabletalk update` again.
+
+### The nightly schedule (GitHub Actions)
+
+[.github/workflows/daily-update.yml](.github/workflows/daily-update.yml) runs
+the update every day at **04:37 UTC**, with a backup at **07:37 UTC** that does
+nothing if the first run already updated every league. The earliest kick-off
+in the five leagues is 10:30 UTC (Serie A), so there are about six hours to
+spare. The times are deliberately off the hour: GitHub delays, and sometimes
+drops, scheduled runs at the start of each hour. You can also start it by hand
+(Actions tab, "Daily update", "Run workflow").
+
+**Where the files live: the `data` branch.** Each run checks out the `data`
+branch, runs the update on it (so the lock store carries on from last night),
+and commits the result there as `github-actions[bot]`. The workflow never
+writes to `main`. Each commit on `data` is one nightly run, so the branch's
+public history shows when every prediction was published: that is the evidence
+that locks came before kick-off.
+
+The website reads the files straight from that branch, e.g.
+
+```
+https://raw.githubusercontent.com/umarjaved204/TableTalk/data/latest/index.json
+https://cdn.jsdelivr.net/gh/umarjaved204/TableTalk@data/latest/index.json   (CDN; may lag by hours)
+```
+
+**Set-up (once):** add the API key as a repository secret named
+`FOOTBALL_DATA_API_KEY` (Settings, Secrets and variables, Actions, New
+repository secret). The workflow's `permissions: contents: write` lets it push
+to `data`.
+
+**When a run fails:**
+- *How you are told:* GitHub emails whoever last changed the `cron` lines in
+  the workflow file. The run's summary page shows the run report.
+- *What counts as a failure:* any league failing its checks, "results may be
+  late", or a locking problem. Whatever passed is still published first, and a
+  failed league keeps its previous files.
+- *What to do:* fix the cause as described above, then start the workflow by
+  hand with **force** ticked. Never rewrite or force-push the `data` branch: its
+  history is the evidence.
+
+**GitHub limits that matter** (checked 2026-09-29):
+- The repository is public, so Actions minutes are free (a private repository
+  would get 2,000 minutes a month; a run takes a few minutes).
+- Scheduled runs can be delayed or dropped at busy times. That is what the
+  backup run and the six-hour margin are for.
+- In a public repository, scheduled workflows are switched off after 60 days
+  with no repository activity. GitHub does not define "activity", so the
+  nightly commits to `data` may not count. If it happens (most likely in the
+  summer break), re-enable it in the Actions tab.
+- A job can run for at most 6 hours; this one takes a few minutes. The cache of
+  past seasons' raw files is about 24 MB, well under the 10 GB limit.
 
 ### Locking predictions before kick-off
 
@@ -1344,7 +1401,7 @@ October means "not enough matches yet", not "no better".
 python -m pytest
 ```
 
-317 tests, no network access required (the integration test skips when the raw
+324 tests, no network access required (the integration test skips when the raw
 data is not cached). They cover the parts that are easy to get subtly wrong and hard
 to notice:
 

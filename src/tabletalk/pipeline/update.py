@@ -58,6 +58,10 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "outputs"
 
+#: A match that kicked off longer ago than this without a result is flagged
+#: (results may be late). Two days covers a slow source over a weekend.
+DEFAULT_STALE_AFTER = pd.Timedelta(days=2)
+
 
 class SafetyCheckError(RuntimeError):
     """A check failed: nothing is written for this league."""
@@ -78,6 +82,7 @@ class LeagueOutcome:
     awarded_drafts: str = ""
     notices: list[str] = field(default_factory=list)
     fixtures: pd.DataFrame | None = None  # the fixture source's rows, for locking
+    warnings: list[str] = field(default_factory=list)  # written, but a person should look
 
     @property
     def ok(self) -> bool:
@@ -90,6 +95,8 @@ def run_league(
     run_date: str,
     refresh: bool = True,
     n_simulations: int | None = None,
+    now: pd.Timestamp | None = None,
+    stale_after: pd.Timedelta = DEFAULT_STALE_AFTER,
 ) -> tuple[LeagueRun, str]:
     """Steps 1-6 for one league. Returns the run and any awarded-match drafts.
 
@@ -143,7 +150,8 @@ def run_league(
         (review.table_matches["season"].astype(str) == season)
         & review.table_matches["played"].fillna(False).astype(bool)
     ].sort_values(["date", "home_team"], kind="stable")
-    notices = []
+    now = now if now is not None else pd.Timestamp.now(tz="UTC")
+    notices = [f"Results may be late: {warning}" for warning in checks.check_staleness(api, now, max_age=stale_after)]
     for match in review.matches:
         if match.confirmed:
             notices.append(f"Awarded result, confirmed: {match.describe()}")
@@ -174,6 +182,23 @@ def run_league(
     return run, review.draft_entries(config.id)
 
 
+def updated_today(out_dir: Path, now: pd.Timestamp | None = None) -> bool:
+    """True if the latest run is from today (UTC) and updated every league.
+
+    The scheduled backup run uses this to do nothing when the main run already
+    succeeded. A run that failed or flagged any league does not count, so the
+    backup tries again.
+    """
+    index_path = out_dir / "latest" / "index.json"
+    if not index_path.exists():
+        return False
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    today = (now or pd.Timestamp.now(tz="UTC")).tz_convert("UTC").strftime("%Y-%m-%d")
+    return index["generated_at"][:10] == today and all(
+        entry["status"] == "updated" for entry in index["competitions"]
+    )
+
+
 @dataclass
 class RunResult:
     outcomes: list[LeagueOutcome]
@@ -181,7 +206,11 @@ class RunResult:
 
     @property
     def ok(self) -> bool:
-        return all(outcome.ok for outcome in self.outcomes) and self.track_record_error is None
+        """Everything updated, nothing flagged. False fails the scheduled run, so a person is told."""
+        return (
+            all(outcome.ok and not outcome.warnings for outcome in self.outcomes)
+            and self.track_record_error is None
+        )
 
 
 def run_update(
@@ -192,6 +221,7 @@ def run_update(
     n_simulations: int | None = None,
     now: pd.Timestamp | None = None,
     locked_at: pd.Timestamp | None = None,
+    stale_after: pd.Timedelta = DEFAULT_STALE_AFTER,
 ) -> RunResult:
     """Run every league, write the ones that passed, then lock and score.
 
@@ -206,13 +236,17 @@ def run_update(
         outcome = LeagueOutcome(competition=config.id, name=config.name)
         started = time.perf_counter()
         try:
-            run, drafts = run_league(config, run_date=run_date, refresh=refresh, n_simulations=n_simulations)
+            run, drafts = run_league(
+                config, run_date=run_date, refresh=refresh, n_simulations=n_simulations,
+                now=now, stale_after=stale_after,
+            )
             snapshot = build_snapshot(run, generated_at=now)
             contract = validate(snapshot)
             if contract:
                 raise SafetyCheckError(config.id, [f"data contract: {problem}" for problem in contract])
             outcome.snapshot, outcome.awarded_drafts, outcome.notices = snapshot, drafts, run.notices
             outcome.fixtures = run.fixtures
+            outcome.warnings = [notice for notice in run.notices if notice.startswith("Results may be late")]
         # A league's failure must not stop the others, and must be reported
         # whatever it was: this is the pipeline's boundary.
         except Exception as exc:  # noqa: BLE001
@@ -298,7 +332,25 @@ def write_outputs(outcomes: list[LeagueOutcome], *, out_dir: Path, generated_at:
     for directory in (history, latest):
         _write_json(directory / "index.json", index)
         _write_text(directory / "run_report.md", report)
+    _write_text(out_dir / "README.md", OUTPUTS_README)
     return history
+
+
+#: Written at the top of the output directory, which is published as the
+#: repository's `data` branch: a visitor landing there needs to know what it is.
+OUTPUTS_README = """# TableTalk data
+
+Written by the nightly GitHub Actions run (`python -m tabletalk update`), never by hand.
+
+- `latest/` - the newest snapshot for each league, and `index.json` saying what the last run did
+- `history/` - every run's files, never changed afterwards
+- `track_record/locks.jsonl` - predictions locked before kick-off (append-only, hash-chained)
+- `track_record/summary.json` - locked predictions scored against results
+
+What every field means: `contracts/README.md` on the `main` branch.
+Each commit on this branch is one nightly run, so the commit history shows when every
+prediction was published.
+"""
 
 
 def run_report(outcomes: list[LeagueOutcome], index: dict) -> str:
@@ -312,6 +364,7 @@ def run_report(outcomes: list[LeagueOutcome], index: dict) -> str:
                 f"{snapshot['data_through']}; {len(snapshot['upcoming_matches'])} matches still to play"
                 + ("; PROVISIONAL" if snapshot["provisional"] else "")
             )
+            lines.extend(f"    WARNING: {warning}" for warning in outcome.warnings)
         else:
             lines.append(f"- {outcome.name}: FAILED after {outcome.seconds:.0f}s; previous file kept ({entry['status']})")
             lines.extend(f"    {line}" for line in (outcome.error or "").splitlines())

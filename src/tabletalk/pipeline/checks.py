@@ -154,3 +154,44 @@ def check_table(table: pd.DataFrame, matches: pd.DataFrame, config: CompetitionC
 def check_fixtures(matches: pd.DataFrame, config: CompetitionConfig, season: str) -> list[str]:
     """The season's schedule against the configured format."""
     return check_fixture_list(matches, config, season)
+
+
+#: Statuses that explain a missing result: the match was not (fully) played.
+NO_RESULT_EXPECTED = frozenset({"POSTPONED", "CANCELLED", "SUSPENDED"})
+RESULT_STATUSES = frozenset({"FINISHED", "AWARDED"})
+
+
+def check_staleness(fixtures: pd.DataFrame, now: pd.Timestamp, *, max_age: pd.Timedelta) -> list[str]:
+    """Matches that should have a result by now but do not.
+
+    Uses the fixture list, not "days since the last result": an international
+    break has no matches, so no results are due, and nothing is flagged. A
+    match is overdue when it kicked off more than ``max_age`` ago (by its
+    listed kick-off, or the end of its listed day when it has no time) and the
+    source neither has its result nor says it was called off.
+
+    This is a warning, not a safety check: the numbers are still right for the
+    results we have, just possibly out of date.
+    """
+    if fixtures is None or fixtures.empty or "status" not in fixtures.columns:
+        return []
+    end_of_day = (pd.to_datetime(fixtures["date"]) + pd.Timedelta(days=1)).dt.tz_localize("UTC")
+    kickoff = pd.to_datetime(fixtures["kickoff_utc"], utc=True).fillna(end_of_day)
+    status = fixtures["status"].astype(str)
+    overdue = (
+        (kickoff < now - max_age)
+        & ~status.isin(RESULT_STATUSES)
+        & ~status.isin(NO_RESULT_EXPECTED)
+    )
+    if not overdue.any():
+        return []
+    late = fixtures.loc[overdue].sort_values("kickoff_utc")
+    examples = ", ".join(
+        f"{row.home_team} v {row.away_team} ({pd.Timestamp(row.date):%d %b}, {row.status})"
+        for row in late.head(5).itertuples(index=False)
+    )
+    days = max_age / pd.Timedelta(days=1)
+    return [
+        f"results may be late: {int(overdue.sum())} match(es) kicked off more than {days:g} days ago "
+        f"and still have no result in the fixture source, e.g. {examples}"
+    ]

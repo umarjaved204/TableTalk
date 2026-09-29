@@ -162,12 +162,15 @@ def cmd_update(args: argparse.Namespace) -> int:
     """The daily cycle for every league: fetch, check, refit, simulate, write."""
     from pathlib import Path
 
-    from .pipeline.update import DEFAULT_OUTPUT_DIR, run_update
+    from .pipeline.update import DEFAULT_OUTPUT_DIR, run_update, updated_today
 
     out_dir = Path(args.out) if args.out else DEFAULT_OUTPUT_DIR
+    if args.skip_if_updated_today and updated_today(out_dir):
+        print("today's run already updated every league; nothing to do")
+        return 0
     outcomes = run_update(
         args.competitions or None, out_dir=out_dir, refresh=not args.no_refresh,
-        n_simulations=args.n_simulations,
+        n_simulations=args.n_simulations, stale_after=pd.Timedelta(days=args.stale_after_days),
     )
     print((out_dir / "latest" / "run_report.md").read_text(encoding="utf-8"))
     print(f"outputs in {out_dir}")
@@ -344,6 +347,14 @@ def build_parser() -> argparse.ArgumentParser:
     update.add_argument("--out", default=None, help="output directory (default: outputs/)")
     update.add_argument("--no-refresh", action="store_true", help="use cached data only (no downloads)")
     update.add_argument("--n-simulations", type=int, default=None, help="default: from each config")
+    update.add_argument(
+        "--stale-after-days", type=float, default=2.0,
+        help="flag a league when a match that kicked off this long ago has no result (default: 2)",
+    )
+    update.add_argument(
+        "--skip-if-updated-today", action="store_true",
+        help="do nothing if today's run already updated every league (the scheduled backup run)",
+    )
     update.set_defaults(func=cmd_update)
 
     track = subparsers.add_parser("track-record", help="score locked predictions against results")
