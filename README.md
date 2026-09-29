@@ -8,5 +8,6 @@ Written by the nightly GitHub Actions run (`python -m tabletalk update`), never 
 - `track_record/summary.json` - locked predictions scored against results
 
 What every field means: `contracts/README.md` on the `main` branch.
-Each commit on this branch is one nightly run, so the commit history shows when every
-prediction was published.
+Each commit on this branch is one nightly run. The branch is protected against
+force-pushes and deletion, so its commit history is strong evidence (not proof) of when
+every prediction was published. The hash chain in `locks.jsonl` shows the log was not edited.
