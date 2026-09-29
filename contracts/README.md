@@ -156,4 +156,6 @@ previous files stay as they were and `index.json` says `kept_previous`.
 - **MAJOR** (x.0.0): a field removed, renamed or changing meaning. The website must be updated. Snapshots in `history/` keep the version they were written with.
 
 History: 1.0.0 (2026-09-29) snapshots and index; 1.1.0 (2026-09-29) adds the
-lock log and the track record.
+lock log and the track record. 2026-09-29: wording clarified (the `data`
+branch's history is strong evidence of timing, not proof); files unchanged,
+still 1.1.0.
