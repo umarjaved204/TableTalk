@@ -1,0 +1,448 @@
+---
+// The league table with each team's chances.
+//
+// Two views:
+//   Short: position, team, points and ONE chance column the visitor picks.
+//   Full:  everything (played, W/D/L, goals, Proj. pts, 80% range, all chances).
+// With no choice made, phones get Short and wide screens get Full (pure CSS,
+// so nothing jumps while the page loads). The Short/Full switch and the
+// chance picker need JavaScript; without it the default for the screen size
+// is shown. The first zone (the title) is the default chance.
+import type { TeamRow, Zone } from "../data/models.ts";
+import { formatPoints, formatRange, formatSigned } from "../format/number.ts";
+import { formatChance } from "../format/probability.ts";
+
+interface Props {
+  leagueName: string;
+  rows: TeamRow[];
+  zones: Zone[];
+  nSimulations: number;
+}
+const { leagueName, rows, zones, nSimulations } = Astro.props;
+const markedZones = zones.filter((z) => z.marker !== null);
+const zoneLabel = new Map(zones.map((z) => [z.id, z.label]));
+const deductions = rows.filter((r) => r.pointsDeducted !== 0);
+const simulations = new Intl.NumberFormat("en-GB").format(nSimulations);
+const firstZone = zones[0]?.id;
+---
+
+<div class="league-table" data-league-table>
+  <div class="controls" data-controls hidden>
+    <fieldset class="view">
+      <legend class="visually-hidden">Table view</legend>
+      <input type="radio" name="table-view" id="view-short" value="short" data-view />
+      <label for="view-short">Short</label>
+      <input type="radio" name="table-view" id="view-full" value="full" data-view />
+      <label for="view-full">Full</label>
+    </fieldset>
+    <label class="pick">
+      <span>Chance shown</span>
+      <select data-chance>
+        {zones.map((z) => (
+          <option value={z.id}>{z.label}</option>
+        ))}
+      </select>
+    </label>
+  </div>
+
+  <div class="scroll" role="region" aria-label={`${leagueName} table (scrolls sideways)`} tabindex="0">
+    <table>
+      <caption class="visually-hidden">
+        {leagueName}table, with each team's chances from{simulations}simulated seasons
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col" class="pos">
+            <abbr title="Position">#</abbr>
+          </th>
+          <th scope="col" class="team">
+            Team
+          </th>
+          <th scope="col" class="full-only">
+            <abbr title="Played">P</abbr>
+          </th>
+          <th scope="col" class="full-only">
+            <abbr title="Won">W</abbr>
+          </th>
+          <th scope="col" class="full-only">
+            <abbr title="Drawn">D</abbr>
+          </th>
+          <th scope="col" class="full-only">
+            <abbr title="Lost">L</abbr>
+          </th>
+          <th scope="col" class="full-only">
+            <abbr title="Goals for">GF</abbr>
+          </th>
+          <th scope="col" class="full-only">
+            <abbr title="Goals against">GA</abbr>
+          </th>
+          <th scope="col" class="full-only">
+            <abbr title="Goal difference">GD</abbr>
+          </th>
+          <th scope="col">
+            <abbr title="Points">Pts</abbr>
+          </th>
+          <th scope="col" class="full-only">
+            <abbr title={`Projected points: average final points across ${simulations} simulated seasons`}>
+              Proj. pts
+            </abbr>
+          </th>
+          <th scope="col" class="full-only">
+            <abbr title="80% of simulated seasons end between these points totals">Range</abbr>
+          </th>
+          {zones.map((z) => (
+            <th scope="col" class:list={["chance", { chosen: z.id === firstZone }]} data-zone={z.id}>
+              <abbr title={z.label}>{z.short}</abbr>
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr class:list={{ boundary: r.boundaryBelow }}>
+            <td class="pos" data-marker={r.zone?.marker} data-end={r.zone?.end}>
+              {r.position}
+              {r.zone && <span class="visually-hidden">, {zoneLabel.get(r.zone.id)}</span>}
+            </td>
+            <th scope="row" class="team">
+              {r.team}
+              {r.pointsDeducted !== 0 && (
+                <sup>
+                  <a href="#deductions" aria-label="points deduction, see note">
+                    *
+                  </a>
+                </sup>
+              )}
+            </th>
+            <td class="full-only">{r.played}</td>
+            <td class="full-only">{r.won}</td>
+            <td class="full-only">{r.drawn}</td>
+            <td class="full-only">{r.lost}</td>
+            <td class="full-only">{r.goalsFor}</td>
+            <td class="full-only">{r.goalsAgainst}</td>
+            <td class="full-only">{formatSigned(r.goalDifference)}</td>
+            <td class="pts">{r.points}</td>
+            <td class="full-only">{formatPoints(r.projectedPoints)}</td>
+            <td class="full-only muted">{formatRange(r.pointsP10, r.pointsP90)}</td>
+            {zones.map((z) => (
+              <td class:list={["chance", { chosen: z.id === firstZone }]} data-zone={z.id}>
+                {formatChance(r.zoneChances[z.id] ?? 0)}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="key">
+    <ul class="markers" aria-label="Key to the row markers">
+      {markedZones.map((z) => (
+        <li>
+          <span class="sample" data-marker={z.marker} data-end={z.end} aria-hidden="true" />
+          {z.label}
+        </li>
+      ))}
+      <li>
+        <span class="sample rule" aria-hidden="true"></span>Thicker line: zone boundary
+      </li>
+    </ul>
+    <p>
+      <strong>Proj. pts</strong>: average final points across {simulations} simulated seasons.{" "}
+      <strong>Range</strong>: 80% of simulated seasons end between these totals.
+    </p>
+    <p>
+      <strong>Chances</strong> are the share of simulated seasons that end in that zone. “&lt;1%” means under
+      half a percent: rare or never in the simulations, which is not the same as impossible.
+    </p>
+    {deductions.length > 0 && (
+      <p id="deductions">
+        * Points include a deduction or restoration:{" "}
+        {deductions.map((r, i) => (
+          <>
+            {i > 0 && "; "}
+            {r.team} {formatSigned(r.pointsDeducted)}
+          </>
+        ))}
+        .
+      </p>
+    )}
+  </div>
+</div>
+
+<script>
+  import "../scripts/table-controls.ts";
+</script>
+
+<style>
+  .league-table {
+    display: grid;
+    min-width: 0;
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .controls[hidden] {
+    display: none;
+  }
+
+  .view {
+    display: inline-flex;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-2);
+    overflow: hidden;
+  }
+
+  .view input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+
+  .view label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 64px;
+    min-height: var(--tap-main);
+    padding: 0 var(--space-3);
+    font-family: var(--font-display);
+    font-size: var(--step-0);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+  }
+
+  .view input:checked + label {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  .view input:focus-visible + label {
+    outline: 3px solid var(--focus);
+    outline-offset: -3px;
+  }
+
+  .pick {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--step--1);
+    color: var(--text-muted);
+  }
+
+  select {
+    max-width: 100%;
+    min-height: var(--tap-main);
+    padding: 0 var(--space-2);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-text);
+    font-size: var(--step-0);
+    font-weight: 600;
+  }
+
+  select:disabled {
+    opacity: 0.6;
+  }
+
+  .scroll {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: var(--step--1);
+  }
+
+  th,
+  td {
+    padding: var(--space-2) var(--space-2);
+    text-align: right;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+  }
+
+  thead th {
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    vertical-align: bottom;
+  }
+
+  tr.boundary > * {
+    border-bottom: 2px solid var(--border-strong);
+  }
+
+  tbody tr:nth-child(even) > * {
+    background: var(--surface-2);
+  }
+
+  /* Position and team stay put while the rest scrolls sideways. */
+  .pos,
+  .team {
+    position: sticky;
+    z-index: 1;
+    background: var(--surface);
+  }
+
+  .pos {
+    left: 0;
+    width: 2.6rem;
+    min-width: 2.6rem;
+    padding-left: calc(var(--zone-edge) + var(--space-2));
+    text-align: left;
+    color: var(--text-muted);
+  }
+
+  .team {
+    left: 2.6rem;
+    min-width: 8.5rem;
+    max-width: 11rem;
+    white-space: normal;
+    text-align: left;
+    font-weight: 600;
+    line-height: 1.25;
+    border-right: 1px solid var(--border);
+  }
+
+  .team sup a {
+    padding: 0 2px;
+  }
+
+  .pts {
+    font-weight: 700;
+  }
+
+  .muted {
+    color: var(--text-muted);
+  }
+
+  .chance.chosen {
+    font-weight: 700;
+  }
+
+  /* Short view: explicit choice, or the default on narrow screens. */
+  .league-table[data-view="short"] :is(.full-only, .chance:not(.chosen)) {
+    display: none;
+  }
+
+  @media (width < 900px) {
+    .league-table:not([data-view]) :is(.full-only, .chance:not(.chosen)) {
+      display: none;
+    }
+  }
+
+  .league-table[data-view="full"] .chance.chosen {
+    font-weight: inherit;
+  }
+
+  /* Zone markers: a 6px edge on the position cell. Each marker differs in
+     shape, so none depends on colour alone. */
+  td.pos[data-marker]::before,
+  .sample[data-marker] {
+    --zone: var(--zone-top);
+  }
+
+  td.pos[data-end="bottom"]::before,
+  .sample[data-end="bottom"] {
+    --zone: var(--zone-rel);
+  }
+
+  td.pos[data-marker]::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 3px;
+    bottom: 3px;
+    width: var(--zone-edge);
+    border-radius: 0 2px 2px 0;
+  }
+
+  [data-marker="solid"]::before,
+  .sample[data-marker="solid"] {
+    background: var(--zone);
+  }
+
+  [data-marker="light"]::before,
+  .sample[data-marker="light"] {
+    background: color-mix(in srgb, var(--zone) 50%, transparent);
+  }
+
+  [data-marker="outline"]::before,
+  .sample[data-marker="outline"] {
+    box-shadow: inset 0 0 0 2px var(--zone);
+  }
+
+  [data-marker="dashed"]::before,
+  .sample[data-marker="dashed"] {
+    background: repeating-linear-gradient(to bottom, var(--zone) 0 4px, transparent 4px 7px);
+  }
+
+  .key {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--step--1);
+    color: var(--text-muted);
+  }
+
+  .markers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .markers li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .sample {
+    display: inline-block;
+    width: var(--zone-edge);
+    height: 18px;
+    border-radius: 2px;
+  }
+
+  .sample.rule {
+    width: 18px;
+    height: 2px;
+    background: var(--border-strong);
+  }
+
+  .key strong {
+    color: var(--text);
+  }
+
+  @media (forced-colors: active) {
+    td.pos[data-marker]::before,
+    .sample[data-marker] {
+      forced-color-adjust: none;
+      border: 2px solid CanvasText;
+    }
+  }
+</style>

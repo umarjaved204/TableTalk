@@ -1,0 +1,30 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "rules": {
+    "color-no-hex": true,
+    "color-named": "never",
+    "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla", "oklch", "oklab", "lab", "lch", "hwb"],
+    "selector-class-pattern": null,
+    "custom-property-pattern": null,
+    "custom-property-empty-line-before": null,
+    "import-notation": "string",
+    "selector-pseudo-class-no-unknown": [true, { "ignorePseudoClasses": ["global"] }],
+    "declaration-property-value-allowed-list": [
+      { "font": ["inherit"] },
+      { "message": "Use font-family/font-size/font-weight: the font shorthand resets tabular figures" }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["**/*.astro"],
+      "customSyntax": "postcss-html"
+    },
+    {
+      "files": ["src/styles/themes/*.css", "src/styles/data-colours.css"],
+      "rules": {
+        "color-no-hex": null,
+        "function-disallowed-list": null
+      }
+    }
+  ]
+}

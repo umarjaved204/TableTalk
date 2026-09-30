@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.astro/
+# Local read-only copy of the `data` branch (npm run data).
+.data/
+test-results/
+playwright-report/

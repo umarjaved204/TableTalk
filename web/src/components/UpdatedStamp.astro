@@ -1,0 +1,62 @@
+---
+// "Updated 29 Sep, 18:56 · Results up to 20 Sep". Built in UTC; the browser
+// rewrites the time in the visitor's zone and, if the numbers are older than
+// 30 hours, replaces the first line with a warning (same line, so nothing
+// below it moves).
+import { formatDateTime, formatShortDate } from "../format/time.ts";
+
+interface Props {
+  generatedAt: string;
+  dataThrough: string | null;
+  runStatus: "updated" | "kept_previous";
+}
+const { generatedAt, dataThrough, runStatus } = Astro.props;
+---
+
+<div class="stamp" data-generated={generatedAt}>
+  <p class="line" data-stale-message>
+    Updated{" "}
+    <time datetime={generatedAt} data-format="datetime">
+      {formatDateTime(generatedAt, "UTC")} UTC
+    </time>
+  </p>
+  <p class="line">
+    {dataThrough ? <>Results up to {formatShortDate(dataThrough)}</> : <>No results yet this season</>}
+  </p>
+  {runStatus === "kept_previous" && (
+    <p class="warn">
+      Last night's update failed for this league, so these are the most recent numbers we have.
+    </p>
+  )}
+</div>
+
+<script>
+  import "../scripts/local-times.ts";
+</script>
+
+<style>
+  .stamp {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  .line {
+    min-height: 1.55em;
+  }
+
+  .stamp[data-stale="true"] [data-stale-message],
+  .warn {
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-1);
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    font-weight: 600;
+  }
+
+  .warn {
+    flex-basis: 100%;
+  }
+</style>

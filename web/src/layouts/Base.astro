@@ -1,0 +1,56 @@
+---
+// Every page: <head> (title, description, Open Graph, theme script, font
+// preload), skip link, header, main content, footer.
+import "../styles/global.css";
+import displayFont from "@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2?url";
+import SiteFooter from "../components/SiteFooter.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import themeHead from "../scripts/theme-head.js?raw";
+import { buildThemeScript } from "../scripts/theme-script.ts";
+
+interface Props {
+  title: string;
+  description: string;
+}
+const { title, description } = Astro.props;
+
+// Placeholders filled from src/themes.ts; its CSP hash is added in astro.config.mjs.
+const themeScript = buildThemeScript(themeHead);
+
+const fullTitle = `${title} · TableTalk`;
+const url = new URL(Astro.url.pathname, Astro.site).href;
+---
+
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={url} />
+    <meta name="color-scheme" content="light dark" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="TableTalk" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={url} />
+    <meta property="og:locale" content="en_GB" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href={displayFont} as="font" type="font/woff2" crossorigin />
+  </head>
+  <body>
+    <!-- First thing in <body>: after Astro's CSP <meta> in <head> (so the policy
+         covers it), and before any content is painted (so no flash of the wrong theme). -->
+    <script is:inline set:html={themeScript} />
+    <a class="skip-link" href="#main">
+      Skip to content
+    </a>
+    <SiteHeader />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <SiteFooter />
+  </body>
+</html>

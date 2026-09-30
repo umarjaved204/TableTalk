@@ -1,0 +1,19 @@
+/* Matchday: clean white with deep green. The default light theme, and what
+   visitors see before the theme script runs (or if scripts are off). */
+:root:not([data-theme]),
+[data-theme="matchday"] {
+  color-scheme: light;
+  --bg: #f4f7f5;
+  --surface: #fff;
+  --surface-2: #ecf1ee;
+  --border: #dbe3de;
+  --border-strong: #7b8c82;
+  --text: #0e1a13;
+  --text-muted: #4a5a50;
+  --accent: #0a6b3b;
+  --on-accent: #fff;
+  --focus: #0a6b3b;
+  --pitch-line: rgb(10 107 59 / 18%);
+  --warn-bg: #fdf0d5;
+  --warn-text: #5c3d00;
+}

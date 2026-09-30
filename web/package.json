@@ -1,0 +1,49 @@
+{
+  "name": "tabletalk-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The TableTalk website: reads the published files described in ../contracts, never the Python code.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "scripts": {
+    "data": "node scripts/fetch-data.mjs",
+    "types": "node scripts/gen-types.mjs",
+    "dev": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "lint": "eslint . && stylelint \"src/**/*.{css,astro}\" && prettier --check .",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@fontsource-variable/source-sans-3": "5.3.0",
+    "@fontsource/barlow-condensed": "5.3.0",
+    "ajv": "8.20.0",
+    "astro": "7.3.5"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "@axe-core/playwright": "4.13.0",
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
+    "@types/node": "24.19.0",
+    "eslint": "10.11.0",
+    "eslint-plugin-astro": "3.2.1",
+    "globals": "17.12.0",
+    "json-schema-to-typescript": "16.0.0",
+    "postcss-html": "2.0.0",
+    "prettier": "3.9.9",
+    "prettier-plugin-astro": "1.1.0",
+    "stylelint": "17.15.0",
+    "stylelint-config-standard": "40.0.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0",
+    "vitest": "5.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}

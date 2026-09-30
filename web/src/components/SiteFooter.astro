@@ -1,0 +1,57 @@
+---
+import { dataSource } from "../data/source.ts";
+
+const source = dataSource();
+---
+
+<footer class="site-footer">
+  <div class="container inner">
+    <p class="strong">Model probabilities, not certainties. Not betting advice.</p>
+    <p>
+      Football data provided by the <a href="https://www.football-data.org/">Football-Data.org API</a>.
+    </p>
+    <p>
+      No trackers, no analytics, no cookies. Your theme and table settings are stored only in your own
+      browser.
+    </p>
+    <p class="meta">
+      <a href="https://github.com/umarjaved204/TableTalk">Source code on GitHub</a>
+      {source && (
+        <span>
+          Built from the <code>data</code> branch at <code>{source.commit.slice(0, 7)}</code>
+        </span>
+      )}
+    </p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: var(--space-12);
+    padding-block: var(--space-8);
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  .inner {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+  }
+
+  code {
+    font-family: var(--font-mono);
+  }
+</style>

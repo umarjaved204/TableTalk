@@ -1,0 +1,57 @@
+---
+// Upcoming matches grouped by date. Built grouped by the UTC date; the
+// browser regroups by the visitor's own date (a late kick-off in UTC can be
+// the next day elsewhere).
+import type { UpcomingMatch } from "../data/models.ts";
+import { formatDayHeading, localDateKey } from "../format/time.ts";
+import MatchCard from "./MatchCard.astro";
+
+interface Props {
+  matches: UpcomingMatch[];
+  predictedAt: string;
+}
+const { matches, predictedAt } = Astro.props;
+
+const groups = new Map<string, UpcomingMatch[]>();
+for (const match of matches) {
+  const key = match.kickoffUtc ? localDateKey(match.kickoffUtc, "UTC") : (match.date ?? "unknown");
+  groups.set(key, [...(groups.get(key) ?? []), match]);
+}
+---
+
+<p class="note">
+  Times in <span data-tz-label>UTC</span>. Kick-off times can still change.
+</p>
+<div class="list" data-match-list>
+  {[...groups].map(([key, group]) => (
+    <>
+      <h3 class="day-heading">{key === "unknown" ? "Date to be confirmed" : formatDayHeading(key)}</h3>
+      {group.map((match) => (
+        <MatchCard match={match} predictedAt={predictedAt} />
+      ))}
+    </>
+  ))}
+</div>
+
+<script>
+  import "../scripts/local-times.ts";
+</script>
+
+<style>
+  .note {
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--step--1);
+    color: var(--text-muted);
+  }
+
+  .list :global(.day-heading) {
+    padding: var(--space-2) var(--space-4);
+    background: var(--surface-2);
+    border-block: 1px solid var(--border);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+</style>

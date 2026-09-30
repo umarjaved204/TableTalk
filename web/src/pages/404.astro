@@ -1,0 +1,26 @@
+---
+import { LEAGUES } from "../data/leagues.ts";
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Page not found" description="This page doesn't exist.">
+  <div class="container page">
+    <h1>Page not found</h1>
+    <p>This page doesn't exist. Try one of the leagues:</p>
+    <ul>
+      {LEAGUES.map((league) => (
+        <li>
+          <a href={`/${league.slug}/`}>{league.name}</a>
+        </li>
+      ))}
+    </ul>
+  </div>
+</Base>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--space-4);
+    padding-block: var(--space-8) 0;
+  }
+</style>

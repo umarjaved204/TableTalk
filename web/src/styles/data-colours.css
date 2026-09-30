@@ -1,0 +1,65 @@
+/* Data colours: separate from theme colours, and the same meaning in every
+   theme. Two sets only, the validated colour-blind-safe palette's light and
+   dark steps (same hues as the report figures in reports/figures; only the
+   lightness changes). Each theme is listed in exactly one set (a unit test
+   checks this). The theme accent is never used for data.
+
+   --data-home/draw/away  match outcome bars (palette slots 1-3)
+   --zone-top/--zone-rel  table zone edges (diverging pair: blue top, red bottom)
+   --heat-1..7            finishing-position heatmap, 7 binned steps of one blue
+   --heat-ink-1..7        text on each heat step (each pair is at least 5.4:1)
+*/
+
+/* Light set: darker blue = more likely. Orange and aqua are one step darker
+   than the report figures so they reach 3:1 on white and cream. */
+:root:not([data-theme]),
+[data-theme="matchday"],
+[data-theme="programme"] {
+  --data-home: #2a78d6;
+  --data-draw: #d4581f;
+  --data-away: #128a60;
+  --zone-top: #2a78d6;
+  --zone-rel: #e34948;
+  --heat-1: #cde2fb;
+  --heat-2: #9ec5f4;
+  --heat-3: #6da7ec;
+  --heat-4: #3987e5;
+  --heat-5: #256abf;
+  --heat-6: #184f95;
+  --heat-7: #0d366b;
+  --heat-ink-1: #0b0b0b;
+  --heat-ink-2: #0b0b0b;
+  --heat-ink-3: #0b0b0b;
+  --heat-ink-4: #0b0b0b;
+  --heat-ink-5: #fff;
+  --heat-ink-6: #fff;
+  --heat-ink-7: #fff;
+}
+
+/* Dark set: the same seven blues reversed, so brighter = more likely and
+   near-zero cells sit close to the dark surface. */
+[data-theme="floodlights"],
+[data-theme="tactics"],
+[data-theme="nightgame"],
+[data-theme="terrace"],
+[data-theme="contrast"] {
+  --data-home: #3987e5;
+  --data-draw: #d95926;
+  --data-away: #199e70;
+  --zone-top: #3987e5;
+  --zone-rel: #e66767;
+  --heat-1: #0d366b;
+  --heat-2: #184f95;
+  --heat-3: #256abf;
+  --heat-4: #3987e5;
+  --heat-5: #6da7ec;
+  --heat-6: #9ec5f4;
+  --heat-7: #cde2fb;
+  --heat-ink-1: #fff;
+  --heat-ink-2: #fff;
+  --heat-ink-3: #fff;
+  --heat-ink-4: #0b0b0b;
+  --heat-ink-5: #0b0b0b;
+  --heat-ink-6: #0b0b0b;
+  --heat-ink-7: #0b0b0b;
+}

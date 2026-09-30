@@ -1,0 +1,42 @@
+---
+// TEMPORARY home page for local preview in Step 2: a list of the league
+// pages. The real home page (the five leagues at a glance) is Step 3.
+import { LEAGUES } from "../data/leagues.ts";
+import Base from "../layouts/Base.astro";
+---
+
+<Base
+  title="Season forecasts"
+  description="Football season forecasts for five European leagues, updated every night."
+>
+  <div class="container page">
+    <h1>TableTalk</h1>
+    <p>Football season forecasts, updated every night.</p>
+    <ul>
+      {LEAGUES.map((league) => (
+        <li>
+          <a href={`/${league.slug}/`}>{league.name}</a>
+        </li>
+      ))}
+    </ul>
+  </div>
+</Base>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--space-4);
+    padding-block: var(--space-8) 0;
+  }
+
+  ul {
+    display: grid;
+    gap: var(--space-2);
+    padding-left: 1.2em;
+  }
+
+  a {
+    display: inline-block;
+    min-height: var(--tap-min);
+  }
+</style>

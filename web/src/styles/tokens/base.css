@@ -1,0 +1,61 @@
+/* Theme-independent tokens: type, space, radius, shadow, motion, sizes.
+   Colours live in themes/*.css (interface) and data-colours.css (data). */
+@import "@fontsource/barlow-condensed/600.css";
+@import "@fontsource/barlow-condensed/700.css";
+@import "@fontsource-variable/source-sans-3/wght.css";
+
+:root {
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-text: "Source Sans 3 Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", consolas, monospace;
+
+  /* Type scale: ratio 1.25 on a 16px base. */
+  --step--2: 0.72rem;
+  --step--1: 0.84rem;
+  --step-0: 1rem;
+  --step-1: 1.25rem;
+  --step-2: 1.56rem;
+  --step-3: 1.95rem;
+  --step-4: 2.44rem;
+  --step-5: 3.05rem;
+
+  /* Spacing: 4px grid. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --radius-1: 4px;
+  --radius-2: 8px;
+  --radius-pill: 999px;
+  --shadow-1: 0 1px 2px color-mix(in srgb, var(--text) 12%, transparent);
+  --shadow-2: 0 8px 28px color-mix(in srgb, var(--text) 18%, transparent);
+
+  /* Sizes */
+  --tap-min: 24px; /* WCAG 2.2 AA minimum target */
+  --tap-main: 44px; /* main controls: league switcher, tabs, theme picker */
+  --zone-edge: 6px;
+  --content-max: 1320px;
+  --gutter: var(--space-4);
+
+  /* Motion: switched off for people who ask for less. */
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+}
+
+@media (width >= 600px) {
+  :root {
+    --gutter: var(--space-6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+  }
+}

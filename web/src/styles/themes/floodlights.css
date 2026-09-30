@@ -1,0 +1,17 @@
+/* Floodlights: stadium night with pitch green. The default dark theme. */
+[data-theme="floodlights"] {
+  color-scheme: dark;
+  --bg: #0b1210;
+  --surface: #121b17;
+  --surface-2: #19241f;
+  --border: #26332c;
+  --border-strong: #6b8074;
+  --text: #edf3ef;
+  --text-muted: #a0b0a6;
+  --accent: #3fd98a;
+  --on-accent: #04140b;
+  --focus: #7cf0b2;
+  --pitch-line: rgb(63 217 138 / 16%);
+  --warn-bg: #3a2c0c;
+  --warn-text: #ffe2a3;
+}

@@ -1,0 +1,54 @@
+---
+import ThemePicker from "./ThemePicker.astro";
+---
+
+<header class="site-header">
+  <div class="container bar">
+    <a class="brand" href="/">
+      <svg class="mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="2" x2="12" y2="22"></line>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+      TableTalk
+    </a>
+    <ThemePicker />
+  </div>
+</header>
+
+<style>
+  .site-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    min-height: 56px;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--tap-main);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--step-2);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .mark {
+    width: 26px;
+    height: 26px;
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1.6;
+  }
+</style>

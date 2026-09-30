@@ -1,0 +1,17 @@
+/* Programme: retro matchday-programme cream with deep red. */
+[data-theme="programme"] {
+  color-scheme: light;
+  --bg: #f3ead8;
+  --surface: #fbf6ea;
+  --surface-2: #ece0c8;
+  --border: #dccdb0;
+  --border-strong: #8a7a60;
+  --text: #221912;
+  --text-muted: #584838;
+  --accent: #9b1c1c;
+  --on-accent: #fffaf0;
+  --focus: #9b1c1c;
+  --pitch-line: rgb(155 28 28 / 18%);
+  --warn-bg: #f5dfb0;
+  --warn-text: #4d2e00;
+}

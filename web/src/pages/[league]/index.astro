@@ -1,0 +1,240 @@
+---
+// A league page: table and chances, next matches, finishing positions.
+// On phones the three sections are tabs; from 900px they sit side by side.
+import LeagueSwitcher from "../../components/LeagueSwitcher.astro";
+import LeagueTable from "../../components/LeagueTable.astro";
+import MatchList from "../../components/MatchList.astro";
+import Notice from "../../components/Notice.astro";
+import PositionsHeatmap from "../../components/PositionsHeatmap.astro";
+import UpdatedStamp from "../../components/UpdatedStamp.astro";
+import { loadLeague } from "../../data/league.ts";
+import { LEAGUES, type LeagueInfo } from "../../data/leagues.ts";
+import Base from "../../layouts/Base.astro";
+
+export function getStaticPaths() {
+  return LEAGUES.map((league) => ({ params: { league: league.slug }, props: { league } }));
+}
+
+interface Props {
+  league: LeagueInfo;
+}
+const { league } = Astro.props;
+const data = loadLeague(league);
+
+/** How many upcoming matches the league page shows (the full list is its own page in Step 3). */
+const NEXT_MATCHES = 10;
+
+if (data.state === "unsupported") {
+  console.warn(
+    `[tabletalk] ${league.id}: contract version ${data.found ?? "missing"} is not supported; numbers hidden.`,
+  );
+}
+
+const season = data.state === "ready" ? ` ${data.season}` : "";
+const title = `${league.name}${season} predictions`;
+const description =
+  data.state === "ready"
+    ? `${league.name}${season}: each team's chances of the title, the top places and relegation from ${new Intl.NumberFormat("en-GB").format(data.nSimulations)} simulated seasons, plus predictions for the next matches. Updated nightly.`
+    : `${league.name} season predictions from TableTalk.`;
+---
+
+<Base title={title} description={description}>
+  <LeagueSwitcher current={league.slug} />
+  <div class="container page">
+    {data.state === "unsupported" && (
+      <>
+        <h1>{league.name}</h1>
+        <Notice title="This league's numbers are hidden" tone="warn">
+          <p>
+            Its data is in a newer format (contract {data.found ?? "unknown"}) than this site understands, so
+            the numbers are hidden rather than shown wrongly. The site will be updated to read it.
+          </p>
+        </Notice>
+      </>
+    )}
+    {data.state === "unavailable" && (
+      <>
+        <h1>{league.name}</h1>
+        <Notice title={`We don't have a forecast for ${league.name} right now`} tone="warn">
+          <p>The last update couldn't produce one. The other leagues are not affected.</p>
+          {data.error && <p>Reason recorded by the update: {data.error}</p>}
+        </Notice>
+      </>
+    )}
+    {data.state === "ready" && (
+      <>
+        <header class="league-head">
+          <h1>
+            {league.name} <span class="season">{data.season}</span>
+          </h1>
+          <UpdatedStamp
+            generatedAt={data.generatedAt}
+            dataThrough={data.dataThrough}
+            runStatus={data.runStatus}
+          />
+          {data.provisional && (
+            <Notice title="Provisional" tone="warn">
+              <p>The table includes a result that is not confirmed yet.</p>
+            </Notice>
+          )}
+          {data.notices.map((notice) => (
+            <Notice title="Note">
+              <p>{notice}</p>
+            </Notice>
+          ))}
+        </header>
+
+        <div class="sections" data-tabs>
+          <div class="tablist" data-tablist hidden>
+            <button type="button" id="tab-table" data-tab="table">
+              Table
+            </button>
+            <button type="button" id="tab-matches" data-tab="matches">
+              Matches
+            </button>
+            <button type="button" id="tab-positions" data-tab="positions">
+              Positions
+            </button>
+          </div>
+
+          <section id="table" class="panel panel-table" aria-labelledby="table-heading">
+            <h2 id="table-heading">Table and chances</h2>
+            <LeagueTable
+              leagueName={league.name}
+              rows={data.rows}
+              zones={data.zones}
+              nSimulations={data.nSimulations}
+            />
+          </section>
+
+          <section id="matches" class="panel panel-matches" aria-labelledby="matches-heading">
+            <h2 id="matches-heading">Next matches</h2>
+            {data.upcoming.length > 0 ? (
+              <MatchList matches={data.upcoming.slice(0, NEXT_MATCHES)} predictedAt={data.generatedAt} />
+            ) : (
+              <p class="empty">No matches left to play this season.</p>
+            )}
+          </section>
+
+          <section id="positions" class="panel panel-positions" aria-labelledby="positions-heading">
+            <h2 id="positions-heading">Finishing positions</h2>
+            <PositionsHeatmap leagueName={league.name} rows={data.rows} nSimulations={data.nSimulations} />
+          </section>
+        </div>
+      </>
+    )}
+  </div>
+</Base>
+
+<script>
+  import "../../scripts/tabs.ts";
+</script>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--space-5);
+    padding-block: var(--space-6) 0;
+  }
+
+  .league-head {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .season {
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .sections {
+    display: grid;
+    gap: var(--space-5);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tablist {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tablist[hidden] {
+    display: none;
+  }
+
+  .tablist button {
+    flex: 1;
+    min-height: var(--tap-main);
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-size: var(--step-0);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+  }
+
+  .tablist button[aria-selected="true"] {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+  }
+
+  .panel {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+  }
+
+  .panel[hidden] {
+    display: none;
+  }
+
+  .panel h2 {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--step-1);
+  }
+
+  .empty {
+    padding: var(--space-4);
+    color: var(--text-muted);
+  }
+
+  @media (width >= 900px) {
+    .sections {
+      grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
+
+      /* The match column spans both rows and is usually the tallest. Row 1 fits
+         the table; row 2 takes the rest, so no gap opens under the table. */
+      grid-template-rows: auto 1fr;
+      align-items: start;
+    }
+
+    .panel-table {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .panel-positions {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .panel-matches {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+    }
+  }
+
+  /* From 1200px the Full table fits without scrolling next to a fixed-width match column. */
+  @media (width >= 1200px) {
+    .sections {
+      grid-template-columns: minmax(0, 1fr) 340px;
+    }
+  }
+</style>

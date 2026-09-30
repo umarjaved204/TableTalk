@@ -1,0 +1,18 @@
+/* High Contrast: black, white and yellow. Also used for "System" when the
+   device asks for more contrast (prefers-contrast: more). */
+[data-theme="contrast"] {
+  color-scheme: dark;
+  --bg: #000;
+  --surface: #000;
+  --surface-2: #101010;
+  --border: #fff;
+  --border-strong: #fff;
+  --text: #fff;
+  --text-muted: #e6e6e6;
+  --accent: #ff0;
+  --on-accent: #000;
+  --focus: #ff0;
+  --pitch-line: rgb(255 255 255 / 35%);
+  --warn-bg: #000;
+  --warn-text: #ff0;
+}
