@@ -10,6 +10,12 @@
   var KEY = __STORAGE_KEY__;
   var root = document.documentElement;
 
+  // Also marks the page as having JavaScript, before the first paint. CSS uses
+  // it to show the controls that need JavaScript (phone tabs, the table's
+  // Short/Full switch) straight away, so nothing appears late and pushes the
+  // page down (layout shift). Without JavaScript they stay hidden.
+  root.setAttribute("data-js", "");
+
   function query(q) {
     return window.matchMedia ? window.matchMedia(q) : null;
   }

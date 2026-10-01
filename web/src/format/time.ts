@@ -12,8 +12,24 @@ export const LOCALE = "en-GB";
  *  Runs are daily (04:37 UTC, backup 07:37), so 30 hours means one was missed. */
 export const STALE_AFTER_HOURS = 30;
 
+// Creating an Intl.DateTimeFormat is slow (it loads locale and time zone
+// data); using one is fast. A matches page formats over a hundred times, so
+// each formatter is made once and reused (measured: this keeps the page's
+// script well inside Lighthouse's blocking-time budget on a slow phone).
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
+function formatter(timeZone: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = `${timeZone}|${JSON.stringify(options)}`;
+  let made = formatters.get(key);
+  if (!made) {
+    made = new Intl.DateTimeFormat(LOCALE, { timeZone, ...options });
+    formatters.set(key, made);
+  }
+  return made;
+}
+
 function parts(utc: string, timeZone: string, options: Intl.DateTimeFormatOptions) {
-  return new Intl.DateTimeFormat(LOCALE, { timeZone, ...options }).formatToParts(new Date(utc));
+  return formatter(timeZone, options).formatToParts(new Date(utc));
 }
 
 function part(list: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): string {
@@ -52,7 +68,7 @@ export function formatShortDate(date: string): string {
 
 /** Short name of the time zone at that instant, e.g. "BST", "UTC", "GMT+2". */
 export function timeZoneLabel(timeZone: string, at: Date): string {
-  const p = new Intl.DateTimeFormat(LOCALE, { timeZone, timeZoneName: "short" }).formatToParts(at);
+  const p = formatter(timeZone, { timeZoneName: "short" }).formatToParts(at);
   return part(p, "timeZoneName") || timeZone;
 }
 

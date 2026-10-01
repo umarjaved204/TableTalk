@@ -88,3 +88,28 @@
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
     U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
+
+/* Fallbacks shown while the web fonts download (font-display: swap): Arial,
+   scaled to the web fonts' measured width and line height, so the swap
+   barely moves the text (less layout shift). Measured in Chromium by
+   scripts/font-fallback-metrics.mjs; re-run it if the fonts change. Arial is
+   installed on Windows, macOS and iOS; elsewhere (Android) the next font in
+   the stack is used, unadjusted. */
+@font-face {
+  font-family: "Barlow Condensed Fallback";
+  font-weight: 600 700;
+  src: local("Arial Bold"), local("Arial-BoldMT");
+  size-adjust: 75.6%;
+  ascent-override: 132.27%;
+  descent-override: 26.45%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Source Sans 3 Fallback";
+  src: local("Arial"), local("ArialMT");
+  size-adjust: 91.85%;
+  ascent-override: 111.05%;
+  descent-override: 43.55%;
+  line-gap-override: 0%;
+}

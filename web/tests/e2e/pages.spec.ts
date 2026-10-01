@@ -1,46 +1,10 @@
 // Step 3 pages: the matches pages, the home page, the race charts, and every
 // data state. The test site's data (tests/fixtures/make-e2e-data.ts) has one
 // league per state and an illustrated lock log with every match status.
-import AxeBuilder from "@axe-core/playwright";
-import { DARK, LIGHT, WIDTHS, hasSidewaysScroll, openAs } from "./helpers.ts";
+import { DARK, LIGHT, openAs } from "./helpers.ts";
 import { expect, test } from "./test.ts";
 
-/** Every new page and every data state, each in one light and one dark theme
- *  at all five widths (the full theme matrix is Step 5). */
-const PAGES = [
-  "/", // home: ready, unavailable, hidden and kept_previous/provisional cards
-  "/premier-league/", // league page with the race charts (4-zone league)
-  "/bundesliga/", // race charts in a six-zone league
-  "/premier-league/matches/", // every match status
-  "/bundesliga/matches/",
-  "/ligue-1/", // kept_previous + provisional + notice, race "too early"
-  "/ligue-1/matches/",
-  "/la-liga/", // unavailable: the file breaks the contract
-  "/serie-a/matches/", // numbers hidden: newer MAJOR version
-  "/track-record/", // mature illustrated record: comparisons, calibration chart and table
-  "/methodology/",
-  "/about/",
-];
-
-test.describe("accessibility: every new page, light and dark, every width", () => {
-  for (const path of PAGES) {
-    for (const theme of [LIGHT, DARK]) {
-      for (const width of WIDTHS) {
-        test(`${path} ${theme} ${width}px`, async ({ page }) => {
-          const errors = await openAs(page, path, theme, width);
-          // Open every "Show the numbers" table, so axe checks them too.
-          for (const summary of await page.locator("details summary").all()) await summary.click();
-          const results = await new AxeBuilder({ page })
-            .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-            .analyze();
-          expect(results.violations.map((v) => `${v.id}: ${v.nodes.length} (${v.help})`)).toEqual([]);
-          expect(await hasSidewaysScroll(page)).toBe(false);
-          expect(errors, "console errors (including CSP violations)").toEqual([]);
-        });
-      }
-    }
-  }
-});
+// The accessibility runs for these pages are in a11y-matrix.spec.ts.
 
 test.describe("matches page: every status (London time, BST)", () => {
   test.beforeEach(async ({ page }) => {

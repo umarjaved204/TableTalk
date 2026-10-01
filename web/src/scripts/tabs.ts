@@ -3,7 +3,9 @@
 // Tabs are the one place the site needs ARIA: HTML has no tab element. So
 // the roles are added by this script, and only while the screen is narrow.
 // Without JavaScript, or on wide screens, the tab bar is hidden and every
-// section is shown one after another, with its own heading.
+// section is shown one after another, with its own heading. With JavaScript
+// the tab bar is shown by CSS from the first paint (data-js, set by the
+// theme script), so it never appears late and pushes the page down.
 
 const NARROW = window.matchMedia("(width < 900px)");
 
@@ -67,6 +69,9 @@ for (const root of document.querySelectorAll<HTMLElement>("[data-tabs]")) {
   });
   NARROW.addEventListener("change", () => render(false));
   render(false);
+  // From now on this script decides which section shows (see the pages' CSS:
+  // until then, phones show only the first section, as this script will).
+  root.setAttribute("data-tabs-ready", "");
 }
 
 export {};

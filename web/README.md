@@ -17,9 +17,10 @@ the Python code.
 
 ## Status
 
-Step 4 of the frontend plan: the track record, methodology and about pages,
-on top of Step 3 (home page, league and matches pages, race charts, every data
-state). Local preview only; no deployment and no workflows during the pipeline
+Step 5 of the frontend plan (polish and tests): the full accessibility matrix,
+a keyboard walk of every page, Lighthouse with speed budgets, no layout shift
+while fonts and scripts load, and the deployment plan (`DEPLOYMENT.md`, not
+carried out). Built on Steps 1-4: every page and every data state. Local preview only; no deployment and no workflows during the pipeline
 trial. Work happens on the `frontend` branch; nothing goes on `main` until the
 trial is reviewed (and contract request R8 is done).
 
@@ -57,17 +58,18 @@ Astro asks to collect anonymous usage data. To opt out on your machine:
 
 ## Everyday commands
 
-| Command            | What it does                                                                                                                                                                        |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run data`     | Copy the published files from `origin/data` into `web/.data/` (read-only: `git fetch` + `git cat-file`; never checks out or writes to `data`). Add `-- --offline` to skip the fetch |
-| `npm run types`    | Regenerate `src/data/contract.gen.ts` from `../contracts/*.schema.json` (after a contract change)                                                                                   |
-| `npm run dev`      | Development server (no CSP in dev mode)                                                                                                                                             |
-| `npm run build`    | Type-check, build `dist/`, then check the build (`scripts/check-build.mjs`)                                                                                                         |
-| `npm run preview`  | Serve `dist/` at http://localhost:4321 (with the CSP, as deployed)                                                                                                                  |
-| `npm test`         | Unit tests                                                                                                                                                                          |
-| `npm run test:e2e` | Browser and accessibility tests. Builds its own test site from fixed test data first (see tests/README.md)                                                                          |
-| `npm run lint`     | ESLint, Stylelint, Prettier check                                                                                                                                                   |
-| `npm run format`   | Prettier, fix formatting                                                                                                                                                            |
+| Command              | What it does                                                                                                                                                                        |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run data`       | Copy the published files from `origin/data` into `web/.data/` (read-only: `git fetch` + `git cat-file`; never checks out or writes to `data`). Add `-- --offline` to skip the fetch |
+| `npm run types`      | Regenerate `src/data/contract.gen.ts` from `../contracts/*.schema.json` (after a contract change)                                                                                   |
+| `npm run dev`        | Development server (no CSP in dev mode)                                                                                                                                             |
+| `npm run build`      | Type-check, build `dist/`, then check the build (`scripts/check-build.mjs`)                                                                                                         |
+| `npm run preview`    | Serve `dist/` at http://localhost:4321 (with the CSP, as deployed)                                                                                                                  |
+| `npm test`           | Unit tests                                                                                                                                                                          |
+| `npm run test:e2e`   | Browser and accessibility tests. Builds its own test site from fixed test data first (see tests/README.md)                                                                          |
+| `npm run lighthouse` | Lighthouse (mobile) on 5 pages of the built site, median of 3 runs; fails over budget (LCP 2.5 s, CLS 0.1, TBT 200 ms). Reports in `lighthouse/`                                    |
+| `npm run lint`       | ESLint, Stylelint, Prettier check                                                                                                                                                   |
+| `npm run format`     | Prettier, fix formatting                                                                                                                                                            |
 
 ## How it fits together
 
@@ -156,6 +158,39 @@ type check; `npm run build` adds about 14 s of `astro check`):
 So each nightly run adds about 13 ms to the build, about 4 s over a season.
 Each file is still parsed in full (150-190 KB); R2's compact series would
 make this one small file per league.
+
+## Nothing moves while the page loads
+
+Measured with Lighthouse on a simulated slow phone (layout shift was 0.12 to
+0.18 on two pages before, against a budget of 0.1). Two causes, two fixes:
+
+- **Fonts swapping in.** While a web font downloads the browser shows a
+  fallback, then swaps. The fallback is now Arial scaled to the web font's
+  measured width and line height (`size-adjust` and the `-override`
+  properties in `src/styles/fonts.css`, measured by
+  `scripts/font-fallback-metrics.mjs`), so the swap barely moves anything.
+- **Controls appearing late.** The phone tabs and the table's Short/Full
+  switch need JavaScript, so they were hidden until the scripts ran, and then
+  pushed the page down. The theme script (which already runs before the first
+  paint) now marks the page with `data-js`, and CSS shows them from the first
+  paint. Without JavaScript they stay hidden (`tests/e2e/no-js.spec.ts`).
+- Also: the times the browser rewrites in the visitor's zone change length,
+  so on phones each "Updated" fact has its own line and can't re-wrap.
+
+Lighthouse results (2 Oct 2026, median of 3 runs, real data):
+
+| Page                   | Performance | Accessibility | Best practices | SEO | LCP   | CLS   | TBT  |
+| ---------------------- | ----------- | ------------- | -------------- | --- | ----- | ----- | ---- |
+| Home                   | 99          | 100           | 100            | 91  | 1.8 s | 0.001 | 0 ms |
+| Premier League         | 97          | 100           | 100            | 91  | 2.1 s | 0.005 | 0 ms |
+| Premier League matches | 97          | 100           | 100            | 91  | 2.1 s | 0.044 | 0 ms |
+| Track record           | 99          | 100           | 100            | 91  | 1.7 s | 0.004 | 0 ms |
+| Methodology            | 100         | 100           | 100            | 91  | 1.4 s | 0.002 | 0 ms |
+
+SEO is 91 only because Lighthouse fetches `robots.txt` from inside the page,
+which the Content Security Policy (`connect-src 'none'`) blocks; search
+engines fetch it directly. INP needs real visitors' clicks, so a lab run
+reports total blocking time (TBT) instead.
 
 ## Track record page: two display decisions
 

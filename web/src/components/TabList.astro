@@ -1,7 +1,9 @@
 ---
 // The phone tab bar for a page's sections (used with scripts/tabs.ts).
-// Hidden until the script shows it, and only on narrow screens: without
-// JavaScript every section is simply shown one after another.
+// Shown only on narrow screens and only with JavaScript: the theme script
+// marks the page with data-js before the first paint, so the bar is there
+// from the start and nothing moves when tabs.ts runs. Without JavaScript
+// every section is simply shown one after another.
 interface Props {
   /** Each tab's section id and label, in order. */
   tabs: { id: string; label: string }[];
@@ -9,7 +11,7 @@ interface Props {
 const { tabs } = Astro.props;
 ---
 
-<div class="tablist" data-tablist hidden>
+<div class="tablist" data-tablist>
   {tabs.map((tab) => (
     <button type="button" id={`tab-${tab.id}`} data-tab={tab.id}>
       {tab.label}
@@ -19,13 +21,15 @@ const { tabs } = Astro.props;
 
 <style>
   .tablist {
-    display: flex;
+    display: none;
     flex-wrap: wrap; /* very large text: tabs go onto two rows rather than off-screen */
     border-bottom: 1px solid var(--border);
   }
 
-  .tablist[hidden] {
-    display: none;
+  @media (width < 900px) {
+    :global([data-js]) .tablist:not([hidden]) {
+      display: flex;
+    }
   }
 
   button {

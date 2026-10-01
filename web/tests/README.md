@@ -115,30 +115,40 @@ Tests for stale data and kick-offs move the clock on.
 
 ## Browser tests: accessibility coverage
 
+The full record, with the manual keyboard and NVDA checklists still to do, is
+in `../docs/accessibility-review.md`.
+
 axe-core checks every rule tagged WCAG 2.0/2.1/2.2 A and AA. Each run also
 checks that the page never scrolls sideways and that there are no console
 errors, which includes any Content Security Policy violation.
 
-**Now (Step 4):** the league page (`/premier-league/`) in all **8 themes × 5
-widths** (360, 390, 768, 1024, 1440 px) = 40 runs, plus every other page and
-every data state (12 pages: home, two league pages with race charts, three
-matches pages, the three broken-league states, track record, methodology,
-about) in **Matchday (light) and Floodlights (dark) × 5 widths** = 120 runs. Each run
-opens every "Show the numbers" table first, so axe checks those too.
+**Two overlapping matrices** (`e2e/a11y-matrix.spec.ts`), so that every page
+and every theme is covered without running every combination. Widths: 360,
+390, 768, 1024 and 1440 px. Each run opens every "Show the numbers" table
+first, so axe checks those too.
 
-**Step 5 (all pages): two overlapping matrices**, so that every page and every
-theme is covered without running every combination:
+| Matrix         | Pages                                                                   | Themes                                  | Runs | Why                                                                                  |
+| -------------- | ----------------------------------------------------------------------- | --------------------------------------- | ---- | ------------------------------------------------------------------------------------ |
+| A: every theme | 3 representative pages: a league page, a matches page, the track record | all 7 colour themes                     | 105  | Colour problems are per theme; these three pages contain every component             |
+| B: every page  | the other 12 pages (all 15 built pages are covered)                     | Matchday (light) and Floodlights (dark) | 120  | Structure problems (headings, labels, landmarks, reflow) are per page, not per theme |
 
-| Matrix         | Pages                                                                   | Themes                                  | Widths | Why                                                                                  |
-| -------------- | ----------------------------------------------------------------------- | --------------------------------------- | ------ | ------------------------------------------------------------------------------------ |
-| A: every theme | 3 representative pages: a league page, a matches page, the track record | all 8                                   | all 5  | Colour problems are per theme; these three pages contain every component             |
-| B: every page  | every page                                                              | Matchday (light) and Floodlights (dark) | all 5  | Structure problems (headings, labels, landmarks, reflow) are per page, not per theme |
+The picker's 8th choice, System, is not a theme of its own: it shows Matchday,
+Floodlights or High Contrast, all in matrix A.
 
-**What axe cannot check** (and what the manual passes are for): whether the
+**Keyboard walk** (`e2e/keyboard.spec.ts`): every page at 1440 and 390 px,
+Tab from the top until focus comes back round. The skip link is first and
+works; every stop is visible, on screen and has a focus ring; every control is
+reached; no tabindex above 0; no trap. The Appearance dialog on every page:
+Enter opens it, focus moves in, Escape closes it and focus returns.
+
+**No JavaScript** (`e2e/no-js.spec.ts`): every section and number is shown,
+and the controls that need JavaScript are not.
+
+**What these cannot check** (and what the manual passes are for): whether the
 reading order makes sense, whether link and button names are clear out of
-context, and whether screen-reader announcements (theme picker, tabs, table
-views) are actually useful. Step 5 adds a manual keyboard-only pass and an
-NVDA screen-reader pass on Windows, with the results written up.
+context, and whether screen-reader announcements are useful. The manual
+keyboard and NVDA checklists are in `../docs/accessibility-review.md`, with a
+results table to fill in.
 
 `e2e/review-fixes.spec.ts`: the home cards never leave one card alone on a
 row (5 in a row from 1280px, 3 + 2 from 1024px, 2 + 2 + 1 from 640px), every

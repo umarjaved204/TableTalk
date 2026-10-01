@@ -46,6 +46,14 @@ const { generatedAt, dataThrough, runStatus, compact = false } = Astro.props;
     font-size: var(--step--1);
   }
 
+  /* Phones: one line each, so rewriting the time in the visitor's zone (a
+     different length) can't change how the lines wrap (layout shift). */
+  @media (width < 640px) {
+    .stamp {
+      display: grid;
+    }
+  }
+
   .line {
     min-height: 1.55em;
   }

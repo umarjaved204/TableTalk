@@ -3,8 +3,10 @@
 @import "../fonts.css"; /* Latin + Latin Extended, WOFF2 only */
 
 :root {
-  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
-  --font-text: "Source Sans 3 Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display:
+    "Barlow Condensed", "Barlow Condensed Fallback", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-text:
+    "Source Sans 3 Variable", "Source Sans 3 Fallback", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, "Cascadia Code", consolas, monospace;
 
   /* Type scale: ratio 1.25 on a 16px base. */

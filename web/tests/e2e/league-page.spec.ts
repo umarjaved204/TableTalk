@@ -1,30 +1,9 @@
-import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./test.ts";
-import { DARK, THEME_IDS, WIDTHS, hasSidewaysScroll, openAs } from "./helpers.ts";
+import { DARK, hasSidewaysScroll, openAs } from "./helpers.ts";
 
 const PAGE = "/premier-league/";
 
-// Step 2 has one real page, so it gets the full matrix: every theme at every
-// width. (The Step 5 matrix for all pages is described in tests/README.md.)
-test.describe("accessibility matrix: every theme x every width", () => {
-  for (const theme of THEME_IDS) {
-    for (const width of WIDTHS) {
-      test(`${theme} at ${width}px`, async ({ page }) => {
-        const errors = await openAs(page, PAGE, theme, width);
-        expect(await page.evaluate(() => document.documentElement.dataset["theme"])).toBe(theme);
-
-        const results = await new AxeBuilder({ page })
-          .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-          .analyze();
-        const summary = results.violations.map((v) => `${v.id}: ${v.nodes.length} (${v.help})`);
-        expect(summary).toEqual([]);
-
-        expect(await hasSidewaysScroll(page), "the page itself must never scroll sideways").toBe(false);
-        expect(errors, "console errors (including CSP violations)").toEqual([]);
-      });
-    }
-  }
-});
+// The accessibility runs for this page are in a11y-matrix.spec.ts.
 
 test("Barlow Condensed digits are equal width when rendered (tabular figures)", async ({ page }) => {
   await openAs(page, PAGE, DARK, 1024);

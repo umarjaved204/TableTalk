@@ -138,6 +138,14 @@ const description =
     display: none;
   }
 
+  /* Phones with JavaScript, before tabs.ts has run: show only the first
+     section, as the script will, so nothing jumps when it runs. */
+  @media (width < 900px) {
+    :global([data-js]) [data-tabs]:not([data-tabs-ready]) > .panel ~ .panel {
+      display: none;
+    }
+  }
+
   .panel h2 {
     padding: var(--space-3) var(--space-4);
     border-bottom: 1px solid var(--border);

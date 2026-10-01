@@ -27,7 +27,8 @@ const firstZone = zones[0]?.id;
 ---
 
 <div class="league-table" data-league-table>
-  <div class="controls" data-controls hidden>
+  <!-- Needs JavaScript: shown by CSS when the page has it (data-js). -->
+  <div class="controls" data-controls>
     <fieldset class="view">
       <legend class="visually-hidden">Table view</legend>
       <input type="radio" name="table-view" id="view-short" value="short" data-view />
@@ -35,8 +36,8 @@ const firstZone = zones[0]?.id;
       <input type="radio" name="table-view" id="view-full" value="full" data-view />
       <label for="view-full">Full</label>
     </fieldset>
-    <!-- Only in the Short view: the Full view already shows every chance. -->
-    <label class="pick" data-pick>
+    <!-- Only in the Short view: the Full view already shows every chance (CSS below). -->
+    <label class="pick">
       <span>Chance shown</span>
       <select data-chance>
         {zones.map((z) => (
@@ -186,8 +187,9 @@ const firstZone = zones[0]?.id;
     min-width: 0;
   }
 
+  /* Hidden without JavaScript (the switch and picker can't work without it). */
   .controls {
-    display: flex;
+    display: none;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2) var(--space-4);
@@ -195,8 +197,8 @@ const firstZone = zones[0]?.id;
     border-bottom: 1px solid var(--border);
   }
 
-  .controls[hidden] {
-    display: none;
+  :global([data-js]) .controls {
+    display: flex;
   }
 
   .view {
@@ -268,8 +270,18 @@ const firstZone = zones[0]?.id;
     font-weight: 600;
   }
 
-  .pick[hidden] {
+  /* "Chance shown" picks the Short view's one chance column, so it is hidden
+     in the Full view: when Full is chosen, and by default from 900px (where
+     Full is the default view). CSS, not the script, so it is right from the
+     first paint. */
+  .league-table[data-view="full"] .pick {
     display: none;
+  }
+
+  @media (width >= 900px) {
+    .league-table:not([data-view]) .pick {
+      display: none;
+    }
   }
 
   .scroll {

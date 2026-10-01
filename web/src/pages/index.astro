@@ -97,6 +97,15 @@ const lastUpdate = "index" in index ? index.index.generated_at : null;
     font-size: var(--step--1);
   }
 
+  /* Phones: one fact per line. The browser rewrites the time in the visitor's
+     zone, which changes its length; on one shared line that could change how
+     the facts wrap and push the cards down (layout shift). */
+  @media (width < 640px) {
+    .facts {
+      display: grid;
+    }
+  }
+
   .facts[data-stale="true"] [data-stale-message] {
     padding: 0 var(--space-2);
     border-radius: var(--radius-1);

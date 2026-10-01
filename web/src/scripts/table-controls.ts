@@ -1,9 +1,10 @@
 // The league table's Short/Full switch and chance picker.
 //
 // The HTML already shows the right default for the screen size (CSS: Short
-// on phones, Full on wide screens) with the first zone's chance chosen. This
-// script shows the controls, applies a remembered choice, and reacts to
-// changes. Choices are remembered on this device only.
+// on phones, Full on wide screens) with the first zone's chance chosen, and
+// CSS shows the controls (when the page has JavaScript) and hides the chance
+// picker in the Full view. This script applies a remembered choice, ticks the
+// view in force, and reacts to changes. Choices are remembered on this device only.
 
 const KEY_VIEW = "tabletalk-table-view";
 const KEY_ZONE = "tabletalk-table-chance";
@@ -25,11 +26,9 @@ function remember(key: string, value: string): void {
 }
 
 for (const wrapper of document.querySelectorAll<HTMLElement>("[data-league-table]")) {
-  const controls = wrapper.querySelector<HTMLElement>("[data-controls]");
   const select = wrapper.querySelector<HTMLSelectElement>("select[data-chance]");
-  const pick = wrapper.querySelector<HTMLElement>("[data-pick]");
   const radios = [...wrapper.querySelectorAll<HTMLInputElement>("input[data-view]")];
-  if (!controls || !select || !pick) continue;
+  if (!select) continue;
 
   /** The view in force: an explicit choice, else the screen-size default. */
   const effectiveView = () => wrapper.dataset["view"] ?? (NARROW.matches ? "short" : "full");
@@ -43,9 +42,6 @@ for (const wrapper of document.querySelectorAll<HTMLElement>("[data-league-table
   const sync = () => {
     const view = effectiveView();
     radios.forEach((radio) => (radio.checked = radio.value === view));
-    // The chance picker only matters in the Short view (one chance column);
-    // the Full view shows every chance, so the picker is hidden there.
-    pick.hidden = view === "full";
   };
 
   // A remembered chance only applies if this league has that zone.
@@ -57,7 +53,6 @@ for (const wrapper of document.querySelectorAll<HTMLElement>("[data-league-table
   const savedView = recall(KEY_VIEW);
   if (savedView === "short" || savedView === "full") wrapper.dataset["view"] = savedView;
 
-  controls.hidden = false;
   sync();
 
   wrapper.addEventListener("change", (event) => {
