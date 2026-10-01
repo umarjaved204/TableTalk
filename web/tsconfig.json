@@ -1,7 +1,7 @@
 {
   "extends": "astro/tsconfigs/strictest",
   "include": [".astro/types.d.ts", "**/*"],
-  "exclude": ["dist", "node_modules", ".data"],
+  "exclude": ["dist", "dist-e2e", "node_modules", ".data", ".e2e-data"],
   "compilerOptions": {
     "types": ["node"]
   }

@@ -17,7 +17,9 @@ const PAGES = [
   "/ligue-1/matches/",
   "/la-liga/", // unavailable: the file breaks the contract
   "/serie-a/matches/", // numbers hidden: newer MAJOR version
-  "/track-record/", // placeholder
+  "/track-record/", // mature illustrated record: comparisons, calibration chart and table
+  "/methodology/",
+  "/about/",
 ];
 
 test.describe("accessibility: every new page, light and dark, every width", () => {
@@ -174,7 +176,9 @@ test.describe("home page", () => {
     await openAs(page, "/", LIGHT, 1440);
     await expect(page.locator(".facts")).toContainText("Last update 29 Sept, 18:56");
     await expect(page.locator(".facts")).toContainText("10,000 simulated seasons per league");
-    await expect(page.locator(".track-record")).toContainText("3 matches scored: too few to compare yet.");
+    await expect(page.locator(".track-record")).toContainText(
+      "183 matches scored. Against base rates: model better (log loss difference −0.072 ± 0.044).",
+    );
     await page.getByRole("link", { name: "How the predictions have done" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Track record");
   });
@@ -269,5 +273,75 @@ test.describe("data states on league pages", () => {
     await expect(main).toContainText("Last night's update failed for this league");
     await expect(main).toContainText("Provisional");
     await expect(main).toContainText("Illustrated notice: an awarded result is waiting for confirmation");
+  });
+});
+
+test.describe("track record page (mature illustrated record)", () => {
+  test.beforeEach(async ({ page }) => {
+    await openAs(page, "/track-record/", LIGHT, 1440);
+  });
+
+  test("counts and when recording started", async ({ page }) => {
+    await expect(page.locator(".counts")).toContainText("Locked predictions189");
+    await expect(page.locator(".counts")).toContainText("Scored183");
+    await expect(page.locator("main")).toContainText("Recording since 1 Sept, 05:40");
+  });
+
+  test("comparisons: difference ± 95% interval and the verdict, never 'beats'", async ({ page }) => {
+    const base = page.locator('[data-comparison="base"] tbody tr').first();
+    await expect(base).toContainText("All leagues");
+    await expect(base).toContainText("−0.072 ± 0.044");
+    await expect(base).toContainText("model better");
+    const market = page.locator('[data-comparison="market"] tbody tr').first();
+    await expect(market).toContainText("+0.019 ± 0.036");
+    await expect(market).toContainText("no detectable difference");
+    expect(await page.locator("main").innerText()).not.toMatch(/\bbeat/i);
+  });
+
+  test("the market sample is too small to judge, and the page says so", async ({ page }) => {
+    await expect(page.locator(".sample")).toHaveText(
+      "Against the market: 150 matches so far, too few to judge: roughly 1,381 are needed to detect a gap the size the backtest found (0.02 in log loss).",
+    );
+  });
+
+  test("calibration chart shown (enough matches), with its table", async ({ page }) => {
+    await expect(page.locator(".calibration-chart svg")).toHaveCount(3);
+    await expect(page.locator("[data-calibration-table] tbody tr")).toHaveCount(7);
+    await expect(page.locator("[data-calibration-chart-hidden]")).toHaveCount(0);
+  });
+
+  test("the 50 most recent scored matches, newest first", async ({ page }) => {
+    await expect(page.locator("main")).toContainText("The 50 most recent of 183, newest first.");
+    await expect(page.locator("[data-scored-table] tbody tr")).toHaveCount(50);
+  });
+
+  test("the header marks the current page", async ({ page }) => {
+    await expect(page.locator('.site-nav a[aria-current="page"]')).toHaveText("Track record");
+  });
+});
+
+test.describe("methodology and about", () => {
+  test("backtest table: one row per league, differences with intervals, source commit named", async ({
+    page,
+  }) => {
+    await openAs(page, "/methodology/", LIGHT, 1440);
+    const rows = page.locator("[data-backtests] tbody tr");
+    await expect(rows).toHaveCount(5);
+    await expect(rows.first()).toContainText("Premier League");
+    await expect(rows.first()).toContainText("9.4% lower*");
+    await expect(rows.first()).toContainText("+0.020 ± 0.007");
+    await expect(page.getByRole("link", { name: "README at commit bcca0a5" })).toHaveAttribute(
+      "href",
+      /\/blob\/bcca0a5\/README\.md$/,
+    );
+    expect(await page.locator("main").innerText()).not.toMatch(/\bbeat/i);
+  });
+
+  test("about lists the data sources the snapshots name", async ({ page }) => {
+    await openAs(page, "/about/", LIGHT, 1440);
+    await expect(page.locator("[data-sources] li")).toHaveCount(3);
+    await expect(page.locator("[data-sources]")).toContainText(
+      "Football-Data.org API: results and the fixture list",
+    );
   });
 });

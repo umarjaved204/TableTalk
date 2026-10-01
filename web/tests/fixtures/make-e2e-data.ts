@@ -4,7 +4,8 @@
 // real data changes every night), so they use a fixed site built from:
 //   - the real published files at data-16a5512 (29 Sep 2026), unchanged for
 //     the Premier League and Bundesliga;
-//   - ILLUSTRATED lock log, scores and history runs (see illustrated.ts);
+//   - ILLUSTRATED lock log, scores and history runs (see illustrated.ts),
+//     with a "mature" track record (183 scored matches, calibration chart shown);
 //   - one league per data state, so every state is built and checked by axe:
 //       La Liga   unavailable (its file breaks the contract)
 //       Serie A   numbers hidden (a newer MAJOR contract version)
@@ -14,7 +15,7 @@
 // Run: node tests/fixtures/make-e2e-data.ts (playwright.config.ts does this).
 import { cpSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { writeIllustratedHistory, writeIllustratedTrackRecord } from "./illustrated.ts";
+import { writeIllustratedHistory, writeMatureTrackRecord } from "./illustrated.ts";
 import { E2E_DATA_DIR } from "../e2e/site.ts";
 
 const REAL = resolve("tests/fixtures/data-16a5512");
@@ -39,7 +40,7 @@ writeFileSync(
   }),
 );
 
-writeIllustratedTrackRecord(out);
+writeMatureTrackRecord(out);
 writeIllustratedHistory(out, "premier_league");
 writeIllustratedHistory(out, "bundesliga");
 

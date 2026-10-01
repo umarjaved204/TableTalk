@@ -18,7 +18,9 @@ const { title, description } = Astro.props;
 const themeScript = buildThemeScript(themeHead);
 
 const fullTitle = `${title} · TableTalk`;
-const url = new URL(Astro.url.pathname, Astro.site).href;
+// The page's public address, only when the site URL is set (SITE_URL, see
+// astro.config.mjs). Without it the canonical and og:url tags are left out.
+const url = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : null;
 ---
 
 <!doctype html>
@@ -28,13 +30,13 @@ const url = new URL(Astro.url.pathname, Astro.site).href;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={url} />
+    {url && <link rel="canonical" href={url} />}
     <meta name="color-scheme" content="light dark" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="TableTalk" />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={url} />
+    {url && <meta property="og:url" content={url} />}
     <meta property="og:locale" content="en_GB" />
     <meta name="twitter:card" content="summary" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />

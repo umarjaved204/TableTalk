@@ -9,7 +9,7 @@ the Python code.
   HTML with the numbers already in it. The only browser JavaScript is small
   scripts for the theme, the table controls, the phone tabs and local times.
 - **No trackers, no analytics, no cookies, no third-party requests.** Fonts are
-  self-hosted. The visitor's theme and table choices are kept in their own
+  self-hosted: Latin and Latin Extended only, as WOFF2 (`src/styles/fonts.css`). The visitor's theme and table choices are kept in their own
   browser (`localStorage`) only.
 - **Content Security Policy** as a `<meta>` tag (the likely host, GitHub Pages,
   can't send headers). Only the site's own hashed scripts can run, so inline
@@ -17,10 +17,27 @@ the Python code.
 
 ## Status
 
-Step 3 of the frontend plan: the home page, a league page and a matches page
-for each league, the "How the race has moved" charts, and every data state.
-Local preview only; no deployment and no workflows during the pipeline trial. Work happens on the `frontend` branch; nothing goes on `main`
-until the trial is reviewed (and contract request R8 is done).
+Step 4 of the frontend plan: the track record, methodology and about pages,
+on top of Step 3 (home page, league and matches pages, race charts, every data
+state). Local preview only; no deployment and no workflows during the pipeline
+trial. Work happens on the `frontend` branch; nothing goes on `main` until the
+trial is reviewed (and contract request R8 is done).
+
+## The site's address (one setting)
+
+The public address is decided at deployment. It is one setting, the
+`SITE_URL` environment variable, used only for each page's canonical link and
+`og:url`:
+
+```sh
+SITE_URL=https://example.org npm run build
+```
+
+Without it those two tags are left out, never pointed at a local address. A
+non-https value stops the build. After every `npm run build`,
+`scripts/check-build.mjs` fails the build if any built file mentions
+`localhost` or `127.0.0.1`, or if it ships a font other than the Latin and
+Latin Extended WOFF2 files.
 
 ## Setup
 
@@ -45,7 +62,7 @@ Astro asks to collect anonymous usage data. To opt out on your machine:
 | `npm run data`     | Copy the published files from `origin/data` into `web/.data/` (read-only: `git fetch` + `git cat-file`; never checks out or writes to `data`). Add `-- --offline` to skip the fetch |
 | `npm run types`    | Regenerate `src/data/contract.gen.ts` from `../contracts/*.schema.json` (after a contract change)                                                                                   |
 | `npm run dev`      | Development server (no CSP in dev mode)                                                                                                                                             |
-| `npm run build`    | Type-check, then build `dist/`                                                                                                                                                      |
+| `npm run build`    | Type-check, build `dist/`, then check the build (`scripts/check-build.mjs`)                                                                                                         |
 | `npm run preview`  | Serve `dist/` at http://localhost:4321 (with the CSP, as deployed)                                                                                                                  |
 | `npm test`         | Unit tests                                                                                                                                                                          |
 | `npm run test:e2e` | Browser and accessibility tests. Builds its own test site from fixed test data first (see tests/README.md)                                                                          |
@@ -83,12 +100,14 @@ origin/data ──(npm run data)──▶ .data/  ──▶ src/data/  (load, ve
 
 ## Pages
 
-| Page                 | What it shows                                                                                                                      |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `/`                  | A card per league (title favourite, most at risk of relegation, play-off place where there is one), last update, track record line |
-| `/<league>/`         | Table and chances, next 10 matches, finishing positions, how the race has moved                                                    |
-| `/<league>/matches/` | Upcoming (next 4 weeks) and Recent (locked predictions from the last 4 weeks)                                                      |
-| `/track-record/`     | Placeholder until Step 4: the one-line summary and the counts                                                                      |
+| Page                 | What it shows                                                                                                                                                                     |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                  | A card per league (title favourite, most at risk of relegation, play-off place where there is one), last update, track record line                                                |
+| `/<league>/`         | Table and chances, next 10 matches, finishing positions, how the race has moved                                                                                                   |
+| `/<league>/matches/` | Upcoming (next 4 weeks) and Recent (locked predictions from the last 4 weeks)                                                                                                     |
+| `/track-record/`     | Locked predictions scored: counts, comparisons with base rates and the market, calibration (chart once there are enough matches), the latest 50 scored matches, the honesty rules |
+| `/methodology/`      | How the model works, how to read the numbers, backtests per league (copied from the README, checked by a test), limitations                                                       |
+| `/about/`            | Not betting advice, data sources (listed from the snapshots), privacy, source code                                                                                                |
 
 ## Matches: where each status comes from
 
@@ -137,6 +156,23 @@ type check; `npm run build` adds about 14 s of `astro check`):
 So each nightly run adds about 13 ms to the build, about 4 s over a season.
 Each file is still parsed in full (150-190 KB); R2's compact series would
 make this one small file per league.
+
+## Track record page: two display decisions
+
+`src/data/track-record-view.ts` arranges `summary.json`; the scoring itself is
+the pipeline's. The site decides only:
+
+- **Too few to judge.** Each comparison has `matches_needed` (roughly how many
+  matches it takes to detect a gap the size the backtest found: 0.08 in log
+  loss against base rates, 0.02 against the market). Below it, the page says
+  so in a sentence, so "no detectable difference" reads as "not enough matches
+  yet".
+- **The calibration chart** appears once the all-leagues comparison with base
+  rates reaches its `matches_needed`; before that, the table only.
+
+Every difference is shown as difference ± 95% interval; if the interval
+includes zero the verdict shown is "no detectable difference", whatever the
+file says (`displayVerdict` in `src/format/track-record.ts`).
 
 See `CONTRACT_REQUESTS.md` for what the site needs from the contract, and
 `tests/README.md` for what the tests cover.

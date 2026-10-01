@@ -8,7 +8,15 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "./test.ts";
 import { auditLayout, layoutShift, type AuditOptions, type AuditResult } from "./layout-audit.ts";
 
-const PAGES = ["/premier-league/", "/bundesliga/", "/premier-league/matches/", "/", "/404/"];
+const PAGES = [
+  "/premier-league/",
+  "/bundesliga/",
+  "/premier-league/matches/",
+  "/track-record/",
+  "/methodology/",
+  "/",
+  "/404/",
+];
 
 /** Audit every view of the page: on phones the league page shows one tab at a
  *  time, so each tab is tapped and measured in turn. Problems are merged. */

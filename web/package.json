@@ -11,7 +11,7 @@
     "data": "node scripts/fetch-data.mjs",
     "types": "node scripts/gen-types.mjs",
     "dev": "astro dev",
-    "build": "astro check && astro build",
+    "build": "astro check && astro build && node scripts/check-build.mjs dist",
     "preview": "astro preview",
     "test": "vitest run",
     "test:e2e": "playwright test",

@@ -146,8 +146,11 @@ test.describe("phone tabs", () => {
 
     await page.getByRole("tab", { name: "Table" }).focus();
     await page.keyboard.press("ArrowRight");
-    await expect(page.getByRole("tab", { name: "Matches" })).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("tab", { name: "Matches" })).toBeFocused();
+    await expect(page.getByRole("tab", { name: "Next matches", exact: true })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.getByRole("tab", { name: "Next matches", exact: true })).toBeFocused();
     await expect(page.locator("#matches")).toBeVisible();
     await expect(page.locator("#table")).toBeHidden();
   });

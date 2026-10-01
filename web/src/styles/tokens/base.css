@@ -1,8 +1,6 @@
 /* Theme-independent tokens: type, space, radius, shadow, motion, sizes.
    Colours live in themes/*.css (interface) and data-colours.css (data). */
-@import "@fontsource/barlow-condensed/600.css";
-@import "@fontsource/barlow-condensed/700.css";
-@import "@fontsource-variable/source-sans-3/wght.css";
+@import "../fonts.css"; /* Latin + Latin Extended, WOFF2 only */
 
 :root {
   --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;

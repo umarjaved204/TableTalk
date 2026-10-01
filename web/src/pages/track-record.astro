@@ -1,46 +1,389 @@
 ---
-// PLACEHOLDER until Step 4 builds the real track record page. It gives the
-// one-line summary and the counts, so the home page's link leads somewhere useful.
+// The live track record: locked predictions scored against what happened.
+// Everything comes from track_record/summary.json (the pipeline's scoring);
+// this page arranges it and applies the wording rule. See
+// src/data/track-record-view.ts for the two display decisions it makes.
+import CalibrationChart from "../components/CalibrationChart.astro";
 import Notice from "../components/Notice.astro";
+import { loadLeague } from "../data/league.ts";
+import { LEAGUES } from "../data/leagues.ts";
 import { loadSummary } from "../data/track-record.ts";
+import {
+  MATCHES_SHOWN,
+  buildTrackRecord,
+  type CompetitionView,
+  type ComparisonView,
+} from "../data/track-record-view.ts";
+import { matchPercents, formatChance } from "../format/probability.ts";
 import { formatDateTime } from "../format/time.ts";
-import { trackRecordLine } from "../format/track-record.ts";
+import {
+  comparisonDifference,
+  displayVerdict,
+  formatLogLoss,
+  sampleSentence,
+  trackRecordLine,
+} from "../format/track-record.ts";
 import Base from "../layouts/Base.astro";
 
 const summary = loadSummary();
-const data = summary.status === "ok" ? summary.data : null;
+const view = summary.status === "ok" ? buildTrackRecord(summary.data) : null;
 const whole = new Intl.NumberFormat("en-GB");
+const REPO = "https://github.com/umarjaved204/TableTalk";
+
+// Before the first lock: when the first match since recording started kicks off.
+const firstKickoff =
+  view && view.counts.locks === 0
+    ? LEAGUES.map(loadLeague)
+        .flatMap((l) => (l.state === "ready" ? l.upcoming.map((m) => m.kickoffUtc) : []))
+        .filter((k): k is string => k !== null)
+        .sort()[0]
+    : undefined;
+
+const allLeagues = view?.competitions.find((c) => c.id === "all");
+const needed = allLeagues?.base?.matchesNeeded ?? null;
+
+const countRows = view
+  ? [
+      ["Locked predictions", view.counts.locks],
+      ["Scored", view.counts.scored],
+      ["Awaiting a result", view.counts.awaiting_result],
+      ["Voided (postponed, suspended, cancelled)", view.counts.voided],
+      ["Not counted: made after the actual kick-off", view.counts.invalid],
+      ["Missed: no prediction before kick-off", view.counts.missed],
+      ["Awarded (decided off the pitch), not scored", view.counts.awarded_not_scored],
+    ]
+  : [];
+
+interface ComparisonTable {
+  id: string;
+  heading: string;
+  /** Column header for the other forecaster's log loss. */
+  other: string;
+  pick: (c: CompetitionView) => ComparisonView | null;
+}
+const tables: ComparisonTable[] = [
+  { id: "base", heading: "Against base rates", other: "Base rates", pick: (c) => c.base },
+  { id: "market", heading: "Against the market", other: "Market", pick: (c) => c.market },
+];
+
+const signed = (x: number | null) => (x === null ? "–" : formatLogLoss(x, true));
+const plain = (x: number | null) => (x === null ? "–" : formatLogLoss(x));
+
+/** The pipeline's notes use `backticks` for field names. */
+const noteParts = (note: string) => note.split("`").map((text, i) => ({ text, code: i % 2 === 1 }));
 ---
 
 <Base
   title="Track record"
-  description="How TableTalk's locked match predictions have done against the results."
+  description="TableTalk's locked match predictions, scored against the results and compared with base rates and the betting market."
 >
   <div class="container page">
-    <h1>Track record</h1>
-    <Notice title="This page is being built">
-      <p>The full track record (every scored match, comparisons and calibration) is coming soon.</p>
-    </Notice>
-    {data ? (
-      <>
-        <p>{trackRecordLine(data)}</p>
+    <header class="head">
+      <h1>Track record</h1>
+      <p class="lede">
+        Every night the model's newest prediction for each upcoming match is saved. The last one saved before
+        a match kicks off is its <strong>locked prediction</strong>. Only locked predictions are scored, so
+        nothing can be adjusted after the result. Backtests (predictions of past seasons) are never mixed in:
+        they are on the <a href="/methodology/">methodology</a> page.
+      </p>
+    </header>
+
+    {!view && (
+      <Notice title="The track record can't be read right now" tone="warn">
         <p>
-          Predictions locked since{" "}
-          {data.live_since ? (
-            <time datetime={data.live_since} data-format="datetime">
-              {formatDateTime(data.live_since, "UTC")}
-            </time>
-          ) : (
-            "the first nightly update"
-          )}
-          : {whole.format(data.counts.locks)} locked, {whole.format(data.counts.scored)} scored,{" "}
-          {whole.format(data.counts.awaiting_result)} awaiting a result, {whole.format(data.counts.voided)}{" "}
-          voided, {whole.format(data.counts.invalid)} not counted (made too late),{" "}
-          {whole.format(data.counts.missed)} missed.
+          {summary.status === "unsupported"
+            ? "Its file is in a newer format than this site understands, so it is hidden rather than shown wrongly."
+            : "Its file is missing from the published data."}
         </p>
+      </Notice>
+    )}
+
+    {view && (
+      <>
+        <section class="block" aria-labelledby="status-heading">
+          <h2 id="status-heading">So far</h2>
+          <p data-summary-line>{summary.status === "ok" && trackRecordLine(summary.data)}</p>
+          {view.counts.scored === 0 && (
+            <Notice title="No locked predictions have been scored yet">
+              <p>
+                {firstKickoff ? (
+                  <>
+                    The first match since recording started kicks off on{" "}
+                    <time datetime={firstKickoff} data-format="datetime">
+                      {formatDateTime(firstKickoff, "UTC")}
+                    </time>
+                    . Its prediction is locked at kick-off and scored once the result is in.
+                  </>
+                ) : (
+                  "Predictions are scored once their match has a result."
+                )}
+              </p>
+            </Notice>
+          )}
+          <dl class="counts">
+            {countRows.map(([label, value]) => (
+              <div>
+                <dt>{label}</dt>
+                <dd>{whole.format(value as number)}</dd>
+              </div>
+            ))}
+          </dl>
+          <p class="muted">
+            Recording since{" "}
+            {view.liveSince ? (
+              <time datetime={view.liveSince} data-format="datetime">
+                {formatDateTime(view.liveSince, "UTC")}
+              </time>
+            ) : (
+              "the first nightly update"
+            )}
+            . Matches before then have no locked predictions, and never count as missed. Updated{" "}
+            <time datetime={view.generatedAt} data-format="datetime">
+              {formatDateTime(view.generatedAt, "UTC")}
+            </time>
+            .
+          </p>
+        </section>
+
+        <section class="block" aria-labelledby="compare-heading">
+          <h2 id="compare-heading">How the model compares</h2>
+          <p>
+            Each scored match is also forecast by two others, on exactly the same matches:{" "}
+            <strong>base rates</strong> (the league's usual home, draw and away frequencies, i.e. knowing
+            nothing about the teams) and <strong>the market</strong> (bookmakers' closing odds with their
+            margin removed, which arrive a few days after each match). The score is <strong>log loss</strong>:
+            lower is better, and it punishes confident mistakes hardest.
+          </p>
+          <p>
+            The difference is the model's log loss minus the other's (negative = model better), with a 95%
+            interval. If the interval includes zero, the verdict is “no detectable difference”.
+          </p>
+          {allLeagues?.base && sampleSentence(allLeagues.base) && (
+            <p class="sample" data-sample-sentence>
+              Against base rates: {sampleSentence(allLeagues.base)}
+            </p>
+          )}
+          {allLeagues?.market && sampleSentence(allLeagues.market) && (
+            <p class="sample">Against the market: {sampleSentence(allLeagues.market)}</p>
+          )}
+          {view.counts.scored === 0 ? (
+            <p class="muted">No scored matches yet, so nothing to compare.</p>
+          ) : (
+            tables.map((table) => (
+              <div class="table-block">
+                <h3 id={`${table.id}-heading`}>{table.heading}</h3>
+                <div class="scroll" role="region" aria-labelledby={`${table.id}-heading`} tabindex="0">
+                  <table data-comparison={table.id}>
+                    <thead>
+                      <tr>
+                        <th scope="col">League</th>
+                        <th scope="col">Matches</th>
+                        <th scope="col">Model</th>
+                        <th scope="col">{table.other}</th>
+                        <th scope="col">Difference ± 95% interval</th>
+                        <th scope="col">First half</th>
+                        <th scope="col">Second half</th>
+                        <th scope="col">Verdict</th>
+                        <th scope="col">Matches needed</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {view.competitions.map((c) => {
+                        const x = table.pick(c);
+                        return (
+                          <tr>
+                            <th scope="row">{c.name}</th>
+                            <td>{x ? whole.format(x.n) : "0"}</td>
+                            <td>{plain(x?.modelLogLoss ?? null)}</td>
+                            <td>{plain(x?.otherLogLoss ?? null)}</td>
+                            <td>{x ? comparisonDifference(x) : "–"}</td>
+                            <td>{signed(x?.firstHalf ?? null)}</td>
+                            <td>{signed(x?.secondHalf ?? null)}</td>
+                            <td class="verdict">{x ? displayVerdict(x) : "no scored matches yet"}</td>
+                            <td>{x?.matchesNeeded != null ? whole.format(x.matchesNeeded) : "–"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))
+          )}
+          <p class="muted">
+            “First half” and “second half” split the matches in date order. A difference that holds in only
+            one half is “consistently better (or worse) but modest”. “Matches needed” is roughly how many
+            matches it takes to detect a gap the size the backtest found: 0.08 in log loss against base rates,
+            0.02 against the market. Below that, “no detectable difference” means “not enough matches yet”,
+            not “no better”.
+          </p>
+        </section>
+
+        <section class="block" aria-labelledby="calibration-heading">
+          <h2 id="calibration-heading">Calibration</h2>
+          <p>
+            When the model says 60%, does it happen about 60% of the time? Forecasts are grouped by the chance
+            they gave, and each group's average forecast is compared with how often the outcome happened.
+          </p>
+          {view.calibration.home.length === 0 ? (
+            <p class="muted">No scored matches yet.</p>
+          ) : (
+            <>
+              {view.showCalibrationChart ? (
+                <CalibrationChart calibration={view.calibration} />
+              ) : (
+                <p class="muted" data-calibration-chart-hidden>
+                  The chart appears once {needed ? `about ${whole.format(needed)}` : "enough"} matches are
+                  scored (the number needed against base rates). With fewer, the groups are too small for a
+                  chart to mean much, so the numbers are shown as a table only.
+                </p>
+              )}
+              <div class="scroll" role="region" aria-labelledby="calibration-caption" tabindex="0">
+                <table data-calibration-table>
+                  <caption id="calibration-caption">Calibration, all leagues</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Outcome</th>
+                      <th scope="col">Forecast range</th>
+                      <th scope="col">Forecasts</th>
+                      <th scope="col">Average forecast</th>
+                      <th scope="col">Happened</th>
+                      <th scope="col">95% interval</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(["home", "draw", "away"] as const).flatMap((outcome) =>
+                      view.calibration[outcome].map((row) => (
+                        <tr>
+                          <th scope="row">{{ home: "Home win", draw: "Draw", away: "Away win" }[outcome]}</th>
+                          <td>{row.bin.replace("-", "–")}</td>
+                          <td>{whole.format(row.n)}</td>
+                          <td>{formatChance(row.meanForecast)}</td>
+                          <td>{formatChance(row.observed)}</td>
+                          <td>
+                            {formatChance(row.ciLow)}–{formatChance(row.ciHigh)}
+                          </td>
+                        </tr>
+                      )),
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
+
+        <section class="block" aria-labelledby="matches-heading">
+          <h2 id="matches-heading">Scored matches</h2>
+          {view.latestScored.length === 0 ? (
+            <p class="muted">None yet.</p>
+          ) : (
+            <>
+              <p>
+                {view.counts.scored > MATCHES_SHOWN
+                  ? `The ${MATCHES_SHOWN} most recent of ${whole.format(view.counts.scored)}, newest first.`
+                  : "Newest first."}{" "}
+                Times in <span data-tz-label>UTC</span>. Every scored match is in{" "}
+                <a href={`${REPO}/blob/data/track_record/summary.json`}>summary.json</a> on the data branch.
+              </p>
+              <div class="scroll" role="region" aria-labelledby="scored-caption" tabindex="0">
+                <table data-scored-table>
+                  <caption id="scored-caption">Scored matches, newest first</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Kick-off</th>
+                      <th scope="col">Match</th>
+                      <th scope="col">Score</th>
+                      <th scope="col">Home</th>
+                      <th scope="col">Draw</th>
+                      <th scope="col">Away</th>
+                      <th scope="col">Log loss</th>
+                      <th scope="col">Predicted</th>
+                      <th scope="col">Model version</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {view.latestScored.map((m) => {
+                      const p = matchPercents(m.probabilities);
+                      return (
+                        <tr>
+                          <td>
+                            {m.kickoffUtc ? (
+                              <time datetime={m.kickoffUtc} data-format="datetime">
+                                {formatDateTime(m.kickoffUtc, "UTC")}
+                              </time>
+                            ) : (
+                              "–"
+                            )}
+                          </td>
+                          <th scope="row" class="match">
+                            {m.home} v {m.away}
+                            <span class="league">{m.leagueName}</span>
+                          </th>
+                          <td>
+                            {m.score.home}–{m.score.away}
+                          </td>
+                          <td>{p.home}%</td>
+                          <td>{p.draw}%</td>
+                          <td>{p.away}%</td>
+                          <td>{formatLogLoss(m.logLoss)}</td>
+                          <td>
+                            <time datetime={m.predictedAt} data-format="datetime">
+                              {formatDateTime(m.predictedAt, "UTC")}
+                            </time>
+                          </td>
+                          <td>
+                            <code>{m.codeCommit ? m.codeCommit.slice(0, 7) : "–"}</code>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
+
+        <section class="block" aria-labelledby="honest-heading">
+          <h2 id="honest-heading">How the record is kept honest</h2>
+          <ul class="rules">
+            <li>
+              <strong>The lock is the last prediction made before kick-off.</strong> “Made” means when it was
+              written to disk, the strictest reading.
+            </li>
+            <li>
+              <strong>Postponed, suspended or cancelled:</strong> the lock is kept but voided, and never
+              scored. A rearranged match gets a new lock before its new kick-off.
+            </li>
+            <li>
+              <strong>Checked against the real kick-off:</strong> a prediction that turns out to be from after
+              the actual kick-off is not counted. A match no update predicted in time is recorded as missed.
+            </li>
+            <li>
+              <strong>Edits show:</strong> each line of the{" "}
+              <a href={`${REPO}/tree/data/track_record`}>lock log</a> carries a fingerprint (sha256) of the
+              line before it, so changing or deleting an old line breaks the chain.
+              {view.chainVerified && " The pipeline checked the chain before writing this summary."}
+            </li>
+            <li>
+              <strong>Timing:</strong> every night's files are committed to the public{" "}
+              <a href={`${REPO}/commits/data`}>data branch</a>, which is protected against rewriting. That is
+              strong evidence of when each prediction was published, not proof: it rests on GitHub's records.
+            </li>
+          </ul>
+          {view.notes.length > 0 && (
+            <>
+              <h3>Notes from the pipeline</h3>
+              <ul class="rules">
+                {view.notes.map((note) => (
+                  <li>{noteParts(note).map((part) => (part.code ? <code>{part.text}</code> : part.text))}</li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
       </>
-    ) : (
-      <p>The track record can't be read right now.</p>
     )}
   </div>
 </Base>
@@ -50,9 +393,137 @@ const whole = new Intl.NumberFormat("en-GB");
 </script>
 
 <style>
+  /* A long link (a URL) may break anywhere rather than widen the page. */
+  .page a {
+    overflow-wrap: anywhere;
+  }
+
   .page {
     display: grid;
-    gap: var(--space-4);
-    padding-block: var(--space-8) 0;
+    gap: var(--space-6);
+    padding-block: var(--space-6) 0;
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .lede {
+    max-width: 70ch;
+  }
+
+  .block {
+    display: grid;
+    gap: var(--space-3);
+    min-width: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+  }
+
+  .block p,
+  .rules {
+    max-width: 75ch;
+  }
+
+  .muted {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  .sample {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-1);
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    font-weight: 600;
+  }
+
+  .counts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+    gap: var(--space-2) var(--space-4);
+    margin: 0;
+  }
+
+  .counts div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-block: var(--space-1);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .counts dt {
+    color: var(--text-muted);
+  }
+
+  .counts dd {
+    margin: 0;
+    font-weight: 700;
+  }
+
+  .table-block {
+    display: grid;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .scroll {
+    overflow-x: auto;
+  }
+
+  table {
+    border-collapse: collapse;
+    font-size: var(--step--1);
+  }
+
+  caption {
+    padding-block: var(--space-1);
+    color: var(--text-muted);
+    text-align: left;
+  }
+
+  th,
+  td {
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  thead th {
+    font-weight: 600;
+    vertical-align: bottom;
+    white-space: normal;
+  }
+
+  tbody th {
+    font-weight: 600;
+    text-align: left;
+  }
+
+  .verdict {
+    text-align: left;
+  }
+
+  .match {
+    white-space: normal;
+    min-width: 12em;
+  }
+
+  .league {
+    display: block;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  .rules {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding-left: 1.2em;
   }
 </style>

@@ -5,7 +5,7 @@ Two kinds:
 | Kind                       | Command            | What it runs against                                         |
 | -------------------------- | ------------------ | ------------------------------------------------------------ |
 | Unit (Vitest)              | `npm test`         | The data layer, formatting helpers and theme files, directly |
-| Browser (Playwright + axe) | `npm run test:e2e` | A **built** test site, served by `astro preview`             |
+| Browser (Playwright + axe) | `npm run test:e2e` | A **built** test site, served as plain files                 |
 
 ## Fixtures
 
@@ -30,7 +30,10 @@ real locked match still has to be checked against its `predicted_at` later.
 The real data changes every night, so the browser tests don't use it.
 `npm run test:e2e` first runs `fixtures/make-e2e-data.ts`, which writes
 `.e2e-data/` (the real 29 Sep files plus the illustrated data above), builds
-the site from it into `dist-e2e/`, and serves it on port 4322. Both folders
+the site from it into `dist-e2e/`, runs the build check on it, and serves it
+on port 4322 with `e2e/serve.mjs`, a small static file server. (Not `astro
+preview`: Astro allows one preview server per project, so the tests couldn't
+start while the real site was being previewed.) Both folders
 are git-ignored. Each league shows one data state, so every state is built
 and checked by axe:
 
@@ -92,6 +95,19 @@ Tests for stale data and kick-offs move the clock on.
 - `home.test.ts`: the home cards' values for every real league (including the
   play-off place), ties, never 0%/100%, and the one-line track record wording
   (difference ± 95% interval; "no detectable difference" when it includes zero).
+- `track-record-view.test.ts`: the track record page's model in each state
+  (empty, a few matches, mature), when the calibration chart shows, the 50
+  latest scored matches, and the comparison wording (difference ± interval,
+  "no detectable difference" when it includes zero, "too few to judge").
+- `backtests.test.ts`: the methodology page's backtest numbers, copied by hand,
+  still match the project README's five-leagues table.
+- `sources.test.ts`: the About page's data sources, from the real snapshots; an
+  unknown source fails the build.
+- `fonts.test.ts`: the font subsets (Latin and Latin Extended) cover every
+  team name in the real data and names like Mönchengladbach, Alavés and
+  Ołeksandr; no other subsets or .woff files are declared.
+- `check-build.test.ts`: the build check catches a local address in a page,
+  a .woff file, and a Cyrillic, Greek or Vietnamese subset.
 - `themes.test.ts`: every theme defines every token; each theme is in exactly
   one data-colour set; the full WCAG 2.2 AA contrast report, recomputed from
   the CSS files (a failing theme fails the run); the inline theme script is
@@ -103,11 +119,11 @@ axe-core checks every rule tagged WCAG 2.0/2.1/2.2 A and AA. Each run also
 checks that the page never scrolls sideways and that there are no console
 errors, which includes any Content Security Policy violation.
 
-**Now (Step 3):** the league page (`/premier-league/`) in all **8 themes × 5
-widths** (360, 390, 768, 1024, 1440 px) = 40 runs, plus every new page and
-every data state (10 pages: home, two league pages with race charts, three
-matches pages, the three broken-league states, the track record placeholder)
-in **Matchday (light) and Floodlights (dark) × 5 widths** = 100 runs. Each run
+**Now (Step 4):** the league page (`/premier-league/`) in all **8 themes × 5
+widths** (360, 390, 768, 1024, 1440 px) = 40 runs, plus every other page and
+every data state (12 pages: home, two league pages with race charts, three
+matches pages, the three broken-league states, track record, methodology,
+about) in **Matchday (light) and Floodlights (dark) × 5 widths** = 120 runs. Each run
 opens every "Show the numbers" table first, so axe checks those too.
 
 **Step 5 (all pages): two overlapping matrices**, so that every page and every
@@ -123,6 +139,12 @@ reading order makes sense, whether link and button names are clear out of
 context, and whether screen-reader announcements (theme picker, tabs, table
 views) are actually useful. Step 5 adds a manual keyboard-only pass and an
 NVDA screen-reader pass on Windows, with the results written up.
+
+`e2e/review-fixes.spec.ts`: the home cards never leave one card alone on a
+row (5 in a row from 1280px, 3 + 2 from 1024px, 2 + 2 + 1 from 640px), every
+league page's phone tabs are Table / Next matches / Positions, only Latin and
+Latin Extended WOFF2 fonts are requested, and ö, é and ł load the site's own
+fonts.
 
 Other browser tests: Barlow Condensed's digits measured as equal width when
 rendered (and every element showing digits uses tabular figures), kick-off

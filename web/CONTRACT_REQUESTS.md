@@ -20,7 +20,7 @@ meantime. Numbers (R1, R2, ...) are stable ids; the list below is in
 | 8        | R6  | Identify awarded matches in the track record                 | MINOR            | Show the count only                                                                  |
 | 9        | R7  | `contract_version` on each new lock-log line                 | MINOR            | Read the log under `summary.json`'s version                                          |
 | 10       | R12 | A JSON Schema for lock-log lines                             | PATCH (new file) | Hand-written types in `src/data/track-record.ts`                                     |
-| 11       | R10 | Backtest summary file for the methodology page               | MINOR            | Numbers copied into the page with the README commit they came from                   |
+| 11       | R10 | Backtest summary file for the methodology page               | MINOR            | Copied into `src/data/backtests.ts` with the README commit; a test checks them       |
 | 12       | R9  | Whether a kick-off time is confirmed (investigate)           | MINOR            | A general "kick-off times can still change" note                                     |
 | 13       | R13 | Can `upcoming_matches` include a match already kicked off?   | PATCH (wording)  | The site handles both: such a match shows as "kicked off", not upcoming              |
 

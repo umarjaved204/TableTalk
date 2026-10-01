@@ -23,6 +23,7 @@ export interface AuditResult {
 /** Main controls: about 44px (WCAG 2.2 AAA / platform guidelines). Everything else: 24px (WCAG 2.2 AA). */
 const MAIN_CONTROLS = [
   ".switcher a",
+  ".site-nav a",
   "[data-tablist] button",
   "[data-open-appearance]",
   ".view label",
@@ -69,7 +70,8 @@ export async function auditLayout(page: Page, options: AuditOptions = {}): Promi
       }
 
       // 3. Tap targets. A hidden radio is measured by its label; links inside a
-      //    sentence are exempt (WCAG 2.5.8 "inline" exception).
+      //    sentence (in a paragraph or a list item) are exempt (WCAG 2.5.8
+      //    "inline" exception: their size is set by the line of text).
       const interactive = [
         ...document.querySelectorAll<HTMLElement>(
           'a[href], button, select, input:not([type="hidden"]), [role="tab"], summary',
@@ -87,7 +89,7 @@ export async function auditLayout(page: Page, options: AuditOptions = {}): Promi
         if (el.tagName === "A") {
           const parent = el.parentElement;
           const inSentence =
-            parent?.tagName === "P" &&
+            (parent?.tagName === "P" || parent?.tagName === "LI") &&
             [...parent.childNodes].some((n) => n.nodeType === 3 && (n.textContent ?? "").trim().length > 1);
           if (inSentence) continue;
         }

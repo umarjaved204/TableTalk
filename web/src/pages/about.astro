@@ -1,0 +1,151 @@
+---
+// About: what TableTalk is, where the data comes from (listed from the
+// snapshots themselves), privacy, and that this is not betting advice.
+import { loadLeague } from "../data/league.ts";
+import { LEAGUES } from "../data/leagues.ts";
+import type { ReadyLeague } from "../data/models.ts";
+import { dataSource } from "../data/source.ts";
+import { ROLE_TEXT, sourcesUsed } from "../data/sources.ts";
+import Base from "../layouts/Base.astro";
+
+const REPO = "https://github.com/umarjaved204/TableTalk";
+const ready = LEAGUES.map(loadLeague).filter((l): l is ReadyLeague => l.state === "ready");
+const sources = sourcesUsed(ready);
+const built = dataSource();
+
+/** "results and the fixture list" from a list of roles. */
+function uses(roles: string[]): string {
+  const words = roles.map((r) => ROLE_TEXT[r] ?? r);
+  return words.length <= 1 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
+}
+---
+
+<Base
+  title="About"
+  description="About TableTalk: what it is, where its football data comes from, privacy (no trackers), and why it is not betting advice."
+>
+  <div class="container page">
+    <header class="head">
+      <h1>About TableTalk</h1>
+      <p class="lede">
+        TableTalk forecasts five European football leagues every night: each team's chances of the title, the
+        top places and relegation, and a prediction for every match. The method is written down, the
+        assumptions are flagged, and the predictions are checked against what actually happened.
+      </p>
+    </header>
+
+    <section aria-labelledby="advice-heading">
+      <h2 id="advice-heading">Not betting advice</h2>
+      <p>
+        These are model probabilities, not certainties. The model trails the betting market (see the{" "}
+        <a href="/methodology/#backtests">backtests</a>), and nothing here is a recommendation to bet.
+      </p>
+    </section>
+
+    <section aria-labelledby="sources-heading">
+      <h2 id="sources-heading">Where the data comes from</h2>
+      {sources.length === 0 ? (
+        <p>No league's data is available right now, so its sources can't be listed.</p>
+      ) : (
+        <ul class="sources" data-sources>
+          {sources.map((s) => (
+            <li>
+              <a href={s.url}>{s.name}</a>: {uses(s.roles)}.{" "}
+              <span class="leagues">
+                {s.leagues.length === LEAGUES.length ? "All leagues" : s.leagues.join(", ")}.
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p>
+        Football data provided by the <a href="https://www.football-data.org/">Football-Data.org API</a>.
+        Historical results and closing odds from{" "}
+        <a href="https://www.football-data.co.uk/">football-data.co.uk</a>. When two sources disagree about a
+        score, the nightly update stops for that league rather than guess.
+      </p>
+    </section>
+
+    <section aria-labelledby="privacy-heading">
+      <h2 id="privacy-heading">Privacy</h2>
+      <ul>
+        <li>No trackers, no analytics, no cookies, no adverts.</li>
+        <li>
+          The pages make no requests to other servers: fonts and everything else come from this site, and the
+          numbers are built into each page.
+        </li>
+        <li>
+          Your theme and table settings are saved only in your own browser (local storage), and never sent
+          anywhere. Clearing your browser's site data removes them.
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="code-heading">
+      <h2 id="code-heading">Source code</h2>
+      <p>
+        The model, the nightly pipeline, the backtests and this website are all public:{" "}
+        <a href={REPO}>github.com/umarjaved204/TableTalk</a>. Every night's published files are on its{" "}
+        <a href={`${REPO}/tree/data`}>data branch</a>
+        {built && (
+          <>
+            ; this site was built from commit <code>{built.commit.slice(0, 7)}</code>
+          </>
+        )}
+        .
+      </p>
+    </section>
+  </div>
+</Base>
+
+<style>
+  /* A long link (a URL) may break anywhere rather than widen the page. */
+  .page a {
+    overflow-wrap: anywhere;
+  }
+
+  .page {
+    display: grid;
+    gap: var(--space-6);
+    padding-block: var(--space-6) 0;
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .lede {
+    max-width: 70ch;
+    font-size: var(--step-1);
+  }
+
+  section {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+  }
+
+  section h2 {
+    font-size: var(--step-1);
+  }
+
+  section p,
+  section ul {
+    max-width: 75ch;
+    margin: 0;
+  }
+
+  section ul {
+    display: grid;
+    gap: var(--space-2);
+    padding-left: 1.4em;
+  }
+
+  .leagues {
+    color: var(--text-muted);
+  }
+</style>

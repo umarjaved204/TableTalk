@@ -113,6 +113,7 @@ export function buildLeague(
     provisional: snap.provisional,
     notices: [...snap.notices],
     nSimulations: snap.run.n_simulations,
+    sources: snap.sources.map((s) => ({ loader: s.loader, role: s.role })),
     contractVersion: version,
     zones,
     rows,

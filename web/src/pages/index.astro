@@ -105,9 +105,17 @@ const lastUpdate = "index" in index ? index.index.generated_at : null;
     font-weight: 600;
   }
 
+  /* Five league cards, never one left alone on a row:
+       phones          1 column
+       640px+          2 + 2 + 1, the fifth card full width
+       1024px+         3 + 2
+       1280px+         all five in one row
+     A 6-column grid makes 3 + 2 possible: the first three cards take 2
+     columns each, the last two take 3 each. These rules assume five leagues
+     (LEAGUES in src/data/leagues.ts); a browser test checks the rows. */
   .cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-4);
     margin: 0;
     padding: 0;
@@ -116,6 +124,41 @@ const lastUpdate = "index" in index ? index.index.generated_at : null;
 
   .cards li {
     display: grid;
+  }
+
+  @media (width >= 640px) {
+    .cards {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cards li:nth-child(5) {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (width >= 1024px) {
+    .cards {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .cards li {
+      grid-column: span 2;
+    }
+
+    .cards li:nth-child(n + 4) {
+      grid-column: span 3;
+    }
+  }
+
+  @media (width >= 1280px) {
+    .cards {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .cards li,
+    .cards li:nth-child(n + 4) {
+      grid-column: auto;
+    }
   }
 
   .track-record {

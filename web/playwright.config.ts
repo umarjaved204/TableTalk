@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { E2E_DATA_DIR, E2E_OUT_DIR, E2E_PORT } from "./tests/e2e/site.ts";
 
-// Browser tests run against a BUILT site, served by `astro preview`, so they
+// Browser tests run against a BUILT site, served as plain files (tests/e2e/serve.mjs), so they
 // test exactly what would be deployed. It is a separate test site
 // (dist-e2e/), built from fixed test data (.e2e-data/, made by
 // tests/fixtures/make-e2e-data.ts), so results don't change when the real
@@ -46,7 +46,7 @@ export default defineConfig({
     phone("pixel-7-landscape", "Pixel 7 landscape"),
   ],
   webServer: {
-    command: `node tests/fixtures/make-e2e-data.ts && npx astro build && npx astro preview --host 127.0.0.1 --port ${E2E_PORT}`,
+    command: `node tests/fixtures/make-e2e-data.ts && npx astro build && node scripts/check-build.mjs ${E2E_OUT_DIR} && node tests/e2e/serve.mjs ${E2E_OUT_DIR} ${E2E_PORT}`,
     url: `http://127.0.0.1:${E2E_PORT}/premier-league/`,
     // Always build and serve a fresh test site (never reuse a server that
     // might be showing other data).

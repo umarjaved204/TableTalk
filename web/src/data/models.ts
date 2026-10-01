@@ -110,6 +110,8 @@ export interface ReadyLeague {
   notices: string[];
   nSimulations: number;
   contractVersion: string;
+  /** Which data sources the pipeline used, and for what (`role`). */
+  sources: { loader: string; role: string }[];
   zones: Zone[];
   rows: TeamRow[];
   upcoming: UpcomingMatch[];

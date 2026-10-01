@@ -187,9 +187,9 @@ export function illustratedLogLines(): Record<string, unknown>[] {
 
 /** The log as the pipeline writes it: one compact JSON object per line,
  *  each with `prev` = sha256 of the line before (a real chain, though the site doesn't check it). */
-export function illustratedLog(): string {
+export function illustratedLog(events = illustratedLogLines()): string {
   let previous = "0".repeat(64);
-  const lines = illustratedLogLines().map((event) => {
+  const lines = events.map((event) => {
     const line = JSON.stringify({ ...event, prev: previous });
     previous = createHash("sha256").update(line, "utf8").digest("hex");
     return line;
@@ -325,4 +325,230 @@ export function writeIllustratedHistory(dir: string, leagueId: string, runs = HI
 
 function round(x: number): number {
   return Math.round(x * 1e6) / 1e6;
+}
+
+// ---------------------------------------------------------------------------
+// A MATURE track record, for the browser tests' site: the events above plus
+// 180 illustrated scored matches in La Liga and Serie A (about six weeks of
+// two leagues), enough for the calibration chart to appear. The comparison
+// and calibration numbers are hand-set illustrations, not computed: the site
+// only displays what summary.json says.
+// ---------------------------------------------------------------------------
+const MATURE_TEAMS: Record<string, string[]> = {
+  la_liga: [
+    "Real Madrid",
+    "Barcelona",
+    "Atlético Madrid",
+    "Athletic Club",
+    "Villarreal",
+    "Real Sociedad",
+    "Real Betis",
+    "Sevilla",
+  ],
+  serie_a: ["Inter", "Napoli", "Juventus", "Milan", "Atalanta", "Roma", "Lazio", "Fiorentina"],
+};
+export const MATURE_EXTRA = 180;
+
+/** A small deterministic random number generator (same numbers every run). */
+function randomFrom(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state = (state * 1103515245 + 12345) % 2147483648;
+    return state / 2147483648;
+  };
+}
+
+interface MatureMatch {
+  spec: LockSpec;
+  score: [number, number];
+}
+
+function matureMatches(): MatureMatch[] {
+  const random = randomFrom(20260929);
+  const out: MatureMatch[] = [];
+  for (let i = 0; i < MATURE_EXTRA; i++) {
+    const competition = i % 2 === 0 ? "la_liga" : "serie_a";
+    const teams = MATURE_TEAMS[competition] ?? [];
+    const home = teams[i % teams.length] ?? "Home";
+    const away = teams[(i + 3) % teams.length] ?? "Away";
+    // Kick-offs spread from 1 to 26 Sep 2026, at 14:00 or 19:00 UTC.
+    const day = 1 + Math.floor((i / MATURE_EXTRA) * 26);
+    const kickoff = `2026-09-${String(day).padStart(2, "0")}T${i % 3 === 0 ? "19" : "14"}:00:00Z`;
+    const pHome = round(0.3 + random() * 0.35);
+    const pDraw = round(0.22 + random() * 0.08);
+    const probabilities = { home: pHome, draw: pDraw, away: round(1 - pHome - pDraw) };
+    const roll = random();
+    const score: [number, number] = roll < pHome ? [2, 1] : roll < pHome + pDraw ? [1, 1] : [0, 1];
+    out.push({
+      spec: {
+        matchId: `fdorg:91${String(i).padStart(4, "0")}`,
+        attempt: 1,
+        competition,
+        home,
+        away,
+        listedKickoff: kickoff,
+        predictedAt: kickoff.replace(/T\d\d:00:00Z/, "T04:40:00Z"),
+        probabilities,
+      },
+      score,
+    });
+  }
+  return out;
+}
+
+export function matureLogLines(): Record<string, unknown>[] {
+  return [...illustratedLogLines(), ...matureMatches().map((m) => lock(m.spec))];
+}
+
+export function matureSummary(): Record<string, unknown> {
+  const base = illustratedSummary();
+  const extra = matureMatches().map((m) => scored({ ...m.spec, score: m.score }));
+  const comparison = (
+    against: string,
+    n: number,
+    model: number | null,
+    other: number | null,
+    diff: number | null,
+    ci95: number | null,
+    halves: [number, number] | null,
+    verdict: string,
+    needed: number | null,
+  ) => ({
+    against,
+    n,
+    model_log_loss: model,
+    other_log_loss: other,
+    diff,
+    ci95,
+    first_half: halves?.[0] ?? null,
+    second_half: halves?.[1] ?? null,
+    verdict,
+    matches_needed: needed,
+  });
+  const calibrationRows = (outcome: string, rows: [string, number, number, number, number, number][]) =>
+    rows.map(([bin, n, mean_forecast, observed, ci_low, ci_high]) => ({
+      outcome,
+      bin,
+      n,
+      mean_forecast,
+      observed,
+      ci_low,
+      ci_high,
+      gap: round(observed - mean_forecast),
+    }));
+  return {
+    ...base,
+    counts: {
+      locks: 9 + MATURE_EXTRA,
+      voided: 2,
+      invalid: 1,
+      missed: 1,
+      scored: 3 + MATURE_EXTRA,
+      awaiting_result: 3,
+      awarded_not_scored: 0,
+    },
+    competitions: [
+      {
+        id: "all",
+        n: 183,
+        comparisons: [
+          comparison("base rates", 183, 0.989, 1.061, -0.072, 0.044, [-0.081, -0.063], "model better", 152),
+          comparison(
+            "market",
+            150,
+            0.991,
+            0.972,
+            0.019,
+            0.036,
+            [0.024, 0.014],
+            "no detectable difference",
+            1381,
+          ),
+        ],
+      },
+      {
+        id: "bundesliga",
+        n: 1,
+        comparisons: [
+          comparison("base rates", 1, 0.414, 0.89, -0.476, null, null, "too few matches to compare", null),
+          comparison("market", 0, null, null, null, null, null, "no scored matches yet", null),
+        ],
+      },
+      {
+        id: "la_liga",
+        n: 90,
+        comparisons: [
+          comparison("base rates", 90, 0.982, 1.058, -0.076, 0.063, [-0.09, -0.062], "model better", 148),
+          comparison(
+            "market",
+            75,
+            0.986,
+            0.97,
+            0.016,
+            0.052,
+            [0.02, 0.012],
+            "no detectable difference",
+            1402,
+          ),
+        ],
+      },
+      {
+        id: "premier_league",
+        n: 2,
+        comparisons: [
+          comparison("base rates", 2, 0.97, 1.12, -0.15, 0.31, [-0.1, -0.2], "no detectable difference", 61),
+          comparison("market", 0, null, null, null, null, null, "no scored matches yet", null),
+        ],
+      },
+      {
+        id: "serie_a",
+        n: 90,
+        comparisons: [
+          comparison(
+            "base rates",
+            90,
+            0.996,
+            1.064,
+            -0.068,
+            0.061,
+            [0.004, -0.14],
+            "consistently better but modest",
+            155,
+          ),
+          comparison(
+            "market",
+            75,
+            0.997,
+            0.975,
+            0.022,
+            0.05,
+            [0.028, 0.016],
+            "no detectable difference",
+            1360,
+          ),
+        ],
+      },
+    ],
+    calibration: [
+      ...calibrationRows("home", [
+        ["20%-40%", 61, 0.344, 0.328, 0.222, 0.455],
+        ["40%-60%", 96, 0.491, 0.51, 0.413, 0.607],
+        ["60%-80%", 26, 0.637, 0.654, 0.462, 0.806],
+      ]),
+      ...calibrationRows("draw", [["20%-40%", 183, 0.259, 0.246, 0.188, 0.314]]),
+      ...calibrationRows("away", [
+        ["0%-20%", 22, 0.171, 0.136, 0.047, 0.333],
+        ["20%-40%", 140, 0.278, 0.271, 0.204, 0.351],
+        ["40%-60%", 21, 0.428, 0.429, 0.245, 0.635],
+      ]),
+    ],
+    matches: [...(base["matches"] as unknown[]), ...extra],
+  };
+}
+
+/** The mature track record (for the browser tests' site). */
+export function writeMatureTrackRecord(dir: string): void {
+  mkdirSync(join(dir, "track_record"), { recursive: true });
+  writeFileSync(join(dir, "track_record", "locks.jsonl"), illustratedLog(matureLogLines()));
+  writeFileSync(join(dir, "track_record", "summary.json"), JSON.stringify(matureSummary()));
 }

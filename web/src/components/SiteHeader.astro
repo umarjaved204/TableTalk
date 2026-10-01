@@ -1,5 +1,13 @@
 ---
+// Brand, the two site-wide pages, and the theme picker. On narrow screens the
+// links take their own row under the brand, so nothing is squeezed.
 import ThemePicker from "./ThemePicker.astro";
+
+const path = Astro.url.pathname;
+const LINKS = [
+  { href: "/track-record/", text: "Track record" },
+  { href: "/methodology/", text: "Methodology" },
+];
 ---
 
 <header class="site-header">
@@ -12,6 +20,17 @@ import ThemePicker from "./ThemePicker.astro";
       </svg>
       TableTalk
     </a>
+    <nav class="site-nav" aria-label="Site">
+      <ul>
+        {LINKS.map((link) => (
+          <li>
+            <a href={link.href} aria-current={path === link.href ? "page" : undefined}>
+              {link.text}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
     <ThemePicker />
   </div>
 </header>
@@ -44,6 +63,52 @@ import ThemePicker from "./ThemePicker.astro";
     letter-spacing: 0.02em;
     color: var(--text);
     text-decoration: none;
+  }
+
+  /* Narrow screens: a full-width row under the brand and Appearance. */
+  .site-nav {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .site-nav ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .site-nav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
+    border-bottom: 3px solid transparent;
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-size: var(--step-0);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+  }
+
+  .site-nav a:hover {
+    color: var(--text);
+  }
+
+  .site-nav a[aria-current="page"] {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+  }
+
+  @media (width >= 700px) {
+    .site-nav {
+      order: 0;
+      flex-basis: auto;
+      margin-left: auto;
+    }
   }
 
   .mark {
