@@ -24,7 +24,13 @@ export default defineConfig({
     // A fixed zone, so time-zone conversion is tested deterministically.
     timezoneId: "Europe/London",
     locale: "en-GB",
+    // Keep a trace (screenshots, DOM snapshots, console, network) of any test
+    // that fails, so an intermittent failure can be diagnosed afterwards:
+    // npx playwright show-trace test-results/<test>/trace.zip
+    // Deliberately NO retries: a retry that passes would hide the failure.
+    trace: "retain-on-failure",
   },
+  retries: 0,
   projects: [
     { name: "desktop-chrome", testIgnore: MOBILE, use: { ...devices["Desktop Chrome"] } },
     phone("iphone-se", "iPhone SE"), // 320px: the narrowest common phone

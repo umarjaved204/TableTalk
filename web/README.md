@@ -78,7 +78,8 @@ origin/data ──(npm run data)──▶ .data/  ──▶ src/data/  (load, ve
   it silently resets tabular figures.
 - `src/scripts/`: browser scripts. `theme-head.js` runs first in `<body>` and is
   the only code that resolves a theme; its CSP hash is computed in
-  `astro.config.mjs` from the same source.
+  `astro.config.mjs` from the same source, and `tests/e2e/csp.spec.ts`
+  recomputes it from the built pages (a mismatch fails the tests).
 
 See `CONTRACT_REQUESTS.md` for what the site needs from the contract, and
 `tests/README.md` for what the tests cover.

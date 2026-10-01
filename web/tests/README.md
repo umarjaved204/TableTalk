@@ -99,8 +99,38 @@ Every page (and every phone tab of the league page) is measured by
 
 **Limits of emulation.** These are real browser engines at real sizes, but not
 real devices: the WebKit build is Playwright's Windows port, which renders
-fonts differently from an iPhone (text looks lighter). Before deployment, open
-the site on at least one real iPhone and one real Android phone.
+fonts differently from an iPhone.
+
+- **Resolved (1 Oct 2026):** text looked lighter in emulated WebKit. The site
+  was checked on real phones with no issues and the text weight looked normal,
+  so this was the emulator only, not the site.
+- Re-check on at least one real iPhone and one real Android phone before
+  deployment, and after any change to fonts or layout.
+
+## Content Security Policy (`e2e/csp.spec.ts`)
+
+The policy allows a script only if its sha256 hash is listed, and the theme
+script is inline. If its text in the built page ever differs from the text
+that was hashed, the browser blocks it silently and themes stop working. So
+for every page in `dist/`, the test:
+
+- rebuilds the theme script from `src/scripts/theme-head.js` itself, checks
+  that exactly that text is in the page, and that its hash is in the policy;
+- hashes every other inline script Astro wrote into the page and checks each
+  one is allowed.
+
+It reads files only (no browser), so it runs once, in the desktop project.
+Checked by hand: adding one space to the theme script in a built page makes
+both tests fail.
+
+## When a browser test fails
+
+Playwright keeps a **trace** of every failed test (`trace: "retain-on-failure"`):
+screenshots of each step, the page's DOM, console and network. Open it with
+`npx playwright show-trace test-results/<test folder>/trace.zip`. There are
+**no retries** on purpose: a test that fails once and passes on a retry is
+still reported as failed, so an intermittent problem (such as the one seen once
+on the Pixel 7 landscape profile) is never hidden.
 
 `unit/encoding.test.ts` checks that every source file is clean UTF-8 (no
 byte-order mark, no garbled characters).
