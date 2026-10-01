@@ -177,6 +177,11 @@ const firstZone = zones[0]?.id;
 <style>
   .league-table {
     display: grid;
+
+    /* Never wider than the panel: without this the column grows to fit the
+       widest content (the chance picker's longest option) and pushes past
+       the screen edge on narrow phones. */
+    grid-template-columns: minmax(0, 1fr);
     min-width: 0;
   }
 
@@ -236,14 +241,20 @@ const firstZone = zones[0]?.id;
 
   .pick {
     display: inline-flex;
+    flex: 1 1 14rem;
     flex-wrap: wrap;
     align-items: center;
+    min-width: 0;
     gap: var(--space-2);
     font-size: var(--step--1);
     color: var(--text-muted);
   }
 
+  /* Shrinks to fit; a long option shows truncated here, in full when opened. */
   select {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
     max-width: 100%;
     min-height: var(--tap-main);
     padding: 0 var(--space-2);

@@ -103,7 +103,9 @@ const statusLabel = (match.status && STATUS_LABELS[match.status]) || "Upcoming";
 
   .scoreboard {
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
+
+    /* minmax(0, ...) lets the name columns shrink, so long names wrap instead of overflowing */
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
     gap: var(--space-3);
   }
@@ -111,6 +113,7 @@ const statusLabel = (match.status && STATUS_LABELS[match.status]) || "Upcoming";
   .team {
     font-weight: 600;
     line-height: 1.2;
+    overflow-wrap: anywhere;
   }
 
   .home {

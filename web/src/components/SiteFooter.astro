@@ -48,7 +48,15 @@ const source = dataSource();
   .meta {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: var(--space-1) var(--space-4);
+  }
+
+  /* A link on its own (not inside a sentence) needs a 24px-high tap target. */
+  .meta a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min);
   }
 
   code {

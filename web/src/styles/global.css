@@ -26,6 +26,20 @@ html {
   font-variant-numeric: tabular-nums;
 }
 
+/* Touch: replace the browser's grey/blue tap flash (Android Chrome, iOS Safari)
+   with the site's own pressed state, which works in every theme. */
+a,
+button,
+label,
+select,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:is(a, button, label[for], summary):active {
+  opacity: 0.75;
+}
+
 /* Browsers give form controls their own font via the shorthand; take ours. */
 button,
 input,
@@ -53,6 +67,9 @@ h3 {
   line-height: 1.05;
   margin: 0;
   text-wrap: balance;
+
+  /* A single long word ("BUNDESLIGA") at 200% text size may break rather than run off-screen. */
+  overflow-wrap: anywhere;
 }
 
 h1 {

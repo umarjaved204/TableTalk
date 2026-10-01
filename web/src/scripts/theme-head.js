@@ -34,6 +34,20 @@
   function apply(choice) {
     root.setAttribute("data-theme", resolve(choice));
     root.setAttribute("data-theme-choice", choice);
+    syncBrowserBar();
+  }
+
+  // Phones colour their browser bar with <meta name="theme-color">. Copy the
+  // page background into it, so the bar matches whichever theme is showing.
+  // (The stylesheets in <head> have loaded by now, so the colour is known.)
+  function syncBrowserBar() {
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute("content", getComputedStyle(document.body).backgroundColor);
   }
 
   window.tabletalkTheme = {

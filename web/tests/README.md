@@ -66,3 +66,41 @@ times in the visitor's time zone, the theme picker by keyboard (arrows,
 Escape, saved across a reload, script first in `<body>` so there's no flash),
 System following the device (dark, light, more contrast), the table's Short
 and Full views, the phone tabs by keyboard.
+
+## Phones (`e2e/mobile.spec.ts`)
+
+Runs on seven emulated phones, each with its real screen size, pixel density,
+touch input and mobile user agent. iPhones run in WebKit (Safari's engine),
+Android phones in Chromium:
+
+| Project             | Engine   | Screen (CSS px)                    |
+| ------------------- | -------- | ---------------------------------- |
+| iphone-se           | WebKit   | 320 x 568 (narrowest common phone) |
+| iphone-13           | WebKit   | 390 x 664                          |
+| iphone-15-pro-max   | WebKit   | 430 x 739                          |
+| iphone-13-landscape | WebKit   | 750 x 342                          |
+| galaxy-s8           | Chromium | 360 x 740                          |
+| pixel-7             | Chromium | 412 x 839                          |
+| pixel-7-landscape   | Chromium | 863 x 360                          |
+
+Every page (and every phone tab of the league page) is measured by
+`e2e/layout-audit.ts`:
+
+- the page never scrolls sideways, and nothing sticks out past the screen edge;
+- no clipped content;
+- no text under 12px; body text and form fields at least 16px (below that, iOS zooms in on focus);
+- every tap target at least 24 x 24 (WCAG 2.2 AA); main controls (league chips, tabs, Appearance, table controls) at least 44px;
+- no two tap targets overlap;
+- pinch-zoom is never blocked;
+- layout shift during load at most 0.1 (Chromium only: WebKit can't measure it, so those 4 runs are skipped);
+- text enlarged to 200% (WCAG 1.4.4) and wider text spacing (WCAG 1.4.12) still fit;
+- the browser bar colour matches the theme, and a home-screen icon exists;
+- touch: the Appearance dialog fits the screen and a tap changes the theme; the league chips swipe; tabs and Short/Full respond to taps.
+
+**Limits of emulation.** These are real browser engines at real sizes, but not
+real devices: the WebKit build is Playwright's Windows port, which renders
+fonts differently from an iPhone (text looks lighter). Before deployment, open
+the site on at least one real iPhone and one real Android phone.
+
+`unit/encoding.test.ts` checks that every source file is clean UTF-8 (no
+byte-order mark, no garbled characters).

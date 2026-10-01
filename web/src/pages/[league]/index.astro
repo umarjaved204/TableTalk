@@ -155,6 +155,7 @@ const description =
 
   .tablist {
     display: flex;
+    flex-wrap: wrap; /* very large text: tabs go onto two rows rather than off-screen */
     border-bottom: 1px solid var(--border);
   }
 
@@ -163,7 +164,7 @@ const description =
   }
 
   .tablist button {
-    flex: 1;
+    flex: 1 0 auto;
     min-height: var(--tap-main);
     border: 0;
     border-bottom: 3px solid transparent;

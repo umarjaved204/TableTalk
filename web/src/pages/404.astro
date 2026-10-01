@@ -1,5 +1,5 @@
 ---
-import { LEAGUES } from "../data/leagues.ts";
+import LeagueLinks from "../components/LeagueLinks.astro";
 import Base from "../layouts/Base.astro";
 ---
 
@@ -7,13 +7,7 @@ import Base from "../layouts/Base.astro";
   <div class="container page">
     <h1>Page not found</h1>
     <p>This page doesn't exist. Try one of the leagues:</p>
-    <ul>
-      {LEAGUES.map((league) => (
-        <li>
-          <a href={`/${league.slug}/`}>{league.name}</a>
-        </li>
-      ))}
-    </ul>
+    <LeagueLinks />
   </div>
 </Base>
 

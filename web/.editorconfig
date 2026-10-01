@@ -1,0 +1,10 @@
+# Editors that read this keep files as plain UTF-8 (no byte-order mark) with
+# LF line endings. tests/unit/encoding.test.ts checks it.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 2
