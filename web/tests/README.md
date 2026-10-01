@@ -151,7 +151,8 @@ rendered (and every element showing digits uses tabular figures), kick-off
 times in the visitor's time zone, the theme picker by keyboard (arrows,
 Escape, saved across a reload, script first in `<body>` so there's no flash),
 System following the device (dark, light, more contrast), the table's Short
-and Full views, the phone tabs by keyboard.
+and Full views (the "Chance shown" picker appears only in Short, since Full
+shows every chance), the table caption's wording, the phone tabs by keyboard.
 
 ## Phones (`e2e/mobile.spec.ts`)
 

@@ -35,7 +35,8 @@ const firstZone = zones[0]?.id;
       <input type="radio" name="table-view" id="view-full" value="full" data-view />
       <label for="view-full">Full</label>
     </fieldset>
-    <label class="pick">
+    <!-- Only in the Short view: the Full view already shows every chance. -->
+    <label class="pick" data-pick>
       <span>Chance shown</span>
       <select data-chance>
         {zones.map((z) => (
@@ -48,7 +49,7 @@ const firstZone = zones[0]?.id;
   <div class="scroll" role="region" aria-label={`${leagueName} table (scrolls sideways)`} tabindex="0">
     <table>
       <caption class="visually-hidden">
-        {leagueName}table, with each team's chances from{simulations}simulated seasons
+        {`${leagueName} table, with each team's chances from ${simulations} simulated seasons`}
       </caption>
       <thead>
         <tr>
@@ -267,8 +268,8 @@ const firstZone = zones[0]?.id;
     font-weight: 600;
   }
 
-  select:disabled {
-    opacity: 0.6;
+  .pick[hidden] {
+    display: none;
   }
 
   .scroll {

@@ -27,8 +27,9 @@ function remember(key: string, value: string): void {
 for (const wrapper of document.querySelectorAll<HTMLElement>("[data-league-table]")) {
   const controls = wrapper.querySelector<HTMLElement>("[data-controls]");
   const select = wrapper.querySelector<HTMLSelectElement>("select[data-chance]");
+  const pick = wrapper.querySelector<HTMLElement>("[data-pick]");
   const radios = [...wrapper.querySelectorAll<HTMLInputElement>("input[data-view]")];
-  if (!controls || !select) continue;
+  if (!controls || !select || !pick) continue;
 
   /** The view in force: an explicit choice, else the screen-size default. */
   const effectiveView = () => wrapper.dataset["view"] ?? (NARROW.matches ? "short" : "full");
@@ -42,7 +43,9 @@ for (const wrapper of document.querySelectorAll<HTMLElement>("[data-league-table
   const sync = () => {
     const view = effectiveView();
     radios.forEach((radio) => (radio.checked = radio.value === view));
-    select.disabled = view === "full";
+    // The chance picker only matters in the Short view (one chance column);
+    // the Full view shows every chance, so the picker is hidden there.
+    pick.hidden = view === "full";
   };
 
   // A remembered chance only applies if this league has that zone.

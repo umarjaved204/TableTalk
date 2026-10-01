@@ -121,11 +121,35 @@ test.describe("league table views", () => {
     await page.getByText("Full", { exact: true }).click();
     expect((await visibleHeaders(page)).length).toBeGreaterThan(10);
     expect(await hasSidewaysScroll(page)).toBe(false); // the table scrolls inside its own box
+    await expect(page.getByLabel("Chance shown")).toBeHidden(); // every chance is already shown
   });
 
-  test("desktop: Full view by default", async ({ page }) => {
+  test("desktop: Full view by default, with no chance picker (it only applies to Short)", async ({
+    page,
+  }) => {
     await openAs(page, PAGE, DARK, 1440);
     expect((await visibleHeaders(page)).length).toBeGreaterThan(10);
+    const picker = page.getByLabel("Chance shown");
+    await expect(picker).toBeHidden();
+
+    // Short: the picker appears and works.
+    await page.getByText("Short", { exact: true }).click();
+    await expect(picker).toBeVisible();
+    await picker.selectOption({ label: "Relegation to the Championship" });
+    expect(await visibleHeaders(page)).toEqual(["#", "TEAM", "PTS", "DOWN"]);
+
+    // Back to Full: hidden again, and the choice is kept for next time.
+    await page.getByText("Full", { exact: true }).click();
+    await expect(picker).toBeHidden();
+    await page.getByText("Short", { exact: true }).click();
+    expect(await visibleHeaders(page)).toEqual(["#", "TEAM", "PTS", "DOWN"]);
+  });
+
+  test("the table's caption reads as a sentence (for screen readers)", async ({ page }) => {
+    await openAs(page, PAGE, DARK, 1440);
+    await expect(page.locator("[data-league-table] caption")).toHaveText(
+      "Premier League table, with each team's chances from 10,000 simulated seasons",
+    );
   });
 
   test("no chance is ever shown as 0% or 100%", async ({ page }) => {
