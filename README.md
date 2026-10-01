@@ -1286,13 +1286,32 @@ Then run `python -m tabletalk update` again.
 
 ### The nightly schedule (GitHub Actions)
 
-[.github/workflows/daily-update.yml](.github/workflows/daily-update.yml) runs
-the update every day at **04:37 UTC**, with a backup at **07:37 UTC** that does
-nothing if the first run already updated every league. The earliest kick-off
-in the five leagues is 10:30 UTC (Serie A), so there are about six hours to
-spare. The times are deliberately off the hour: GitHub delays, and sometimes
-drops, scheduled runs at the start of each hour. You can also start it by hand
-(Actions tab, "Daily update", "Run workflow").
+[.github/workflows/daily-update.yml](.github/workflows/daily-update.yml) tries
+to run the update four times a day: at **01:37, 03:37, 05:37 and 07:37 UTC**.
+The first try GitHub actually starts does the update. The others check whether
+today's run (by the UTC date) already updated every league, and if so stop
+within seconds. If that run failed for a league or flagged a problem, it does
+not count, and the next try runs the whole update again. You can also start it
+by hand (Actions tab, "Daily update", "Run workflow"); a manual run skips too,
+unless **force** is ticked.
+
+**Why four tries, so early.** A prediction is locked from the last run that
+finished before kick-off, and the earliest kick-off in the five leagues is
+10:30 UTC (Serie A on Sunday lunchtime; 11:30 UTC after the clocks change in
+late October). GitHub starts scheduled runs late when it is busy, promises no
+limit, and can drop runs altogether. In the first days the original schedule
+(04:37, backup 07:37) started **6 to 7 hours late**: 10:42 and 11:08 UTC for
+the main run, after 10:30 kick-offs, so those matches would have been locked
+with the previous day's prediction (still valid, but a day older and without
+the previous day's results). Starting at 01:37 means that even 6-7 hours late,
+the first try publishes by about 08:40; if GitHub drops it, the next try has
+another chance. 01:37 is about three hours after the last evening matches end
+(around 22:45 UTC), so the previous night's results should already be in. If
+GitHub ever ran 01:37 on time before a result was available, that day's
+predictions would miss it and the next day's run would pick it up. The times
+are off the hour because GitHub is busiest at the start of each hour. None of
+this changes the locking rules: a lock is still the last prediction written
+before kick-off.
 
 **Where the files live: the `data` branch.** Each run checks out the `data`
 branch, runs the update on it (so the lock store carries on from last night),
@@ -1332,8 +1351,13 @@ add a commit on top, still work, so the bot is not blocked.
 **GitHub limits that matter** (checked 2026-09-29):
 - The repository is public, so Actions minutes are free (a private repository
   would get 2,000 minutes a month; a run takes a few minutes).
-- Scheduled runs can be delayed or dropped at busy times. That is what the
-  backup run and the six-hour margin are for.
+- Scheduled runs can be delayed or dropped at busy times, with no promised
+  limit (6-7 hours seen on 30 Sep and 1 Oct 2026). That is what the four
+  early tries are for. A manual run (`workflow_dispatch`) starts within
+  seconds.
+- When several late runs arrive together, GitHub keeps only the newest one
+  that is waiting (the workflow allows one run at a time); every scheduled try
+  follows the same skip rule, so losing a waiting one changes nothing.
 - **Scheduled runs stop after 60 days without activity.** In a public
   repository, GitHub switches off scheduled workflows when the repository has
   had no activity for 60 days. GitHub does not say exactly what counts, so do

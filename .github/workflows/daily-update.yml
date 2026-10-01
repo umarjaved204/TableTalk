@@ -7,10 +7,16 @@
 # public history is strong evidence of when every prediction was published.
 #
 # Timing: the earliest kick-off in the five leagues is 10:30 UTC (Serie A,
-# 12:30 in Italy in summer). The main run starts at 04:37 UTC, off the hour
-# because GitHub delays (and can drop) scheduled runs at the start of each
-# hour. A backup at 07:37 UTC does nothing if the main run already updated
-# every league, and tries again if it did not.
+# 12:30 in Italy in summer; 11:30 UTC in winter). GitHub starts scheduled runs
+# late when it is busy, with no promised limit, and can drop them: in the
+# first days (30 Sep and 1 Oct 2026) runs started 6 to 7 hours after their
+# scheduled time. So there are four tries a day, two hours apart, from 01:37
+# UTC (off the hour, GitHub's busiest moment). Every scheduled try uses
+# --skip-if-updated-today: the first one GitHub actually starts does the
+# update; the others see that today's run updated every league and stop in
+# seconds. If that run failed or flagged a league, the next try runs again.
+# 01:37 is about three hours after the last evening matches end (~22:45 UTC),
+# so the previous night's results should be in.
 #
 # Failures: the job fails (and GitHub emails whoever last changed the `cron`
 # lines) when a league fails its checks, results look late, or locking fails.
@@ -23,8 +29,9 @@ name: Daily update
 
 on:
   schedule:
-    - cron: "37 4 * * *"   # main run
-    - cron: "37 7 * * *"   # backup: skips if today's main run updated every league
+    # 01:37, 03:37, 05:37 and 07:37 UTC. The first that GitHub starts does the
+    # update; the rest skip if it updated every league.
+    - cron: "37 1,3,5,7 * * *"
   workflow_dispatch:
     inputs:
       force:
@@ -90,8 +97,10 @@ jobs:
         env:
           FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
         run: |
+          # Every scheduled try skips if today's run already updated every
+          # league; a manual run does too, unless "force" is ticked.
           skip=""
-          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "37 7 * * *" ]; then
+          if [ "${{ github.event_name }}" = "schedule" ]; then
             skip="--skip-if-updated-today"
           fi
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force }}" != "true" ]; then
