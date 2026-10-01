@@ -1,7 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
+import { E2E_DATA_DIR, E2E_OUT_DIR, E2E_PORT } from "./tests/e2e/site.ts";
 
-// Browser tests run against the BUILT site (npm run build first), served by
-// `astro preview`, so they test exactly what would be deployed.
+// Browser tests run against a BUILT site, served by `astro preview`, so they
+// test exactly what would be deployed. It is a separate test site
+// (dist-e2e/), built from fixed test data (.e2e-data/, made by
+// tests/fixtures/make-e2e-data.ts), so results don't change when the real
+// data does. The webServer command below builds it before the tests start.
 //
 // Projects:
 //   desktop-chrome   the accessibility matrix and feature tests (league-page.spec.ts)
@@ -20,7 +24,7 @@ export default defineConfig({
   fullyParallel: true,
   reporter: [["list"]],
   use: {
-    baseURL: "http://127.0.0.1:4321",
+    baseURL: `http://127.0.0.1:${E2E_PORT}`,
     // A fixed zone, so time-zone conversion is tested deterministically.
     timezoneId: "Europe/London",
     locale: "en-GB",
@@ -42,9 +46,16 @@ export default defineConfig({
     phone("pixel-7-landscape", "Pixel 7 landscape"),
   ],
   webServer: {
-    command: "npx astro preview --host 127.0.0.1 --port 4321",
-    url: "http://127.0.0.1:4321/premier-league/",
-    reuseExistingServer: true,
-    env: { ASTRO_TELEMETRY_DISABLED: "1" },
+    command: `node tests/fixtures/make-e2e-data.ts && npx astro build && npx astro preview --host 127.0.0.1 --port ${E2E_PORT}`,
+    url: `http://127.0.0.1:${E2E_PORT}/premier-league/`,
+    // Always build and serve a fresh test site (never reuse a server that
+    // might be showing other data).
+    reuseExistingServer: false,
+    timeout: 180_000,
+    env: {
+      ASTRO_TELEMETRY_DISABLED: "1",
+      TABLETALK_DATA_DIR: E2E_DATA_DIR,
+      TABLETALK_OUT_DIR: E2E_OUT_DIR,
+    },
   },
 });

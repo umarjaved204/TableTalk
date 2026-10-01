@@ -1,18 +1,21 @@
 ---
-// Upcoming matches grouped by date. Built grouped by the UTC date; the
-// browser regroups by the visitor's own date (a late kick-off in UTC can be
-// the next day elsewhere).
-import type { UpcomingMatch } from "../data/models.ts";
+// Matches grouped by date, in the order given (earliest first for upcoming,
+// newest first for recent). Built grouped by the UTC date; the browser
+// regroups by the visitor's own date (a late kick-off in UTC can be the next
+// day elsewhere) and keeps the same order.
+import type { MatchView } from "../data/models.ts";
 import { formatDayHeading, localDateKey } from "../format/time.ts";
 import MatchCard from "./MatchCard.astro";
 
 interface Props {
-  matches: UpcomingMatch[];
-  predictedAt: string;
+  matches: MatchView[];
+  /** Heading level for the date headings (h3 inside a section with an h2). */
+  headingLevel?: 3 | 4;
 }
-const { matches, predictedAt } = Astro.props;
+const { matches, headingLevel = 3 } = Astro.props;
+const Heading = `h${headingLevel}` as "h3" | "h4";
 
-const groups = new Map<string, UpcomingMatch[]>();
+const groups = new Map<string, MatchView[]>();
 for (const match of matches) {
   const key = match.kickoffUtc ? localDateKey(match.kickoffUtc, "UTC") : (match.date ?? "unknown");
   groups.set(key, [...(groups.get(key) ?? []), match]);
@@ -22,12 +25,14 @@ for (const match of matches) {
 <p class="note">
   Times in <span data-tz-label>UTC</span>. Kick-off times can still change.
 </p>
-<div class="list" data-match-list>
+<div class="list" data-match-list data-heading-level={headingLevel}>
   {[...groups].map(([key, group]) => (
     <>
-      <h3 class="day-heading">{key === "unknown" ? "Date to be confirmed" : formatDayHeading(key)}</h3>
+      <Heading class="day-heading">
+        {key === "unknown" ? "Date to be confirmed" : formatDayHeading(key)}
+      </Heading>
       {group.map((match) => (
-        <MatchCard match={match} predictedAt={predictedAt} />
+        <MatchCard match={match} />
       ))}
     </>
   ))}

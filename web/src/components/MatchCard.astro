@@ -1,47 +1,60 @@
 ---
-// One upcoming match, scoreboard style: home team, kick-off clock, away team,
-// then the three-way probabilities, the likeliest score and expected goals.
+// One match, scoreboard style: home team, kick-off clock (or the final score),
+// away team, then the three-way prediction, the likeliest score, expected
+// goals, and a status line saying when the prediction was made and whether
+// it counts. The words for each status are in src/format/match-status.ts.
 //
-// The status line says when the prediction was made. For an upcoming match
-// that is the snapshot's time ("Prediction as of ..."); it becomes locked at
-// kick-off. Locked, played and voided matches come in Step 3.
-import type { UpcomingMatch } from "../data/models.ts";
+// An upcoming card carries its kick-off and prediction time as data
+// attributes, so local-times.ts can mark it "Kicked off" once the visitor's
+// clock passes the kick-off (the page may be up to a day old).
+import type { MatchView } from "../data/models.ts";
 import { formatGoals } from "../format/number.ts";
+import { earlierVoidedNote, statusLabel } from "../format/match-status.ts";
 import { formatChance, matchPercents } from "../format/probability.ts";
-import { formatClock, formatDateTime } from "../format/time.ts";
+import { formatClock } from "../format/time.ts";
+import LabelParts from "./LabelParts.astro";
 import ProbabilityBar from "./ProbabilityBar.astro";
 
 interface Props {
-  match: UpcomingMatch;
-  /** When this prediction was made: the snapshot's generated_at. */
-  predictedAt: string;
+  match: MatchView;
 }
-const { match, predictedAt } = Astro.props;
-const percents = matchPercents(match.probabilities);
-const likeliest = match.likelyScorelines[0];
+const { match } = Astro.props;
+const { status, prediction } = match;
+const label = statusLabel(status);
+const percents = prediction ? matchPercents(prediction.probabilities) : null;
+const likeliest = prediction?.likelyScorelines[0];
+const score = status.kind === "played" ? status.score : null;
 
-// The fixture source's status, in words. TIMED and SCHEDULED are both upcoming.
-const STATUS_LABELS: Record<string, string> = {
-  POSTPONED: "Postponed",
-  SUSPENDED: "Suspended",
-  CANCELLED: "Cancelled",
-  IN_PLAY: "In play",
-  PAUSED: "In play",
-};
-const statusLabel = (match.status && STATUS_LABELS[match.status]) || "Upcoming";
+/** Which outcome happened, for a played match. */
+const result = score ? (score.home > score.away ? "home" : score.home < score.away ? "away" : "draw") : null;
+
+const outcomes = percents
+  ? [
+      { key: "home", short: "Home", long: `${match.home} win`, percent: percents.home },
+      { key: "draw", short: "Draw", long: "Draw", percent: percents.draw },
+      { key: "away", short: "Away", long: `${match.away} win`, percent: percents.away },
+    ]
+  : [];
 ---
 
 <article
   class="match"
   data-match
+  data-status={status.kind}
   data-kickoff={match.kickoffUtc ?? undefined}
   data-date={match.date ?? undefined}
+  data-predicted-at={status.kind === "upcoming" ? status.predictedAt : undefined}
   aria-label={`${match.home} v ${match.away}`}
 >
   <div class="scoreboard">
     <span class="team home">{match.home}</span>
-    <span class="clock">
-      {match.kickoffUtc ? (
+    <span class:list={["clock", { score: score !== null }]}>
+      {score ? (
+        <>
+          <span class="visually-hidden">Final score</span>
+          {score.home}–{score.away}
+        </>
+      ) : match.kickoffUtc ? (
         <time datetime={match.kickoffUtc} data-format="clock">
           {formatClock(match.kickoffUtc, "UTC")}
         </time>
@@ -52,45 +65,70 @@ const statusLabel = (match.status && STATUS_LABELS[match.status]) || "Upcoming";
     <span class="team away">{match.away}</span>
   </div>
 
-  <ProbabilityBar percents={percents} />
-  <p class="outcomes">
-    <span>
-      <span aria-hidden="true">Home</span>
-      <span class="visually-hidden">{match.home} win</span> <strong>{percents.home}%</strong>
-    </span>
-    <span>
-      Draw <strong>{percents.draw}%</strong>
-    </span>
-    <span>
-      <span aria-hidden="true">Away</span>
-      <span class="visually-hidden">{match.away} win</span> <strong>{percents.away}%</strong>
-    </span>
-  </p>
+  {percents && (
+    <>
+      <ProbabilityBar percents={percents} />
+      <p class="outcomes">
+        {outcomes.map((o) => (
+          <span class:list={{ happened: result === o.key }}>
+            {o.key === "draw" ? (
+              "Draw"
+            ) : (
+              <>
+                <span aria-hidden="true">{o.short}</span>
+                <span class="visually-hidden">{o.long}</span>
+              </>
+            )}{" "}
+            <strong>{o.percent}%</strong>
+            {result === o.key && (
+              <span class="result-mark">
+                <span aria-hidden="true"> ✓</span>
+                <span class="visually-hidden"> (what happened)</span>
+              </span>
+            )}
+          </span>
+        ))}
+      </p>
+    </>
+  )}
 
   <p class="detail">
+    {score && match.kickoffUtc && (
+      <span>
+        Kick-off{" "}
+        <time datetime={match.kickoffUtc} data-format="clock">
+          {formatClock(match.kickoffUtc, "UTC")}
+        </time>
+      </span>
+    )}
     {likeliest && (
       <span>
         Most likely {likeliest.home}–{likeliest.away} ({formatChance(likeliest.probability)})
       </span>
     )}
-    <span>
-      Expected goals {formatGoals(match.expectedGoals.home)}–{formatGoals(match.expectedGoals.away)}
-    </span>
+    {prediction?.expectedGoals && (
+      <span>
+        Expected goals {formatGoals(prediction.expectedGoals.home)}–
+        {formatGoals(prediction.expectedGoals.away)}
+      </span>
+    )}
     {!match.kickoffUtc && <span>Time to be confirmed</span>}
   </p>
 
   <p class="status">
     <span class="badge" data-status-badge>
-      {statusLabel}
+      {label.badge}
     </span>
-    <span data-lock-note>
-      Prediction as of{" "}
-      <time datetime={predictedAt} data-format="datetime">
-        {formatDateTime(predictedAt, "UTC")}
-      </time>{" "}
-      · locks at kick-off
+    <span data-status-line>
+      <LabelParts parts={label.parts} />
     </span>
   </p>
+
+  {match.earlierVoided.map((voided) => (
+    <p class="earlier">
+      <LabelParts parts={earlierVoidedNote(voided)} />
+    </p>
+  ))}
 </article>
 
 <style>
@@ -134,6 +172,10 @@ const statusLabel = (match.status && STATUS_LABELS[match.status]) || "Upcoming";
     text-align: center;
   }
 
+  .clock.score {
+    border-color: var(--border-strong);
+  }
+
   .clock abbr {
     font-size: var(--step-0);
   }
@@ -156,6 +198,15 @@ const statusLabel = (match.status && STATUS_LABELS[match.status]) || "Upcoming";
     color: var(--text);
   }
 
+  /* The outcome that happened: underlined and ticked, not just coloured. */
+  .happened {
+    color: var(--text);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.25em;
+  }
+
   .badge {
     padding: 0 var(--space-2);
     border: 1px solid var(--border-strong);
@@ -166,5 +217,18 @@ const statusLabel = (match.status && STATUS_LABELS[match.status]) || "Upcoming";
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+  }
+
+  .match[data-status="voided"] .badge,
+  .match[data-status="invalid"] .badge,
+  .match[data-status="missed"] .badge {
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    border-color: var(--warn-text);
+  }
+
+  .earlier {
+    font-size: var(--step--1);
+    color: var(--text-muted);
   }
 </style>

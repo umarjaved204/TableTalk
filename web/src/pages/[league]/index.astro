@@ -1,14 +1,20 @@
 ---
-// A league page: table and chances, next matches, finishing positions.
-// On phones the three sections are tabs; from 900px they sit side by side.
+// A league page: table and chances, next matches, finishing positions, and
+// how the race has moved. On phones the first three sections are tabs; from
+// 900px they sit side by side. The race charts follow underneath.
+import LeagueHead from "../../components/LeagueHead.astro";
+import LeagueNav from "../../components/LeagueNav.astro";
 import LeagueSwitcher from "../../components/LeagueSwitcher.astro";
 import LeagueTable from "../../components/LeagueTable.astro";
+import LeagueUnavailable from "../../components/LeagueUnavailable.astro";
+import TabList from "../../components/TabList.astro";
 import MatchList from "../../components/MatchList.astro";
-import Notice from "../../components/Notice.astro";
 import PositionsHeatmap from "../../components/PositionsHeatmap.astro";
-import UpdatedStamp from "../../components/UpdatedStamp.astro";
+import RaceSection from "../../components/RaceSection.astro";
 import { loadLeague } from "../../data/league.ts";
 import { LEAGUES, type LeagueInfo } from "../../data/leagues.ts";
+import { loadRecords, upcomingViews } from "../../data/matches.ts";
+import { buildRace, chartPoints, loadLeagueHistory } from "../../data/race.ts";
 import Base from "../../layouts/Base.astro";
 
 export function getStaticPaths() {
@@ -21,8 +27,16 @@ interface Props {
 const { league } = Astro.props;
 const data = loadLeague(league);
 
-/** How many upcoming matches the league page shows (the full list is its own page in Step 3). */
+/** How many upcoming matches the league page shows (the rest are on the matches page). */
 const NEXT_MATCHES = 10;
+
+const records = loadRecords();
+const nextMatches =
+  data.state === "ready"
+    ? upcomingViews(data, records.status === "ok" ? records.records : new Map()).slice(0, NEXT_MATCHES)
+    : [];
+const race =
+  data.state === "ready" ? buildRace(chartPoints(loadLeagueHistory(league.id).points, data.season)) : null;
 
 if (data.state === "unsupported") {
   console.warn(
@@ -41,61 +55,25 @@ const description =
 <Base title={title} description={description}>
   <LeagueSwitcher current={league.slug} />
   <div class="container page">
-    {data.state === "unsupported" && (
+    {data.state !== "ready" && (
       <>
         <h1>{league.name}</h1>
-        <Notice title="This league's numbers are hidden" tone="warn">
-          <p>
-            Its data is in a newer format (contract {data.found ?? "unknown"}) than this site understands, so
-            the numbers are hidden rather than shown wrongly. The site will be updated to read it.
-          </p>
-        </Notice>
-      </>
-    )}
-    {data.state === "unavailable" && (
-      <>
-        <h1>{league.name}</h1>
-        <Notice title={`We don't have a forecast for ${league.name} right now`} tone="warn">
-          <p>The last update couldn't produce one. The other leagues are not affected.</p>
-          {data.error && <p>Reason recorded by the update: {data.error}</p>}
-        </Notice>
+        <LeagueUnavailable data={data} />
       </>
     )}
     {data.state === "ready" && (
       <>
-        <header class="league-head">
-          <h1>
-            {league.name} <span class="season">{data.season}</span>
-          </h1>
-          <UpdatedStamp
-            generatedAt={data.generatedAt}
-            dataThrough={data.dataThrough}
-            runStatus={data.runStatus}
-          />
-          {data.provisional && (
-            <Notice title="Provisional" tone="warn">
-              <p>The table includes a result that is not confirmed yet.</p>
-            </Notice>
-          )}
-          {data.notices.map((notice) => (
-            <Notice title="Note">
-              <p>{notice}</p>
-            </Notice>
-          ))}
-        </header>
+        <LeagueHead data={data} />
+        <LeagueNav league={league} current="overview" />
 
         <div class="sections" data-tabs>
-          <div class="tablist" data-tablist hidden>
-            <button type="button" id="tab-table" data-tab="table">
-              Table
-            </button>
-            <button type="button" id="tab-matches" data-tab="matches">
-              Matches
-            </button>
-            <button type="button" id="tab-positions" data-tab="positions">
-              Positions
-            </button>
-          </div>
+          <TabList
+            tabs={[
+              { id: "table", label: "Table" },
+              { id: "matches", label: "Matches" },
+              { id: "positions", label: "Positions" },
+            ]}
+          />
 
           <section id="table" class="panel panel-table" aria-labelledby="table-heading">
             <h2 id="table-heading">Table and chances</h2>
@@ -109,11 +87,14 @@ const description =
 
           <section id="matches" class="panel panel-matches" aria-labelledby="matches-heading">
             <h2 id="matches-heading">Next matches</h2>
-            {data.upcoming.length > 0 ? (
-              <MatchList matches={data.upcoming.slice(0, NEXT_MATCHES)} predictedAt={data.generatedAt} />
+            {nextMatches.length > 0 ? (
+              <MatchList matches={nextMatches} />
             ) : (
-              <p class="empty">No matches left to play this season.</p>
+              <p class="empty">No matches in the next four weeks.</p>
             )}
+            <p class="more">
+              <a href={`/${league.slug}/matches/`}>All matches, and recent results</a>
+            </p>
           </section>
 
           <section id="positions" class="panel panel-positions" aria-labelledby="positions-heading">
@@ -121,6 +102,8 @@ const description =
             <PositionsHeatmap leagueName={league.name} rows={data.rows} nSimulations={data.nSimulations} />
           </section>
         </div>
+
+        {race && <RaceSection race={race} zones={data.zones} />}
       </>
     )}
   </div>
@@ -137,50 +120,10 @@ const description =
     padding-block: var(--space-6) 0;
   }
 
-  .league-head {
-    display: grid;
-    gap: var(--space-3);
-  }
-
-  .season {
-    color: var(--text-muted);
-    font-weight: 600;
-  }
-
   .sections {
     display: grid;
     gap: var(--space-5);
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .tablist {
-    display: flex;
-    flex-wrap: wrap; /* very large text: tabs go onto two rows rather than off-screen */
-    border-bottom: 1px solid var(--border);
-  }
-
-  .tablist[hidden] {
-    display: none;
-  }
-
-  .tablist button {
-    flex: 1 0 auto;
-    min-height: var(--tap-main);
-    border: 0;
-    border-bottom: 3px solid transparent;
-    background: transparent;
-    color: var(--text-muted);
-    font-family: var(--font-display);
-    font-size: var(--step-0);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    cursor: pointer;
-  }
-
-  .tablist button[aria-selected="true"] {
-    color: var(--text);
-    border-bottom-color: var(--accent);
   }
 
   .panel {
@@ -204,6 +147,16 @@ const description =
   .empty {
     padding: var(--space-4);
     color: var(--text-muted);
+  }
+
+  .more {
+    padding: var(--space-2) var(--space-4) var(--space-3);
+  }
+
+  .more a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
   }
 
   @media (width >= 900px) {

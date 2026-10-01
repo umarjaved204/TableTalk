@@ -1,9 +1,10 @@
-import { readFileSync, rmSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Snapshot } from "../../src/data/contract.gen.ts";
 import { isBoundaryBelow, loadLeague, markedZoneAt } from "../../src/data/league.ts";
 import { LEAGUES, UnknownZoneError, ZONE_DISPLAY } from "../../src/data/leagues.ts";
+import { DataError } from "../../src/data/load.ts";
 import type { ReadyLeague, Zone } from "../../src/data/models.ts";
 import { REAL, copyOfReal, editJson, useDataDir } from "./helpers.ts";
 
@@ -102,6 +103,51 @@ describe("league states", () => {
     });
     useDataDir(dir);
     expect(loadLeague(PL)).toMatchObject({ state: "ready", runStatus: "kept_previous" });
+  });
+
+  it("a snapshot that breaks the contract -> unavailable (only that league; build carries on)", () => {
+    dir = copyOfReal();
+    editJson(dir, "latest/premier_league.json", (d) => {
+      delete d["teams"];
+    });
+    useDataDir(dir);
+    expect(loadLeague(PL)).toMatchObject({ state: "unavailable", reason: "invalid" });
+    expect(loadLeague(LEAGUES.find((l) => l.id === "bundesliga")!).state).toBe("ready");
+  });
+
+  it("a snapshot that isn't valid JSON -> unavailable", () => {
+    dir = copyOfReal();
+    writeFileSync(join(dir, "latest", "premier_league.json"), "{not json");
+    useDataDir(dir);
+    expect(loadLeague(PL)).toMatchObject({ state: "unavailable", reason: "invalid" });
+  });
+
+  it("listed in index.json but the file is missing -> unavailable", () => {
+    dir = copyOfReal();
+    rmSync(join(dir, "latest", "premier_league.json"));
+    useDataDir(dir);
+    expect(loadLeague(PL)).toMatchObject({ state: "unavailable", reason: "missing" });
+  });
+
+  it("provisional, with the pipeline's notices", () => {
+    dir = copyOfReal();
+    editJson(dir, "latest/premier_league.json", (d) => {
+      d["provisional"] = true;
+      d["notices"] = ["An awarded result is waiting for confirmation."];
+    });
+    useDataDir(dir);
+    expect(loadLeague(PL)).toMatchObject({
+      state: "ready",
+      provisional: true,
+      notices: ["An awarded result is waiting for confirmation."],
+    });
+  });
+
+  it("a broken index.json still stops the build (there is nothing to show without it)", () => {
+    dir = copyOfReal();
+    writeFileSync(join(dir, "latest", "index.json"), "{not json");
+    useDataDir(dir);
+    expect(() => loadLeague(PL)).toThrow(DataError);
   });
 
   it("a snapshot from a newer MAJOR version -> unsupported (numbers hidden)", () => {

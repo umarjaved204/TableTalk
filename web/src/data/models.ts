@@ -59,6 +59,42 @@ export interface UpcomingMatch {
   likelyScorelines: { home: number; away: number; probability: number }[];
 }
 
+/** The prediction shown on a match card. Missed matches have none. */
+export interface MatchPrediction {
+  probabilities: Probabilities;
+  expectedGoals: { home: number; away: number } | null;
+  likelyScorelines: { home: number; away: number; probability: number }[];
+}
+
+/** Where a match stands. See src/data/matches.ts for how each one is decided,
+ *  and src/format/match-status.ts for the words shown. */
+export type MatchStatus =
+  /** Not kicked off: the newest prediction, from the snapshot. */
+  | { kind: "upcoming"; predictedAt: string; fixtureStatus: string | null }
+  /** Past its listed kick-off but not in the lock log yet. `predictedBeforeKickoff`
+   *  says whether the prediction shown was made before the listed kick-off. */
+  | { kind: "kicked_off"; predictedAt: string; predictedBeforeKickoff: boolean }
+  | { kind: "locked"; predictedAt: string }
+  | { kind: "played"; predictedAt: string; score: { home: number; away: number } }
+  | { kind: "voided"; predictedAt: string; reason: string }
+  | { kind: "invalid"; predictedAt: string; actualKickoffUtc: string | null }
+  | { kind: "missed" };
+
+export interface MatchView {
+  /** Unique on the page: the lock id or match id. */
+  key: string;
+  home: string;
+  away: string;
+  /** The kick-off to show and group by (listed, or actual when the log has it). */
+  kickoffUtc: string | null;
+  /** The listed date, for matches without a time. */
+  date: string | null;
+  prediction: MatchPrediction | null;
+  status: MatchStatus;
+  /** Earlier predictions for this match that were voided (a postponed match). */
+  earlierVoided: { predictedAt: string; reason: string }[];
+}
+
 export interface ReadyLeague {
   state: "ready";
   league: LeagueInfo;
@@ -82,8 +118,9 @@ export interface ReadyLeague {
 export interface UnavailableLeague {
   state: "unavailable";
   league: LeagueInfo;
-  /** no_snapshot: the pipeline has never produced one. missing: listed but not published. */
-  reason: "no_snapshot" | "missing";
+  /** no_snapshot: the pipeline has never produced one. missing: listed but not
+   *  published. invalid: published but not readable (bad JSON or breaks the contract). */
+  reason: "no_snapshot" | "missing" | "invalid";
   error: string | null;
 }
 

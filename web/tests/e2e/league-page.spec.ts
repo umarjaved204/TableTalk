@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./test.ts";
 import { DARK, THEME_IDS, WIDTHS, hasSidewaysScroll, openAs } from "./helpers.ts";
 
 const PAGE = "/premier-league/";

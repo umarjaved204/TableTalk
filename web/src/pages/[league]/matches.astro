@@ -1,0 +1,167 @@
+---
+// A league's matches: Upcoming (with the newest prediction) and Recent (what
+// happened to each locked prediction). On phones the two lists are tabs; from
+// 900px they sit side by side. Which match goes where, and its status, is
+// decided in src/data/matches.ts.
+import LeagueHead from "../../components/LeagueHead.astro";
+import LeagueNav from "../../components/LeagueNav.astro";
+import LeagueSwitcher from "../../components/LeagueSwitcher.astro";
+import LeagueUnavailable from "../../components/LeagueUnavailable.astro";
+import TabList from "../../components/TabList.astro";
+import MatchList from "../../components/MatchList.astro";
+import { loadLeague } from "../../data/league.ts";
+import { LEAGUES, type LeagueInfo } from "../../data/leagues.ts";
+import { RECENT_DAYS, UPCOMING_DAYS, loadRecords, recentViews, upcomingViews } from "../../data/matches.ts";
+import { formatDateTime } from "../../format/time.ts";
+import Base from "../../layouts/Base.astro";
+
+export function getStaticPaths() {
+  return LEAGUES.map((league) => ({ params: { league: league.slug }, props: { league } }));
+}
+
+interface Props {
+  league: LeagueInfo;
+}
+const { league } = Astro.props;
+const data = loadLeague(league);
+const records = loadRecords();
+const known = records.status === "ok" ? records.records : new Map();
+
+const upcoming = data.state === "ready" ? upcomingViews(data, known) : [];
+const recent = data.state === "ready" ? recentViews(data, known) : [];
+const leftThisSeason = data.state === "ready" ? data.upcoming.length : 0;
+const liveSince = records.status === "ok" ? records.liveSince : null;
+
+const title = `${league.name} matches and predictions`;
+const description = `${league.name}: predictions for the next matches, and how recent predictions turned out. Updated nightly.`;
+---
+
+<Base title={title} description={description}>
+  <LeagueSwitcher current={league.slug} section="matches/" />
+  <div class="container page">
+    {data.state !== "ready" && (
+      <>
+        <h1>{league.name} matches</h1>
+        <LeagueUnavailable data={data} />
+      </>
+    )}
+    {data.state === "ready" && (
+      <>
+        <LeagueHead data={data} suffix="matches" />
+        <LeagueNav league={league} current="matches" />
+
+        <div class="sections" data-tabs>
+          <TabList
+            tabs={[
+              { id: "upcoming", label: "Upcoming" },
+              { id: "recent", label: "Recent" },
+            ]}
+          />
+
+          <section id="upcoming" class="panel" aria-labelledby="upcoming-heading">
+            <h2 id="upcoming-heading">Upcoming</h2>
+            <p class="intro">
+              The next {UPCOMING_DAYS / 7} weeks: {upcoming.length} of the {leftThisSeason} matches left this
+              season. Each prediction is updated every night until kick-off, and the last one made before
+              kick-off is locked and scored.
+            </p>
+            {upcoming.length > 0 ? (
+              <MatchList matches={upcoming} />
+            ) : (
+              <p class="empty">No matches in the next {UPCOMING_DAYS / 7} weeks.</p>
+            )}
+          </section>
+
+          <section id="recent" class="panel" aria-labelledby="recent-heading">
+            <h2 id="recent-heading">Recent</h2>
+            {records.status === "ok" ? (
+              <>
+                <p class="intro" data-recent-scope>
+                  Locked predictions from the last {RECENT_DAYS / 7} weeks, newest first. Only matches with a
+                  locked prediction are shown for now: predictions have been recorded since{" "}
+                  {liveSince ? (
+                    <time datetime={liveSince} data-format="datetime">
+                      {formatDateTime(liveSince, "UTC")}
+                    </time>
+                  ) : (
+                    "the first nightly update"
+                  )}
+                  , and results of other matches aren't in the published data yet.
+                </p>
+                {recent.length > 0 ? (
+                  <MatchList matches={recent} />
+                ) : (
+                  <p class="empty">
+                    No locked predictions yet. A prediction is locked when its match kicks off.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p class="empty">
+                The track record can't be read right now
+                {records.reason === "unsupported"
+                  ? " (it is in a newer format than this site understands)"
+                  : ""}
+                , so recent matches aren't shown. Upcoming predictions are not affected.
+              </p>
+            )}
+          </section>
+        </div>
+      </>
+    )}
+  </div>
+</Base>
+
+<script>
+  import "../../scripts/tabs.ts";
+</script>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--space-5);
+    padding-block: var(--space-6) 0;
+  }
+
+  .sections {
+    display: grid;
+    gap: var(--space-5);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .panel {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+  }
+
+  .panel[hidden] {
+    display: none;
+  }
+
+  .panel h2 {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--step-1);
+  }
+
+  .intro,
+  .empty {
+    padding: var(--space-3) var(--space-4) 0;
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  .empty {
+    padding-bottom: var(--space-4);
+  }
+
+  @media (width >= 900px) {
+    .sections {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+</style>

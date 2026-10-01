@@ -22,9 +22,11 @@ meantime. Numbers (R1, R2, ...) are stable ids; the list below is in
 | 10       | R12 | A JSON Schema for lock-log lines                             | PATCH (new file) | Hand-written types in `src/data/track-record.ts`                                     |
 | 11       | R10 | Backtest summary file for the methodology page               | MINOR            | Numbers copied into the page with the README commit they came from                   |
 | 12       | R9  | Whether a kick-off time is confirmed (investigate)           | MINOR            | A general "kick-off times can still change" note                                     |
+| 13       | R13 | Can `upcoming_matches` include a match already kicked off?   | PATCH (wording)  | The site handles both: such a match shows as "kicked off", not upcoming              |
 
 R12 was added in Step 2 (the lock log is the only published file without a
-schema). It sits next to R7 because both are about the lock log.
+schema). It sits next to R7 because both are about the lock log. R13 was added
+in Step 3, at the end so the existing order is unchanged.
 
 ---
 
@@ -59,6 +61,11 @@ reader can see that two predictions came from the same pipeline code.
 **Why.** Charts over time ("How the race has moved"). A browser can't list
 folders, and the build reading every full snapshot grows by about 0.9 MB per
 run (around 300 MB a season).
+
+**Measured in Step 3** (see web/README.md): reading the history adds 0.1 s to
+the build today (20 files) and about 2.2 s at the end of a season (1,500
+files); the whole build goes from about 4 s to about 8 s. Not urgent for build
+time; the bigger cost is `npm run data` copying ~250 MB of history.
 
 ## R3. Short team names (MINOR)
 
@@ -144,7 +151,8 @@ or missed) have no result in any published file.
 per match).
 
 **Why.** `counts.awarded_not_scored` gives a number but not which matches, so
-the site can't label them.
+the site can't label them. On the matches page an awarded match's lock is never
+scored, so it would show "awaiting result" for good.
 
 ## R7. Version on lock-log lines (MINOR)
 
@@ -179,3 +187,16 @@ hand, and copies drift.
 
 **Why.** `TIMED` can still move for TV. football-data.org may not provide this,
 so check the source first; if it can't be known, drop the request.
+
+## R13. Matches that have kicked off in `upcoming_matches` (PATCH, wording)
+
+**What.** One sentence in `contracts/README.md` saying whether a match that
+has kicked off (or is in play) when a run happens can still be listed in
+`upcoming_matches`, with a prediction made after its kick-off.
+
+**Why.** Runs have been starting hours late (10:43 and 11:09 UTC on 30 Sep
+and 1 Oct, not 04:37), so a 10:30 UTC kick-off could be in progress during a
+run. Such a prediction is not the one that gets locked. The site already
+handles it (a snapshot made after a match's listed kick-off shows the match as
+"kicked off", with a sentence saying its prediction won't be the one
+recorded), but the contract should say which happens.

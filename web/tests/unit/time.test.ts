@@ -41,6 +41,17 @@ describe("grouping by the visitor's local date", () => {
     expect(localDateKey(late, "Asia/Tokyo")).toBe("2026-10-11");
   });
 
+  it("a 23:30 UTC kick-off is the next morning in Asia, and still the same day in London", () => {
+    const late = "2026-10-24T23:30:00Z";
+    expect(localDateKey(late, "UTC")).toBe("2026-10-24");
+    expect(localDateKey(late, "Europe/London")).toBe("2026-10-25"); // 00:30 BST
+    expect(localDateKey(late, "Asia/Singapore")).toBe("2026-10-25");
+    expect(formatClock(late, "Asia/Singapore")).toBe("07:30");
+    expect(localDateKey(late, "Asia/Kolkata")).toBe("2026-10-25"); // 05:00, half-hour offset
+    // A week later the UK is back on GMT (UTC+0), so the same time is the same day.
+    expect(localDateKey("2026-10-31T23:30:00Z", "Europe/London")).toBe("2026-10-31");
+  });
+
   it("moves an early UTC kick-off to the previous day in the Americas", () => {
     expect(localDateKey("2026-10-11T02:00:00Z", "America/Los_Angeles")).toBe("2026-10-10");
   });

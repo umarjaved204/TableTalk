@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { TrackRecordSummary } from "../../src/data/contract.gen.ts";
 import { DataError } from "../../src/data/load.ts";
 import { loadLockLog, loadSummary } from "../../src/data/track-record.ts";
+import { illustratedLog } from "../fixtures/illustrated.ts";
 import { REAL, copyOfReal, useDataDir } from "./helpers.ts";
 
 /** The real summary with a different lock count. Reads the fixture file
@@ -44,17 +45,11 @@ describe("lock log (locks.jsonl)", () => {
 
   it("reads lock, void, invalid and missed lines", () => {
     dir = copyOfReal();
-    const lines = [
-      { event: "lock", lock_id: "fdorg:1#1", match_id: "fdorg:1", predicted_at: "2026-10-09T04:41:00Z" },
-      { event: "void", lock_id: "fdorg:1#1", reason: "postponed" },
-      { event: "missed", match_id: "fdorg:2", home_team: "A", away_team: "B", actual_kickoff_utc: null },
-    ];
-    writeFileSync(
-      join(dir, "track_record/locks.jsonl"),
-      lines.map((l) => JSON.stringify(l)).join("\n") + "\n",
-    );
+    writeFileSync(join(dir, "track_record/locks.jsonl"), illustratedLog());
     useDataDir(dir);
-    expect(loadLockLog(summaryWith(1)).map((l) => l.event)).toEqual(["lock", "void", "missed"]);
+    expect(new Set(loadLockLog(summaryWith(9)).map((l) => l.event))).toEqual(
+      new Set(["lock", "void", "invalid", "missed"]),
+    );
   });
 
   it("rejects a line with an unknown event", () => {

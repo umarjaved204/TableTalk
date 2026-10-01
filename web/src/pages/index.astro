@@ -1,25 +1,133 @@
 ---
-// TEMPORARY home page for local preview in Step 2: a list of the league
-// pages. The real home page (the five leagues at a glance) is Step 3.
-import LeagueLinks from "../components/LeagueLinks.astro";
+// The home page: the five leagues at a glance, when the numbers were made,
+// and a one-line summary of the live track record.
+import LeagueCard from "../components/LeagueCard.astro";
+import Notice from "../components/Notice.astro";
+import { loadIndex, loadLeague } from "../data/league.ts";
+import { LEAGUES } from "../data/leagues.ts";
+import { loadSummary } from "../data/track-record.ts";
+import { trackRecordLine } from "../format/track-record.ts";
+import { formatDateTime } from "../format/time.ts";
 import Base from "../layouts/Base.astro";
+
+const index = loadIndex();
+const leagues = LEAGUES.map(loadLeague);
+const summary = loadSummary();
+
+// "10,000 simulated seasons per league", when every league uses the same number.
+const counts = [...new Set(leagues.flatMap((l) => (l.state === "ready" ? [l.nSimulations] : [])))];
+const simulations =
+  counts.length === 1 && counts[0] !== undefined
+    ? `${new Intl.NumberFormat("en-GB").format(counts[0])} simulated seasons per league`
+    : null;
+const lastUpdate = "index" in index ? index.index.generated_at : null;
 ---
 
 <Base
   title="Season forecasts"
-  description="Football season forecasts for five European leagues, updated every night."
+  description="Football season forecasts for five European leagues: title, top places and relegation chances, updated every night."
 >
   <div class="container page">
-    <h1>TableTalk</h1>
-    <p>Football season forecasts, updated every night.</p>
-    <LeagueLinks />
+    <header class="intro">
+      <h1>TableTalk</h1>
+      <p class="lede">Football season forecasts for five leagues, updated every night.</p>
+      <p class="facts" data-generated={lastUpdate ?? undefined}>
+        {lastUpdate && (
+          <span data-stale-message>
+            Last update{" "}
+            <time datetime={lastUpdate} data-format="datetime">
+              {formatDateTime(lastUpdate, "UTC")} UTC
+            </time>
+          </span>
+        )}
+        {simulations && <span>{simulations}</span>}
+      </p>
+    </header>
+
+    {"unsupported" in index && (
+      <Notice title="The numbers are hidden" tone="warn">
+        <p>
+          The published data is in a newer format (contract {index.unsupported ?? "unknown"}) than this site
+          understands. The site will be updated to read it.
+        </p>
+      </Notice>
+    )}
+
+    <ul class="cards">
+      {leagues.map((data) => (
+        <li>
+          <LeagueCard data={data} />
+        </li>
+      ))}
+    </ul>
+
+    <p class="track-record">
+      <strong>Track record:</strong>{" "}
+      {summary.status === "ok" ? trackRecordLine(summary.data) : "not available right now."}{" "}
+      <a href="/track-record/">How the predictions have done</a>
+    </p>
   </div>
 </Base>
+
+<script>
+  import "../scripts/local-times.ts";
+</script>
 
 <style>
   .page {
     display: grid;
+    gap: var(--space-5);
+    padding-block: var(--space-6) 0;
+  }
+
+  .intro {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .lede {
+    font-size: var(--step-1);
+  }
+
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  .facts[data-stale="true"] [data-stale-message] {
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-1);
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    font-weight: 600;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
     gap: var(--space-4);
-    padding-block: var(--space-8) 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .cards li {
+    display: grid;
+  }
+
+  .track-record {
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+  }
+
+  .track-record a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
   }
 </style>

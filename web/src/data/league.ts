@@ -25,7 +25,19 @@ export function loadLeague(league: LeagueInfo): LeagueData {
     return { state: "unavailable", league, reason: "no_snapshot", error: entry?.error ?? null };
   }
 
-  const result = loadFile<Snapshot>(`latest/${entry.file}`, "snapshot");
+  // A snapshot that exists but breaks the contract makes only THIS league
+  // unavailable, with a loud build warning; the other leagues still build.
+  // (The pipeline checks every file before publishing, so this should never
+  // happen.) A broken index.json still stops the build: without it there is
+  // nothing to show at all.
+  let result;
+  try {
+    result = loadFile<Snapshot>(`latest/${entry.file}`, "snapshot");
+  } catch (error) {
+    if (!(error instanceof DataError)) throw error;
+    console.warn(`[tabletalk] ${league.id}: ${error.message}. Shown as unavailable.`);
+    return { state: "unavailable", league, reason: "invalid", error: null };
+  }
   if (result.status === "missing")
     return { state: "unavailable", league, reason: "missing", error: entry.error };
   if (result.status === "unsupported") return { state: "unsupported", league, found: result.found };

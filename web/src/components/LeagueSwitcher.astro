@@ -1,20 +1,23 @@
 ---
 // One row of league chips. It never wraps: on a narrow phone it scrolls
 // sideways (the cut-off chip shows there is more), and the current league
-// is scrolled into view on load.
+// is scrolled into view on load. On a matches page the chips lead to the
+// other leagues' matches pages.
 import { LEAGUES } from "../data/leagues.ts";
 
 interface Props {
   current: string;
+  /** "" for league pages, "matches/" for matches pages. */
+  section?: "" | "matches/";
 }
-const { current } = Astro.props;
+const { current, section = "" } = Astro.props;
 ---
 
 <nav class="switcher" aria-label="Leagues">
   <ul class="container" data-switcher>
     {LEAGUES.map((league) => (
       <li>
-        <a href={`/${league.slug}/`} aria-current={league.slug === current ? "page" : undefined}>
+        <a href={`/${league.slug}/${section}`} aria-current={league.slug === current ? "page" : undefined}>
           {league.name}
         </a>
       </li>

@@ -1,0 +1,273 @@
+// Step 3 pages: the matches pages, the home page, the race charts, and every
+// data state. The test site's data (tests/fixtures/make-e2e-data.ts) has one
+// league per state and an illustrated lock log with every match status.
+import AxeBuilder from "@axe-core/playwright";
+import { DARK, LIGHT, WIDTHS, hasSidewaysScroll, openAs } from "./helpers.ts";
+import { expect, test } from "./test.ts";
+
+/** Every new page and every data state, each in one light and one dark theme
+ *  at all five widths (the full theme matrix is Step 5). */
+const PAGES = [
+  "/", // home: ready, unavailable, hidden and kept_previous/provisional cards
+  "/premier-league/", // league page with the race charts (4-zone league)
+  "/bundesliga/", // race charts in a six-zone league
+  "/premier-league/matches/", // every match status
+  "/bundesliga/matches/",
+  "/ligue-1/", // kept_previous + provisional + notice, race "too early"
+  "/ligue-1/matches/",
+  "/la-liga/", // unavailable: the file breaks the contract
+  "/serie-a/matches/", // numbers hidden: newer MAJOR version
+  "/track-record/", // placeholder
+];
+
+test.describe("accessibility: every new page, light and dark, every width", () => {
+  for (const path of PAGES) {
+    for (const theme of [LIGHT, DARK]) {
+      for (const width of WIDTHS) {
+        test(`${path} ${theme} ${width}px`, async ({ page }) => {
+          const errors = await openAs(page, path, theme, width);
+          // Open every "Show the numbers" table, so axe checks them too.
+          for (const summary of await page.locator("details summary").all()) await summary.click();
+          const results = await new AxeBuilder({ page })
+            .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+            .analyze();
+          expect(results.violations.map((v) => `${v.id}: ${v.nodes.length} (${v.help})`)).toEqual([]);
+          expect(await hasSidewaysScroll(page)).toBe(false);
+          expect(errors, "console errors (including CSP violations)").toEqual([]);
+        });
+      }
+    }
+  }
+});
+
+test.describe("matches page: every status (London time, BST)", () => {
+  test.beforeEach(async ({ page }) => {
+    await openAs(page, "/premier-league/matches/", DARK, 1440);
+  });
+
+  test("upcoming", async ({ page }) => {
+    const arsenal = page.locator("#upcoming").locator("[data-match]", { hasText: "Leeds United" }).first();
+    await expect(arsenal.locator("[data-status-badge]")).toHaveText("Upcoming");
+    await expect(arsenal.locator("[data-status-line]")).toHaveText(
+      "Prediction as of 29 Sept, 18:56 · locks at kick-off",
+    );
+  });
+
+  test("locked: predicted_at from the data", async ({ page }) => {
+    const fulham = page.locator("#recent [data-match]", { hasText: "Fulham" });
+    await expect(fulham.locator("[data-status-badge]")).toHaveText("Locked");
+    await expect(fulham.locator("[data-status-line]")).toHaveText(
+      "Prediction made 21 Sept, 05:40 · locked at kick-off · awaiting result",
+    );
+  });
+
+  test("played: the score next to what was predicted, with what happened marked", async ({ page }) => {
+    const chelsea = page.locator("#recent [data-match]", { hasText: "Everton" });
+    await expect(chelsea.locator(".clock")).toHaveText(/2–1/);
+    await expect(chelsea.locator("[data-status-badge]")).toHaveText("Full time");
+    await expect(chelsea.locator("[data-status-line]")).toHaveText("Prediction made 20 Sept, 05:41");
+    await expect(chelsea.locator(".happened")).toContainText("Chelsea win");
+    await expect(chelsea.locator(".happened")).toContainText("51%");
+  });
+
+  test("voided, and the same match back in Upcoming with a note", async ({ page }) => {
+    const voided = page.locator("#recent [data-match]", { hasText: "Aston Villa" });
+    await expect(voided.locator("[data-status-badge]")).toHaveText("Postponed");
+    await expect(voided.locator("[data-status-line]")).toHaveText(
+      "Postponed · this prediction won't be scored",
+    );
+    const again = page
+      .locator("#upcoming [data-match]", { hasText: "Aston Villa" })
+      .filter({ hasText: "Brentford" });
+    await expect(again.locator("[data-status-badge]")).toHaveText("Upcoming");
+    await expect(again.locator(".earlier")).toHaveText(
+      "An earlier prediction (made 27 Sept, 05:40) was voided: postponed. It won't be scored.",
+    );
+  });
+
+  test("postponed and re-locked: the current lock, with a note about the voided one", async ({ page }) => {
+    const hull = page.locator("#recent [data-match]", { hasText: "Hull City" });
+    await expect(hull.locator("[data-status-badge]")).toHaveText("Locked");
+    await expect(hull.locator("[data-status-line]")).toContainText("Prediction made 28 Sept, 05:41");
+    await expect(hull.locator(".earlier")).toContainText("made 13 Sept, 05:40) was voided: postponed");
+  });
+
+  test("not counted: invalid and missed, each in one plain sentence", async ({ page }) => {
+    const invalid = page.locator("#recent [data-match]", { hasText: "Newcastle United" });
+    await expect(invalid.locator("[data-status-line]")).toHaveText(
+      "Not counted: this prediction was made after the match actually kicked off (14 Sept, 17:30), so it is never scored.",
+    );
+    const missed = page.locator("#recent [data-match]", { hasText: "Crystal Palace" });
+    await expect(missed.locator("[data-status-line]")).toHaveText(
+      "Not counted: no prediction was made before kick-off, so there is nothing to score.",
+    );
+    await expect(missed.locator(".bar")).toHaveCount(0); // no prediction to show
+  });
+
+  test("Recent says it shows locked matches only, and since when", async ({ page }) => {
+    await expect(page.locator("[data-recent-scope]")).toContainText("Only matches with a locked prediction");
+    await expect(page.locator("[data-recent-scope]")).toContainText("since 1 Sept, 05:40");
+  });
+
+  test("a note that kick-off times can still change", async ({ page }) => {
+    await expect(page.locator("#upcoming .note")).toContainText("Kick-off times can still change.");
+  });
+
+  test("no chance shown as 0% or 100%", async ({ page }) => {
+    const text = await page.locator("main").innerText();
+    expect(text).not.toMatch(/(^|[^\d])(0|100)%/);
+  });
+});
+
+test.describe("matches that kick off after the page was built", () => {
+  test("marked Kicked off in the browser; later matches still upcoming", async ({ page }) => {
+    await page.clock.setFixedTime(new Date("2026-10-10T12:00:00Z")); // Arsenal v Leeds kicked off at 11:30
+    await openAs(page, "/premier-league/matches/", DARK, 1440);
+    const arsenal = page.locator("#upcoming [data-match]", { hasText: "Leeds United" }).first();
+    await expect(arsenal.locator("[data-status-badge]")).toHaveText("Kicked off");
+    await expect(arsenal.locator("[data-status-line]")).toHaveText(
+      "Kicked off · the prediction shown was made before kick-off and will be recorded as locked in the next nightly update",
+    );
+    const chelsea = page.locator("#upcoming [data-match]", { hasText: "Bournemouth" }).first(); // 14:00
+    await expect(chelsea.locator("[data-status-badge]")).toHaveText("Upcoming");
+  });
+});
+
+test.describe("grouping by the visitor's local date", () => {
+  test.use({ timezoneId: "Asia/Tokyo" });
+
+  test("a 16:30 UTC Saturday kick-off is under Sunday in Tokyo", async ({ page }) => {
+    await openAs(page, "/premier-league/matches/", DARK, 1440);
+    const united = page.locator("#upcoming [data-match]", { hasText: "Tottenham Hotspur" }).first();
+    await expect(united.locator(".clock")).toHaveText("01:30");
+    const heading = united.locator("xpath=preceding-sibling::h3[1]");
+    await expect(heading).toHaveText("Sun 11 October");
+  });
+});
+
+test.describe("phone tabs on the matches page", () => {
+  test("Upcoming / Recent", async ({ page }) => {
+    await openAs(page, "/premier-league/matches/", LIGHT, 390);
+    await expect(page.locator("#upcoming")).toBeVisible();
+    await expect(page.locator("#recent")).toBeHidden();
+    await page.getByRole("tab", { name: "Recent" }).click();
+    await expect(page.locator("#recent")).toBeVisible();
+    await expect(page.locator("#upcoming")).toBeHidden();
+  });
+});
+
+test.describe("home page", () => {
+  test("a card per league, with the headline numbers", async ({ page }) => {
+    await openAs(page, "/", LIGHT, 1440);
+    const pl = page.locator('[data-league-card="premier_league"]');
+    await expect(pl).toContainText("Title favourite");
+    await expect(pl).toContainText("Manchester City 59%");
+    await expect(pl).toContainText("Most at risk of relegation (18th–20th)");
+    await expect(pl).toContainText("Coventry City 80%");
+    await expect(pl).toContainText("Results up to 20 Sept");
+    const bl = page.locator('[data-league-card="bundesliga"]');
+    await expect(bl).toContainText("Most at risk of relegation (17th–18th)");
+    await expect(bl).toContainText("Most likely in the play-off place (16th)");
+  });
+
+  test("last update, simulations and the track record line, linking to its page", async ({ page }) => {
+    await openAs(page, "/", LIGHT, 1440);
+    await expect(page.locator(".facts")).toContainText("Last update 29 Sept, 18:56");
+    await expect(page.locator(".facts")).toContainText("10,000 simulated seasons per league");
+    await expect(page.locator(".track-record")).toContainText("3 matches scored: too few to compare yet.");
+    await page.getByRole("link", { name: "How the predictions have done" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Track record");
+  });
+
+  test("each data state has its own message", async ({ page }) => {
+    await openAs(page, "/", LIGHT, 1440);
+    await expect(page.locator('[data-league-card="la_liga"]')).toContainText(
+      "its published file couldn't be read",
+    );
+    await expect(page.locator('[data-league-card="serie_a"]')).toContainText("Numbers hidden");
+    const ligue1 = page.locator('[data-league-card="ligue_1"]');
+    await expect(ligue1).toContainText("Provisional");
+    await expect(ligue1).toContainText("Last night's update failed for this league");
+  });
+
+  test("stale: more than 30 hours after the update, the page says so", async ({ page }) => {
+    await page.clock.setFixedTime(new Date("2026-10-01T06:00:00Z")); // 36 hours after
+    await openAs(page, "/", LIGHT, 1440);
+    await expect(page.locator(".facts")).toContainText(
+      "Last updated 36 hours ago: these numbers may be out of date.",
+    );
+    await expect(page.locator('[data-league-card="premier_league"]')).toContainText("36 hours ago");
+  });
+
+  test("not stale at FIXTURE_NOW", async ({ page }) => {
+    await openAs(page, "/", LIGHT, 1440);
+    await expect(page.locator('[data-league-card="premier_league"] [data-stale-message]')).toBeHidden();
+  });
+});
+
+test.describe("how the race has moved", () => {
+  test("Premier League: title, relegation and points charts, each with a table", async ({ page }) => {
+    await openAs(page, "/premier-league/", LIGHT, 1440);
+    const race = page.locator("section.race");
+    await expect(race.getByRole("heading", { level: 3 })).toHaveText([
+      "Title chances",
+      "Relegation chances (18th–20th)",
+      "Projected points",
+    ]);
+    const title = race.locator("figure").first();
+    await expect(title.locator(".panel-head .team")).toHaveText(["Manchester City", "Arsenal"]);
+    await title.locator("summary").click();
+    // 6 runs, newest first; one column per team.
+    await expect(title.locator("tbody tr")).toHaveCount(6);
+    await expect(title.locator("tbody tr").first()).toContainText("59%");
+    await expect(title.locator("thead th")).toHaveText([
+      "Updated",
+      "Results up to",
+      "Manchester City",
+      "Arsenal",
+    ]);
+  });
+
+  test("the chart is SVG in the HTML: no chart script", async ({ page }) => {
+    await openAs(page, "/premier-league/", LIGHT, 1440);
+    expect(await page.locator("section.race svg path.line").count()).toBeGreaterThan(0);
+    expect(await page.locator("section.race script").count()).toBe(0);
+  });
+
+  test("Bundesliga (six zones): relegation is 17th–18th, play-off place named as not included", async ({
+    page,
+  }) => {
+    await openAs(page, "/bundesliga/", LIGHT, 1440);
+    await expect(page.locator("#race-relegation-heading")).toHaveText("Relegation chances (17th–18th)");
+    await expect(page.locator("section.race")).toContainText("The play-off place (16th) is not included.");
+  });
+
+  test("Ligue 1 has no history yet: too early to show a trend", async ({ page }) => {
+    await openAs(page, "/ligue-1/", LIGHT, 1440);
+    await expect(page.locator("[data-race-too-early]")).toContainText("Too early to show a trend.");
+    await expect(page.locator("section.race svg")).toHaveCount(0);
+  });
+});
+
+test.describe("data states on league pages", () => {
+  test("La Liga: unavailable (its file couldn't be read)", async ({ page }) => {
+    await openAs(page, "/la-liga/", LIGHT, 1440);
+    await expect(page.locator("main")).toContainText("The published forecast file couldn't be read");
+  });
+
+  test("Serie A: numbers hidden (newer format), on both pages", async ({ page }) => {
+    for (const path of ["/serie-a/", "/serie-a/matches/"]) {
+      await openAs(page, path, LIGHT, 1440);
+      await expect(page.locator("main")).toContainText("This league's numbers are hidden");
+      await expect(page.locator("[data-match]")).toHaveCount(0);
+    }
+  });
+
+  test("Ligue 1: older numbers kept, provisional, with the notice", async ({ page }) => {
+    await openAs(page, "/ligue-1/matches/", LIGHT, 1440);
+    const main = page.locator("main");
+    await expect(main).toContainText("Last night's update failed for this league");
+    await expect(main).toContainText("Provisional");
+    await expect(main).toContainText("Illustrated notice: an awarded result is waiting for confirmation");
+  });
+});

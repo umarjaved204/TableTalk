@@ -16,6 +16,8 @@ const themeScript = buildThemeScript(
 export default defineConfig({
   site,
   output: "static",
+  // The browser tests build a separate test site into dist-e2e/ (see playwright.config.ts).
+  outDir: process.env.TABLETALK_OUT_DIR ?? "dist",
   trailingSlash: "always",
   build: { format: "directory" },
   // Pages are plain HTML: no prefetching or client router, so no extra scripts.

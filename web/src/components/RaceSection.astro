@@ -1,0 +1,96 @@
+---
+// "How the race has moved": title chances, relegation chances and projected
+// points over the season's updates. Until there are enough different rounds
+// of results (MIN_RESULT_DATES), it says it is too early instead.
+import { MIN_RESULT_DATES, RELEGATION_THRESHOLD, TITLE_THRESHOLD, type RaceData } from "../data/race.ts";
+import type { Zone } from "../data/models.ts";
+import { formatPlaces } from "../format/number.ts";
+import { formatShortDate } from "../format/time.ts";
+import RaceChart from "./RaceChart.astro";
+
+interface Props {
+  race: RaceData;
+  zones: Zone[];
+}
+const { race, zones } = Astro.props;
+const relegation = zones.find((z) => z.id === "relegation");
+const playoff = zones.find((z) => z.id === "relegation_playoff");
+const relegationPlaces = relegation ? formatPlaces(relegation.positions) : "";
+const percent = (p: number) => `${Math.round(p * 100)}%`;
+const latestResults = race.dataThrough.at(-1);
+---
+
+<section class="race" aria-labelledby="race-heading">
+  <h2 id="race-heading">How the race has moved</h2>
+  {race.enoughForTrend ? (
+    <>
+      <RaceChart
+        id="race-title"
+        heading="Title chances"
+        intro={`Teams whose title chance reached ${percent(TITLE_THRESHOLD)} at any point.`}
+        kind="chance"
+        series={race.title}
+        runDates={race.runDates}
+        dataThrough={race.dataThrough}
+      />
+      {relegation && (
+        <RaceChart
+          id="race-relegation"
+          heading={`Relegation chances (${relegationPlaces})`}
+          intro={`Chance of finishing ${relegationPlaces}, for teams whose chance reached ${percent(RELEGATION_THRESHOLD)} at any point.${playoff ? ` The play-off place (${formatPlaces(playoff.positions)}) is not included.` : ""}`}
+          kind="chance"
+          series={race.relegation}
+          runDates={race.runDates}
+          dataThrough={race.dataThrough}
+        />
+      )}
+      <RaceChart
+        id="race-points"
+        heading="Projected points"
+        intro="Average final points across the simulated seasons, for the teams in the two charts above."
+        kind="points"
+        series={race.points}
+        runDates={race.runDates}
+        dataThrough={race.dataThrough}
+      />
+    </>
+  ) : (
+    <p class="early" data-race-too-early>
+      Too early to show a trend.{" "}
+      {race.resultDates <= 1 ? (
+        <>
+          So far every update has used the same results
+          {latestResults ? <> (up to {formatShortDate(latestResults)})</> : null}, and changes between updates
+          with the same results are only simulation noise.
+        </>
+      ) : (
+        <>
+          So far the updates cover results up to {race.resultDates} different dates
+          {latestResults ? <> (latest {formatShortDate(latestResults)})</> : null}.
+        </>
+      )}{" "}
+      The charts appear once they cover results up to {MIN_RESULT_DATES} different dates.
+    </p>
+  )}
+</section>
+
+<style>
+  .race {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+  }
+
+  h2 {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--step-1);
+  }
+
+  .early {
+    padding: var(--space-4);
+    color: var(--text-muted);
+  }
+</style>

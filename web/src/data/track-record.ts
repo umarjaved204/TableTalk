@@ -22,6 +22,8 @@ export interface LockLine {
   listed_kickoff_utc: string | null;
   predicted_at: string;
   probabilities: { home: number; draw: number; away: number };
+  expected_goals?: { home: number; away: number };
+  likely_scorelines?: { home: number; away: number; probability: number }[];
 }
 export interface VoidLine {
   event: "void";
@@ -31,19 +33,28 @@ export interface VoidLine {
 export interface InvalidLine {
   event: "invalid";
   lock_id: string;
-  reason: string;
-  actual_kickoff_utc: string | null;
+  reason?: string;
+  actual_kickoff_utc?: string | null;
 }
 export interface MissedLine {
   event: "missed";
   match_id: string;
+  competition: string;
   home_team: string;
   away_team: string;
-  actual_kickoff_utc: string | null;
+  actual_kickoff_utc?: string | null;
 }
 export type LogLine = LockLine | VoidLine | InvalidLine | MissedLine;
 
 const EVENTS = new Set(["lock", "void", "invalid", "missed"]);
+
+/** The fields the site relies on, per event (a stand-in for the schema R12 asks for). */
+const REQUIRED: Record<string, string[]> = {
+  lock: ["lock_id", "match_id", "competition", "home_team", "away_team", "predicted_at", "probabilities"],
+  void: ["lock_id", "reason"],
+  invalid: ["lock_id"],
+  missed: ["match_id", "competition", "home_team", "away_team"],
+};
 
 /**
  * Read the lock log.
@@ -74,6 +85,12 @@ export function loadLockLog(summary: TrackRecordSummary): LogLine[] {
     const event = (parsed as { event?: unknown }).event;
     if (typeof event !== "string" || !EVENTS.has(event)) {
       throw new DataError(`track_record/locks.jsonl line ${i + 1}: unknown event ${JSON.stringify(event)}`);
+    }
+    const missing = (REQUIRED[event] ?? []).filter((field) => !(field in (parsed as object)));
+    if (missing.length > 0) {
+      throw new DataError(
+        `track_record/locks.jsonl line ${i + 1} (${event}) is missing ${missing.join(", ")}`,
+      );
     }
     return parsed as LogLine;
   });

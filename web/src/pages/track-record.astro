@@ -1,0 +1,58 @@
+---
+// PLACEHOLDER until Step 4 builds the real track record page. It gives the
+// one-line summary and the counts, so the home page's link leads somewhere useful.
+import Notice from "../components/Notice.astro";
+import { loadSummary } from "../data/track-record.ts";
+import { formatDateTime } from "../format/time.ts";
+import { trackRecordLine } from "../format/track-record.ts";
+import Base from "../layouts/Base.astro";
+
+const summary = loadSummary();
+const data = summary.status === "ok" ? summary.data : null;
+const whole = new Intl.NumberFormat("en-GB");
+---
+
+<Base
+  title="Track record"
+  description="How TableTalk's locked match predictions have done against the results."
+>
+  <div class="container page">
+    <h1>Track record</h1>
+    <Notice title="This page is being built">
+      <p>The full track record (every scored match, comparisons and calibration) is coming soon.</p>
+    </Notice>
+    {data ? (
+      <>
+        <p>{trackRecordLine(data)}</p>
+        <p>
+          Predictions locked since{" "}
+          {data.live_since ? (
+            <time datetime={data.live_since} data-format="datetime">
+              {formatDateTime(data.live_since, "UTC")}
+            </time>
+          ) : (
+            "the first nightly update"
+          )}
+          : {whole.format(data.counts.locks)} locked, {whole.format(data.counts.scored)} scored,{" "}
+          {whole.format(data.counts.awaiting_result)} awaiting a result, {whole.format(data.counts.voided)}{" "}
+          voided, {whole.format(data.counts.invalid)} not counted (made too late),{" "}
+          {whole.format(data.counts.missed)} missed.
+        </p>
+      </>
+    ) : (
+      <p>The track record can't be read right now.</p>
+    )}
+  </div>
+</Base>
+
+<script>
+  import "../scripts/local-times.ts";
+</script>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--space-4);
+    padding-block: var(--space-8) 0;
+  }
+</style>

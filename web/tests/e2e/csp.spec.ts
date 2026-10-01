@@ -2,7 +2,8 @@
 // listed in the page's policy. The theme script is inline, so if its text in
 // the built page ever differs from the text that was hashed (an edit, a
 // placeholder change, Astro reformatting it), the browser silently blocks it
-// and themes stop working. These tests read the BUILT pages in dist/ and
+// and themes stop working. These tests read the BUILT pages of the test
+// site (dist-e2e/, built by playwright.config.ts) and
 // recompute every hash themselves.
 //
 // No browser needed: this is plain file reading, so it runs once (in the
@@ -12,8 +13,9 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 import { buildThemeScript } from "../../src/scripts/theme-script.ts";
+import { E2E_OUT_DIR } from "./site.ts";
 
-const DIST = resolve("dist");
+const DIST = resolve(E2E_OUT_DIR);
 
 /** Every .html file in dist/, as paths relative to dist/. */
 function builtPages(dir = DIST): string[] {
@@ -42,30 +44,33 @@ function inlineScripts(html: string): string[] {
   return [...html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]!);
 }
 
-const pages = existsSync(DIST) ? builtPages() : [];
 const themeScript = buildThemeScript(readFileSync(resolve("src/scripts/theme-head.js"), "utf8"));
 
-test("dist/ has been built", () => {
-  expect(pages.length, "run `npm run build` first").toBeGreaterThan(0);
-});
-
-for (const page of pages) {
-  test.describe(`CSP: ${page}`, () => {
+// The pages are listed inside each test, not when this file loads: Playwright
+// loads test files before the webServer has built the test site.
+function pages(): { page: string; html: string; allowed: string[] }[] {
+  const list = existsSync(DIST) ? builtPages() : [];
+  expect(list.length, `no built pages in ${E2E_OUT_DIR}/`).toBeGreaterThan(0);
+  return list.map((page) => {
     const html = readFileSync(join(DIST, page), "utf8");
-    const allowed = allowedScriptHashes(html);
-
-    test("the theme script in the page is exactly theme-head.js, and its hash is allowed", () => {
-      // Recomputed here from the source file, not taken from astro.config.mjs.
-      expect(inlineScripts(html), "theme script missing or changed in the built page").toContain(themeScript);
-      expect(allowed).toContain(sha256(themeScript));
-    });
-
-    test("every inline script's hash is in the policy", () => {
-      const blocked = inlineScripts(html).filter((script) => !allowed.includes(sha256(script)));
-      expect(
-        blocked.map((s) => s.slice(0, 80)),
-        "these inline scripts would be blocked",
-      ).toEqual([]);
-    });
+    return { page, html, allowed: allowedScriptHashes(html) };
   });
 }
+
+test("CSP: on every page, the theme script is exactly theme-head.js, and its hash is allowed", () => {
+  for (const { page, html, allowed } of pages()) {
+    // Recomputed here from the source file, not taken from astro.config.mjs.
+    expect(inlineScripts(html), `${page}: theme script missing or changed`).toContain(themeScript);
+    expect(allowed, page).toContain(sha256(themeScript));
+  }
+});
+
+test("CSP: on every page, every inline script's hash is in the policy", () => {
+  for (const { page, html, allowed } of pages()) {
+    const blocked = inlineScripts(html).filter((script) => !allowed.includes(sha256(script)));
+    expect(
+      blocked.map((s) => s.slice(0, 80)),
+      `${page}: these inline scripts would be blocked`,
+    ).toEqual([]);
+  }
+});

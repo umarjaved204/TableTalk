@@ -1,0 +1,44 @@
+---
+// The top of a league's pages: name and season, when the numbers were made,
+// and any warnings (provisional results, notices from the update).
+import type { ReadyLeague } from "../data/models.ts";
+import Notice from "./Notice.astro";
+import UpdatedStamp from "./UpdatedStamp.astro";
+
+interface Props {
+  data: ReadyLeague;
+  /** Added after the league name, e.g. "matches". */
+  suffix?: string;
+}
+const { data, suffix } = Astro.props;
+---
+
+<header class="league-head">
+  <h1>
+    {data.league.name}
+    {suffix && <> {suffix}</>} <span class="season">{data.season}</span>
+  </h1>
+  <UpdatedStamp generatedAt={data.generatedAt} dataThrough={data.dataThrough} runStatus={data.runStatus} />
+  {data.provisional && (
+    <Notice title="Provisional" tone="warn">
+      <p>The table includes a result that is not confirmed yet.</p>
+    </Notice>
+  )}
+  {data.notices.map((notice) => (
+    <Notice title="Note">
+      <p>{notice}</p>
+    </Notice>
+  ))}
+</header>
+
+<style>
+  .league-head {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .season {
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+</style>

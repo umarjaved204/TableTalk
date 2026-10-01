@@ -4,10 +4,11 @@
 // iPhones use WebKit, Safari's engine; Android phones use Chromium. Each
 // project has the phone's real screen size, pixel density, touch input and
 // mobile user agent. Everything here is measured, not eyeballed.
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "./test.ts";
 import { auditLayout, layoutShift, type AuditOptions, type AuditResult } from "./layout-audit.ts";
 
-const PAGES = ["/premier-league/", "/bundesliga/", "/", "/404/"];
+const PAGES = ["/premier-league/", "/bundesliga/", "/premier-league/matches/", "/", "/404/"];
 
 /** Audit every view of the page: on phones the league page shows one tab at a
  *  time, so each tab is tapped and measured in turn. Problems are merged. */

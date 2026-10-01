@@ -5,3 +5,6 @@ dist/
 .data/
 test-results/
 playwright-report/
+# The browser tests' own data and build (tests/fixtures/make-e2e-data.ts).
+.e2e-data/
+dist-e2e/

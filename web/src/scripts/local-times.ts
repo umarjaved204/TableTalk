@@ -4,7 +4,7 @@
 //   1. rewrites times in the visitor's own time zone,
 //   2. regroups match cards by the visitor's local date,
 //   3. turns the "Updated" line into a warning if the data is stale,
-//   4. marks matches that have kicked off since the page was built.
+//   4. marks upcoming matches that have kicked off since the page was built.
 // Clock boxes have a fixed width and tabular figures, so nothing moves.
 import {
   STALE_AFTER_HOURS,
@@ -16,6 +16,7 @@ import {
   localDateKey,
   timeZoneLabel,
 } from "../format/time.ts";
+import { labelText, statusLabel } from "../format/match-status.ts";
 
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const now = new Date();
@@ -43,7 +44,7 @@ for (const list of document.querySelectorAll<HTMLElement>("[data-match-list]")) 
   }
   const fragment = document.createDocumentFragment();
   for (const [key, group] of groups) {
-    const heading = document.createElement("h3");
+    const heading = document.createElement(list.dataset["headingLevel"] === "4" ? "h4" : "h3");
     heading.className = "day-heading";
     heading.textContent = key === "unknown" ? "Date to be confirmed" : formatDayHeading(key);
     fragment.append(heading, ...group);
@@ -63,15 +64,25 @@ for (const el of document.querySelectorAll<HTMLElement>("[data-generated]")) {
   }
 }
 
-// 4. Matches that have kicked off since the page was built
-for (const card of document.querySelectorAll<HTMLElement>("[data-match][data-kickoff]")) {
+// 4. Upcoming matches that have kicked off since the page was built. The
+//    nightly update hasn't locked them yet, so say what will happen. The
+//    words come from the same file the build uses.
+for (const card of document.querySelectorAll<HTMLElement>(
+  '[data-match][data-status="upcoming"][data-kickoff]',
+)) {
   const kickoff = card.dataset["kickoff"];
-  if (!kickoff || new Date(kickoff) > now) continue;
-  card.dataset["kickedOff"] = "true";
+  const predictedAt = card.dataset["predictedAt"];
+  if (!kickoff || !predictedAt || new Date(kickoff) > now) continue;
+  const label = statusLabel({
+    kind: "kicked_off",
+    predictedAt,
+    predictedBeforeKickoff: new Date(predictedAt) < new Date(kickoff),
+  });
+  card.dataset["status"] = "kicked_off";
   const badge = card.querySelector<HTMLElement>("[data-status-badge]");
-  const note = card.querySelector<HTMLElement>("[data-lock-note]");
-  if (badge) badge.textContent = "Kicked off";
-  if (note) note.textContent = "This prediction is locked in the next nightly update.";
+  const line = card.querySelector<HTMLElement>("[data-status-line]");
+  if (badge) badge.textContent = label.badge;
+  if (line) line.textContent = labelText(label.parts, (utc) => formatDateTime(utc, timeZone));
 }
 
 export {};

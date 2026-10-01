@@ -1,0 +1,62 @@
+---
+// Links between a league's two pages: the table and chances, and all its matches.
+// ("All matches", so it is not confused with the "Matches" tab on phones.)
+import type { LeagueInfo } from "../data/leagues.ts";
+
+interface Props {
+  league: LeagueInfo;
+  current: "overview" | "matches";
+}
+const { league, current } = Astro.props;
+const links = [
+  { id: "overview", href: `/${league.slug}/`, text: "Table and chances" },
+  { id: "matches", href: `/${league.slug}/matches/`, text: "All matches" },
+];
+---
+
+<nav class="league-nav" aria-label={`${league.name} pages`}>
+  <ul>
+    {links.map((link) => (
+      <li>
+        <a href={link.href} aria-current={link.id === current ? "page" : undefined}>
+          {link.text}
+        </a>
+      </li>
+    ))}
+  </ul>
+</nav>
+
+<style>
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-5);
+    margin: 0;
+    padding: 0;
+    border-bottom: 1px solid var(--border);
+    list-style: none;
+  }
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
+    border-bottom: 3px solid transparent;
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-size: var(--step-0);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--text);
+  }
+
+  a[aria-current="page"] {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+  }
+</style>

@@ -36,7 +36,7 @@ export interface ZoneDisplay {
 // TEMPORARY until contract request R4 (zones[].short_label and zones[].end).
 // Keyed by the zone ids the pipeline uses. If a league's data has a zone id
 // that is not listed here, the build fails (see zoneDisplay below and
-// tests/unit/leagues.test.ts), so a new zone can't appear unlabelled.
+// tests/unit/league.test.ts), so a new zone can't appear unlabelled.
 export const ZONE_DISPLAY: Readonly<Record<string, ZoneDisplay>> = {
   title: { short: "Title", end: "top", marker: "solid" },
   top_four: { short: "Top 4", end: "top", marker: "light" },

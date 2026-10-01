@@ -17,9 +17,9 @@ the Python code.
 
 ## Status
 
-Step 2 of the frontend plan: design system plus the league pages built from
-real data. Local preview only; no deployment and no workflows during the
-pipeline trial. Work happens on the `frontend` branch; nothing goes on `main`
+Step 3 of the frontend plan: the home page, a league page and a matches page
+for each league, the "How the race has moved" charts, and every data state.
+Local preview only; no deployment and no workflows during the pipeline trial. Work happens on the `frontend` branch; nothing goes on `main`
 until the trial is reviewed (and contract request R8 is done).
 
 ## Setup
@@ -48,7 +48,7 @@ Astro asks to collect anonymous usage data. To opt out on your machine:
 | `npm run build`    | Type-check, then build `dist/`                                                                                                                                                      |
 | `npm run preview`  | Serve `dist/` at http://localhost:4321 (with the CSP, as deployed)                                                                                                                  |
 | `npm test`         | Unit tests                                                                                                                                                                          |
-| `npm run test:e2e` | Browser and accessibility tests against the built site (run `build` first)                                                                                                          |
+| `npm run test:e2e` | Browser and accessibility tests. Builds its own test site from fixed test data first (see tests/README.md)                                                                          |
 | `npm run lint`     | ESLint, Stylelint, Prettier check                                                                                                                                                   |
 | `npm run format`   | Prettier, fix formatting                                                                                                                                                            |
 
@@ -80,6 +80,63 @@ origin/data ──(npm run data)──▶ .data/  ──▶ src/data/  (load, ve
   the only code that resolves a theme; its CSP hash is computed in
   `astro.config.mjs` from the same source, and `tests/e2e/csp.spec.ts`
   recomputes it from the built pages (a mismatch fails the tests).
+
+## Pages
+
+| Page                 | What it shows                                                                                                                      |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                  | A card per league (title favourite, most at risk of relegation, play-off place where there is one), last update, track record line |
+| `/<league>/`         | Table and chances, next 10 matches, finishing positions, how the race has moved                                                    |
+| `/<league>/matches/` | Upcoming (next 4 weeks) and Recent (locked predictions from the last 4 weeks)                                                      |
+| `/track-record/`     | Placeholder until Step 4: the one-line summary and the counts                                                                      |
+
+## Matches: where each status comes from
+
+`src/data/match-records.ts` replays `track_record/locks.jsonl` in order, per
+match id: `lock` makes the match **locked**; `void` makes it **voided**
+(postponed, suspended, cancelled, removed); `invalid` makes it **not counted**
+(made after the actual kick-off); `missed` is **not counted** (no prediction
+in time). A match in `summary.json`'s `matches[]` is **played**, with its
+score. A postponed match that gets a new lock shows the new lock, with a note
+about the voided one. Anything that breaks these rules (a void for a lock that
+doesn't exist, a second lock without a void) stops the build.
+
+`src/data/matches.ts` then splits them: **Upcoming** is the snapshot's matches
+minus any the log says have started; **Recent** is the log's matches for the
+league. Matches played before recording started, or never locked, are in no
+published file (contract request R5), so Recent shows locked matches only and
+says so. In the browser, `local-times.ts` marks an upcoming match **kicked off**
+once the visitor's clock passes its kick-off. All the words are in
+`src/format/match-status.ts`, used by both the build and the browser.
+
+## How the race has moved
+
+Built at build time from the `history/` folders (until contract request R2),
+keeping only each team's projected points and zone chances. It is drawn as SVG
+at build time with no chart library and no browser JavaScript, as small
+multiples: one small panel per team, headed with its name, the other teams in
+the same race as faint lines behind. Every chart has a "Show the numbers" table.
+
+- **Which teams:** title chart, teams whose title chance reached 10% at any
+  point; relegation chart (the direct places, not the play-off place), teams
+  whose chance reached 20%; projected points, the teams on those two charts.
+  At most 6 per chance chart. Constants in `src/data/race.ts`.
+- **One point per day:** the last run of each UTC day, current season only.
+- **Too early:** the charts appear once the runs cover results up to **3
+  different dates**. Runs with the same results differ only by simulation
+  noise. (On 1 Oct 2026 every run so far has results up to 20 Sep.)
+
+**Build time** (measured 1 Oct 2026 on this laptop, `astro build` without the
+type check; `npm run build` adds about 14 s of `astro check`):
+
+| Data                                                      | History files read | Reading them | Whole build |
+| --------------------------------------------------------- | ------------------ | ------------ | ----------- |
+| Today (4 runs)                                            | 20                 | 0.1 s        | about 4 s   |
+| A full season (300 runs, simulated by copying real files) | 1,500              | 2.2 s        | about 8 s   |
+
+So each nightly run adds about 13 ms to the build, about 4 s over a season.
+Each file is still parsed in full (150-190 KB); R2's compact series would
+make this one small file per league.
 
 See `CONTRACT_REQUESTS.md` for what the site needs from the contract, and
 `tests/README.md` for what the tests cover.

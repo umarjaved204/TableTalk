@@ -9,11 +9,14 @@ interface Props {
   generatedAt: string;
   dataThrough: string | null;
   runStatus: "updated" | "kept_previous";
+  /** Home page cards: hide the "Updated" line unless the numbers are stale
+   *  (the page already says when the last update was). */
+  compact?: boolean;
 }
-const { generatedAt, dataThrough, runStatus } = Astro.props;
+const { generatedAt, dataThrough, runStatus, compact = false } = Astro.props;
 ---
 
-<div class="stamp" data-generated={generatedAt}>
+<div class:list={["stamp", { compact }]} data-generated={generatedAt}>
   <p class="line" data-stale-message>
     Updated{" "}
     <time datetime={generatedAt} data-format="datetime">
@@ -58,5 +61,9 @@ const { generatedAt, dataThrough, runStatus } = Astro.props;
 
   .warn {
     flex-basis: 100%;
+  }
+
+  .compact:not([data-stale="true"]) [data-stale-message] {
+    display: none;
   }
 </style>

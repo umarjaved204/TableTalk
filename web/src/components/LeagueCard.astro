@@ -1,0 +1,156 @@
+---
+// One league on the home page: the title favourite, the team most at risk of
+// relegation (and of the play-off place, where a league has one), and how
+// recent the results are. Values come from src/data/home.ts.
+import { cardValues, type ZoneLeader } from "../data/home.ts";
+import type { LeagueData } from "../data/models.ts";
+import { formatPlaces } from "../format/number.ts";
+import { formatChance } from "../format/probability.ts";
+import UpdatedStamp from "./UpdatedStamp.astro";
+
+interface Props {
+  data: LeagueData;
+}
+const { data } = Astro.props;
+const { league } = data;
+const values = data.state === "ready" ? cardValues(data) : null;
+
+const lines: { label: string; leader: ZoneLeader }[] = [];
+if (values?.favourite) lines.push({ label: "Title favourite", leader: values.favourite });
+if (values?.relegation)
+  lines.push({
+    label: `Most at risk of relegation (${formatPlaces(values.relegation.zone.positions)})`,
+    leader: values.relegation,
+  });
+if (values?.playoff)
+  lines.push({
+    label: `Most likely in the play-off place (${formatPlaces(values.playoff.zone.positions)})`,
+    leader: values.playoff,
+  });
+---
+
+<article class="card" aria-labelledby={`card-${league.slug}`} data-league-card={league.id}>
+  <h2 id={`card-${league.slug}`}>
+    <a class="title-link" href={`/${league.slug}/`}>
+      {league.name}
+    </a>
+    {data.state === "ready" && <span class="season">{data.season}</span>}
+  </h2>
+
+  {data.state === "ready" ? (
+    <>
+      <dl>
+        {lines.map(({ label, leader }) => (
+          <div class="line">
+            <dt>{label}</dt>
+            <dd>
+              <span class="team">{leader.team}</span> <strong>{formatChance(leader.chance)}</strong>
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {data.provisional && <p class="flag">Provisional: includes a result not confirmed yet.</p>}
+      <UpdatedStamp
+        generatedAt={data.generatedAt}
+        dataThrough={data.dataThrough}
+        runStatus={data.runStatus}
+        compact
+      />
+    </>
+  ) : data.state === "unsupported" ? (
+    <p class="flag">Numbers hidden: the data is in a newer format than this site understands.</p>
+  ) : (
+    <p class="flag">
+      No forecast right now:{" "}
+      {data.reason === "no_snapshot"
+        ? "the last update couldn't produce one."
+        : data.reason === "missing"
+          ? "its file is missing from the published data."
+          : "its published file couldn't be read."}
+    </p>
+  )}
+
+  <p class="links">
+    <a href={`/${league.slug}/`}>Table and chances</a>
+    <a href={`/${league.slug}/matches/`}>Matches</a>
+  </p>
+</article>
+
+<style>
+  .card {
+    display: grid;
+    align-content: start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+  }
+
+  h2 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 var(--space-2);
+    font-size: var(--step-2);
+  }
+
+  .title-link {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .title-link:hover {
+    text-decoration: underline;
+  }
+
+  .season {
+    color: var(--text-muted);
+    font-size: var(--step-0);
+    font-weight: 600;
+  }
+
+  dl {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+  }
+
+  dt {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  dd {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0 var(--space-3);
+    margin: 0;
+  }
+
+  .team {
+    font-weight: 600;
+  }
+
+  .flag {
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-1);
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    font-size: var(--step--1);
+    font-weight: 600;
+  }
+
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-4);
+  }
+
+  .links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
+  }
+</style>

@@ -2,10 +2,10 @@
 
 Two kinds:
 
-| Kind                       | Command                             | What it runs against                                         |
-| -------------------------- | ----------------------------------- | ------------------------------------------------------------ |
-| Unit (Vitest)              | `npm test`                          | The data layer, formatting helpers and theme files, directly |
-| Browser (Playwright + axe) | `npm run build && npm run test:e2e` | The **built** site, served by `astro preview`, in Chromium   |
+| Kind                       | Command            | What it runs against                                         |
+| -------------------------- | ------------------ | ------------------------------------------------------------ |
+| Unit (Vitest)              | `npm test`         | The data layer, formatting helpers and theme files, directly |
+| Browser (Playwright + axe) | `npm run test:e2e` | A **built** test site, served by `astro preview`             |
 
 ## Fixtures
 
@@ -15,22 +15,83 @@ MAJOR version, a missing file, a league that failed, a lock log that
 contradicts the summary) are made by copying these into a temporary folder and
 editing one thing (`unit/helpers.ts`), so every edge case starts from real data.
 
+`fixtures/illustrated.ts` adds **ILLUSTRATED** data on top of those real files:
+a lock log with one example of every match status (played, locked, voided,
+postponed and re-locked, invalid, missed, and a real upcoming match shown as
+postponed earlier), a matching `summary.json`, and five earlier history runs
+for the race chart. The history runs blend the real 29 Sep numbers with
+"every team equal", so the lines move towards today's real values. None of
+this is a real prediction or result. No real lock existed when Step 3 was
+built (the first kick-off after the pipeline went live is 9 Oct 2026), so a
+real locked match still has to be checked against its `predicted_at` later.
+
+## The browser tests' own site
+
+The real data changes every night, so the browser tests don't use it.
+`npm run test:e2e` first runs `fixtures/make-e2e-data.ts`, which writes
+`.e2e-data/` (the real 29 Sep files plus the illustrated data above), builds
+the site from it into `dist-e2e/`, and serves it on port 4322. Both folders
+are git-ignored. Each league shows one data state, so every state is built
+and checked by axe:
+
+| League         | State in the test site                                                          |
+| -------------- | ------------------------------------------------------------------------------- |
+| Premier League | Ready: every match status, race charts drawn                                    |
+| Bundesliga     | Ready, six zones: race charts drawn, relegation play-off place                  |
+| La Liga        | Unavailable: its file breaks the contract                                       |
+| Serie A        | Numbers hidden: a newer MAJOR contract version                                  |
+| Ligue 1        | Older numbers kept (`kept_previous`), provisional with a notice, race too early |
+
+The visitor's clock is fixed (`e2e/test.ts`) at 30 Sep 2026 09:00 UTC, 15
+hours after the snapshot, so nothing is stale and nothing has kicked off.
+Tests for stale data and kick-offs move the clock on.
+
+## Every data state and where it is tested
+
+| State                                           | Unit test                                  | Browser test (`e2e/pages.spec.ts`)          |
+| ----------------------------------------------- | ------------------------------------------ | ------------------------------------------- |
+| Unavailable: no snapshot, missing, invalid file | `league.test.ts`                           | La Liga page and home card                  |
+| `kept_previous`                                 | `league.test.ts`                           | Ligue 1                                     |
+| Newer MAJOR version (numbers hidden)            | `league.test.ts`, `matches.test.ts`        | Serie A                                     |
+| Provisional, with notices                       | `league.test.ts`                           | Ligue 1                                     |
+| Stale (older than 30 hours)                     | `time.test.ts`                             | home page with the clock 36 hours later     |
+| Kicked off, not yet locked                      | `matches.test.ts`, `match-status.test.ts`  | matches page with the clock at 10 Oct 12:00 |
+| Locked, played, voided, invalid, missed         | `match-records.test.ts`, `matches.test.ts` | Premier League matches page                 |
+| Postponed and re-locked                         | `match-records.test.ts`                    | Premier League matches page (Hull City)     |
+| `locks.jsonl` missing, zero locks (fine)        | `matches.test.ts`, `track-record.test.ts`  | (the real data, every build until 9 Oct)    |
+| `locks.jsonl` missing, locks counted (fails)    | `matches.test.ts`, `track-record.test.ts`  |                                             |
+
 ## Unit tests (what they guard)
 
 - `probability.test.ts`: never 0% or 100% without certainty; the largest
   remainder method (sets that plain rounding gets wrong, and 1,000 random sets
   that must add up to exactly 100).
 - `time.test.ts`: UTC to local time (including half-hour offsets and the UK
-  clock change on 25 Oct 2026), grouping by the visitor's local date, plain
+  clock change on 25 Oct 2026), grouping by the visitor's local date (a 23:30
+  UTC kick-off is the next day in Asia), plain
   dates never shifted, the 30-hour stale threshold.
 - `version-and-load.test.ts`: MAJOR/MINOR handling, unknown fields from a newer
   MINOR accepted, a different MAJOR reported as "unsupported" (numbers hidden),
   a broken file stops the build.
 - `league.test.ts`: all five real leagues build, and the temporary zone map
-  covers every zone id (a new zone id fails the build). Also league states and
-  zone markers.
+  covers every zone id (a new zone id fails the build). Also league states
+  (a broken league file makes only that league unavailable; a broken
+  `index.json` still stops the build) and zone markers.
 - `track-record.test.ts`: a missing `locks.jsonl` is "no locks yet" only when
   `summary.json` counts zero locks; otherwise the build stops.
+- `match-records.test.ts`: status from replaying the lock log (every status; a
+  postponed match that is re-locked; invalid then void on a suspended match;
+  postponed twice); files that contradict each other stop the build.
+- `matches.test.ts`: what goes in Upcoming and Recent (newest first, this
+  league only, the 4-week windows), predicted_at always from the data, a
+  snapshot made after kick-off, and loading the track record in every state.
+- `match-status.test.ts`: the exact words for every status.
+- `race.test.ts`: the chart's data extraction (fields kept, runs skipped with
+  a reason), one point per day, the team-selection rule, six-zone leagues, the
+  "too early" rule, and the SVG geometry.
+- `home.test.ts`: the home cards' values for every real league (including the
+  play-off place), ties, never 0%/100%, and the one-line track record wording
+  (difference ± 95% interval; "no detectable difference" when it includes zero).
 - `themes.test.ts`: every theme defines every token; each theme is in exactly
   one data-colour set; the full WCAG 2.2 AA contrast report, recomputed from
   the CSS files (a failing theme fails the run); the inline theme script is
@@ -42,9 +103,12 @@ axe-core checks every rule tagged WCAG 2.0/2.1/2.2 A and AA. Each run also
 checks that the page never scrolls sideways and that there are no console
 errors, which includes any Content Security Policy violation.
 
-**Now (Step 2): one real page, full matrix.** The league page
-(`/premier-league/`) in all **8 themes × 5 widths** (360, 390, 768, 1024,
-1440 px) = 40 runs.
+**Now (Step 3):** the league page (`/premier-league/`) in all **8 themes × 5
+widths** (360, 390, 768, 1024, 1440 px) = 40 runs, plus every new page and
+every data state (10 pages: home, two league pages with race charts, three
+matches pages, the three broken-league states, the track record placeholder)
+in **Matchday (light) and Floodlights (dark) × 5 widths** = 100 runs. Each run
+opens every "Show the numbers" table first, so axe checks those too.
 
 **Step 5 (all pages): two overlapping matrices**, so that every page and every
 theme is covered without running every combination:
@@ -83,8 +147,8 @@ Android phones in Chromium:
 | pixel-7             | Chromium | 412 x 839                          |
 | pixel-7-landscape   | Chromium | 863 x 360                          |
 
-Every page (and every phone tab of the league page) is measured by
-`e2e/layout-audit.ts`:
+Every page in `mobile.spec.ts` (home, 404, two league pages, a matches page,
+and every phone tab of each) is measured by `e2e/layout-audit.ts`:
 
 - the page never scrolls sideways, and nothing sticks out past the screen edge;
 - no clipped content;

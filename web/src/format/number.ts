@@ -29,3 +29,18 @@ export function formatRange(low: number, high: number): string {
 export function formatGoals(goals: number): string {
   return oneDecimal.format(goals);
 }
+
+const ordinalRules = new Intl.PluralRules(LOCALE, { type: "ordinal" });
+const ORDINAL_SUFFIX: Record<string, string> = { one: "st", two: "nd", few: "rd", other: "th" };
+
+/** 1 -> "1st", 16 -> "16th", 22 -> "22nd". */
+export function formatOrdinal(n: number): string {
+  return `${n}${ORDINAL_SUFFIX[ordinalRules.select(n)] ?? "th"}`;
+}
+
+/** A zone's places: [16] -> "16th", [18, 19, 20] -> "18th–20th". */
+export function formatPlaces(positions: readonly number[]): string {
+  const first = Math.min(...positions);
+  const last = Math.max(...positions);
+  return first === last ? formatOrdinal(first) : `${formatOrdinal(first)}–${formatOrdinal(last)}`;
+}
