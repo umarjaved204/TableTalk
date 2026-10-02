@@ -30,8 +30,13 @@ name: Daily update
 on:
   schedule:
     # 01:37, 03:37, 05:37 and 07:37 UTC. The first that GitHub starts does the
-    # update; the rest skip if it updated every league.
-    - cron: "37 1,3,5,7 * * *"
+    # update; the rest skip if it updated every league. One line per try, so
+    # each run records which try it was (github.event.schedule) and its delay
+    # can be measured.
+    - cron: "37 1 * * *"
+    - cron: "37 3 * * *"
+    - cron: "37 5 * * *"
+    - cron: "37 7 * * *"
   workflow_dispatch:
     inputs:
       force:
@@ -56,6 +61,16 @@ jobs:
     # Actions are pinned to exact releases (all on Node 24), so their code
     # cannot change during the trial either.
     steps:
+      # Which try this is and when it really started, for measuring delays.
+      - name: Show which schedule started this run
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          echo "Event: $EVENT"
+          echo "Schedule: ${SCHEDULE:-none (not a scheduled run)}"
+          echo "Started: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
       - name: Check out the code (main)
         uses: actions/checkout@v7.0.1
 
