@@ -6,14 +6,16 @@ export interface LeagueInfo {
   /** The URL segment. Kept separate from the id so a config rename can't break links. */
   slug: string;
   name: string;
+  /** The name as it reads mid-sentence: "the Premier League", but "La Liga" ("La" is "the"). */
+  inSentence: string;
 }
 
 export const LEAGUES: readonly LeagueInfo[] = [
-  { id: "premier_league", slug: "premier-league", name: "Premier League" },
-  { id: "bundesliga", slug: "bundesliga", name: "Bundesliga" },
-  { id: "la_liga", slug: "la-liga", name: "La Liga" },
-  { id: "serie_a", slug: "serie-a", name: "Serie A" },
-  { id: "ligue_1", slug: "ligue-1", name: "Ligue 1" },
+  { id: "premier_league", slug: "premier-league", name: "Premier League", inSentence: "the Premier League" },
+  { id: "bundesliga", slug: "bundesliga", name: "Bundesliga", inSentence: "the Bundesliga" },
+  { id: "la_liga", slug: "la-liga", name: "La Liga", inSentence: "La Liga" },
+  { id: "serie_a", slug: "serie-a", name: "Serie A", inSentence: "Serie A" },
+  { id: "ligue_1", slug: "ligue-1", name: "Ligue 1", inSentence: "Ligue 1" },
 ];
 
 export function leagueBySlug(slug: string): LeagueInfo | undefined {
