@@ -7,22 +7,28 @@ the Python code.
 
 - **Static site** built with [Astro](https://astro.build): every page is plain
   HTML with the numbers already in it. The only browser JavaScript is small
-  scripts for the theme, the table controls, the phone tabs and local times.
+  scripts for the theme, the favourite team, the table controls, the phone
+  tabs and local times.
 - **No trackers, no analytics, no cookies, no third-party requests.** Fonts are
-  self-hosted: Latin and Latin Extended only, as WOFF2 (`src/styles/fonts.css`). The visitor's theme and table choices are kept in their own
-  browser (`localStorage`) only.
+  self-hosted: Latin and Latin Extended only, as WOFF2 (`src/styles/fonts.css`). The visitor's theme, table choices and favourite team are
+  kept in their own browser (`localStorage`) only.
 - **Content Security Policy** as a `<meta>` tag (the likely host, GitHub Pages,
   can't send headers). Only the site's own hashed scripts can run, so inline
   `style=""` attributes are not allowed anywhere.
 
 ## Status
 
-Step 5 of the frontend plan (polish and tests): the full accessibility matrix,
-a keyboard walk of every page, Lighthouse with speed budgets, no layout shift
-while fonts and scripts load, and the deployment plan (`DEPLOYMENT.md`, not
-carried out). Built on Steps 1-4: every page and every data state. Local preview only; no deployment and no workflows during the pipeline
-trial. Work happens on the `frontend` branch; nothing goes on `main` until the
-trial is reviewed (and contract request R8 is done).
+Website stage 2, Step 2 (favourite teams), awaiting review. Next: team pages
+(Step 3), then the visual upgrade (Step 4). Built on the first frontend
+plan's Steps 1-5. Local preview only; no deployment and no workflows during
+the pipeline trial. Work happens on the `frontend` branch; nothing goes on
+`main` until the trial is reviewed (and contract request R8 is done).
+
+Speed (Lighthouse, median of 3, simulated slow phone, today's data): with
+files gzip-compressed as a real host serves them (`npm run lighthouse --
+--gzip`), every page is within budget; favourites add about 150-300 ms to
+the largest paint. Uncompressed (the script's default) the Premier League
+page is 53 ms over the 2.5 s budget.
 
 ## The site's address (one setting)
 
@@ -104,12 +110,99 @@ origin/data ──(npm run data)──▶ .data/  ──▶ src/data/  (load, ve
 
 | Page                 | What it shows                                                                                                                                                                     |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`                  | A card per league (title favourite, most at risk of relegation, play-off place where there is one), last update, track record line                                                |
+| `/`                  | The visitor's team (or a "Pick your team" prompt), a card per league (the favourite's league first), last update, track record line                                               |
 | `/<league>/`         | Table and chances, next 10 matches, finishing positions, how the race has moved                                                                                                   |
 | `/<league>/matches/` | Upcoming (next 4 weeks) and Recent (locked predictions from the last 4 weeks)                                                                                                     |
 | `/track-record/`     | Locked predictions scored: counts, comparisons with base rates and the market, calibration (chart once there are enough matches), the latest 50 scored matches, the honesty rules |
 | `/methodology/`      | How the model works, how to read the numbers, backtests per league (copied from the README, checked by a test), limitations                                                       |
 | `/about/`            | Not betting advice, data sources (listed from the snapshots), privacy, source code                                                                                                |
+
+## Favourite team
+
+A visitor can pick one favourite team. It is stored only in their browser
+(`localStorage["tabletalk-favourite"]`, a small versioned JSON value; the
+About page lists exactly what is stored and how to remove it). Without
+JavaScript, favourites simply don't apply and the site is unchanged.
+
+**How it shows without anything moving.** Everything that can differ per
+team is built for every team at build time:
+
+- Elements that already exist for every team (table rows, heatmap rows, match
+  cards, race panels) carry `data-team="<slug>"` (match cards
+  `data-teams="<home> <away>"`) and a hidden star and " (your team)" label.
+- Blocks that exist only for the favourite (the home page's "Your team" card,
+  the race chart's extra panel for a team outside the race) are pre-built
+  inside `<template>` elements, which the browser parses but doesn't show or
+  count as page elements.
+
+The early script at the top of `<body>` (the one that sets the theme) reads
+the favourite and sets `data-fav="<slug>"`, `data-fav-league` and
+`data-fav-state` on `<html>` before the first paint, and writes one CSS rule
+for that team into a constructed stylesheet (`favouriteCss()` in
+`src/scripts/favourite-core.js`), which switches on its star and row tint.
+(A constructed stylesheet is CSSOM, not an inline `<style>`, so the Content
+Security Policy allows it. An earlier version generated a rule for every team
+into the site's CSS: about 25 KB of render-blocking CSS on every page, so it
+was replaced.) A one-line inline script right after each `<template>` block
+(`FavouriteSlot.astro`, `fillAll()`) copies the favourite's version in while the page is
+still loading, so it is in place at the first paint. That's why the home
+page's "Your team" space has no fixed height: a fixed height would have to fit
+the tallest card (549px on a 320px phone) and leave a gap under the shorter
+prompt. The only later size changes follow the visitor's own clicks, which
+don't count as layout shift; the browser tests measure the shift in every
+state.
+
+**Team slugs** (`src/data/teams.ts`): made from the team's name, because the
+published data has no team ids yet (contract request R14). "&" becomes "and",
+accents are dropped, everything else becomes hyphens:
+"Brighton & Hove Albion" → `brighton-and-hove-albion`. Tested against all 327
+canonical names the pipeline knows: no two clash. The build fails on a clash
+or on a slug that equals a page name (`matches`). If the pipeline ever renames
+a team, `TEAM_SLUG_RENAMES` maps the old slug to the new one.
+
+**Personal link** (`/?team=<slug>`): opening it asks before setting or
+replacing the favourite, and the parameter is removed from the address bar
+straight away. The link's text is only ever compared with the site's own team
+list; it is never written into the page. The "Your team" dialog shows the link
+with a Copy button and, once `SITE_URL` is set, a QR code made at build time
+(`/qr/<slug>.svg`, `src/data/qr.ts`: black on white with a 4-module quiet zone,
+error correction M).
+
+**Every state:** none (prompt), dismissed ("Not now"), chosen, paused (the
+team's league has no data in this build: kept, not dropped), gone (the team
+isn't in any covered league this season, e.g. relegated), newer (stored by a
+newer site version: left alone), and storage blocked (applies for this page
+view only, and the dialog says so).
+
+**Home-screen app** (`public/manifest.webmanifest`, `display: standalone`):
+on iPhone and iPad an app added to the home screen has its own storage,
+separate from Safari, and is exempt from Safari's 7-day storage deletion. It
+starts empty, so the prompt says to pick the team again there.
+
+## Browser support
+
+**Supported:** the current and previous major versions of Chrome, Edge,
+Firefox and Safari (macOS and iOS/iPadOS), Samsung Internet, and Firefox ESR.
+In practice the site needs **Safari 16.4, Chrome/Edge 111, Firefox 121**
+(December 2023) or later for everything to look as designed. The tests run in
+Chromium (desktop and Android profiles) and WebKit (iPhone profiles).
+
+**Modern features it relies on, and what happens without them:**
+
+| Feature                                                                                       | Used for                                                                             | Without it                                                                                  |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| Range media queries (`@media (width >= 900px)`)                                               | Every layout breakpoint                                                              | The phone layout at every width: one column, still complete                                 |
+| Container queries (`@container`)                                                              | The header on phones when text is enlarged (links wrap, "Your team" on its own line) | At 200% text the header links scroll sideways instead of wrapping                           |
+| `<dialog>` with `showModal()`                                                                 | The Appearance and Your team dialogs                                                 | The dialog opens in place, without the backdrop (scripted fallback; tested)                 |
+| `:has()`                                                                                      | Hiding a match day left empty by "Your team only"                                    | The empty day's heading stays visible (tested)                                              |
+| `color-mix()`                                                                                 | The favourite's row tint, dialog backdrop, lighter zone edge                         | The tint falls back to the striped-row colour; the star and accent rules still mark the row |
+| CSS `mask`                                                                                    | The star icons                                                                       | No star; the hidden "your team" label and the row tint remain                               |
+| `<template>`, `replaceChildren()`, `CustomEvent`, `URLSearchParams`, `history.replaceState()` | Favourite blocks and the personal link                                               | Favourites don't apply (the rest of the site works, as without JavaScript)                  |
+| `navigator.clipboard`                                                                         | "Copy link"                                                                          | The link is selected for the visitor to copy (scripted fallback)                            |
+| `text-wrap: balance`, `accent-color`, `display-mode` media query                              | Nicer headings, the checkbox colour, the home-screen note                            | Ordinary wrapping, the default checkbox, no home-screen note                                |
+
+Without JavaScript at all, every page shows all its numbers; the controls
+that need JavaScript (tabs, table switch, favourites) are hidden.
 
 ## Matches: where each status comes from
 

@@ -38,6 +38,10 @@ at the address bar and press Tab.
 | Race charts                    | "Show the numbers" opens with Enter or Space                                                     |
 | Matches page                   | Upcoming / Recent tabs below 900 px; each card is read in order                                  |
 | Every page                     | Nothing is reachable that you can't see; the order follows the page                              |
+| Home, first visit              | "Pick your team": the list, Save, Not now; after Save, focus lands on the new card's heading     |
+| Your team → Enter              | Dialog opens on the current team; arrowing the list never saves; Save does; Escape returns focus |
+| `/?team=chelsea`               | The question at the top of the page is reached first after the skip link; both buttons work      |
+| Matches page with a favourite  | "Your team only" checkbox toggles with Space                                                     |
 
 Pages: `/`, `/premier-league/`, `/premier-league/matches/`, `/bundesliga/`,
 `/track-record/`, `/methodology/`, `/about/`, `/404/`.
@@ -62,6 +66,10 @@ Tab (next control).
 | Times                                      | Read in your time zone, e.g. "12:30"; the note says "Times in your time zone (BST)"                                                                                                                          |
 | Race chart and calibration chart           | The pictures are skipped; the "Show the numbers" table and the calibration table are read instead                                                                                                            |
 | Stale data (only when it happens)          | The "Last updated … ago" warning is read as part of the update line                                                                                                                                          |
+| Favourite's row in a table (T)             | The row header reads "Arsenal (your team)"; no other row says "your team"; the star itself is silent                                                                                                         |
+| Your team dialog                           | "Your team, button, has popup dialog"; the list announces its league groups ("Premier League, grouping"); Save announces "Saved. Arsenal is your team on this device."                                       |
+| Personal link question                     | Read as a heading "Make Chelsea your team on this device?" with two buttons; after answering, the result is announced                                                                                        |
+| Matches, Your team only                    | Ticking it announces "Showing 12 of 330 matches: Brentford only."                                                                                                                                            |
 
 ## Results
 

@@ -12,8 +12,8 @@ meantime. Numbers (R1, R2, ...) are stable ids; the list below is in
 | -------- | --- | ------------------------------------------------------------ | ---------------- | ------------------------------------------------------------------------------------ |
 | 1        | R11 | Readers must ignore unknown fields (wording)                 | PATCH            | The site validates against relaxed schema copies                                     |
 | 2        | R8  | Pipeline fingerprint next to `code_commit`                   | MINOR            | Not needed until `web/` merges into `main`. **Must be done before that.**            |
-| 3        | R2  | Compact history series + run index                           | MINOR            | The build reads the `history/` folders                                               |
-| 4        | R3  | Short team names                                             | MINOR            | Full names, wrapping onto two lines                                                  |
+| 3        | R14 | Permanent team ids, slugs and short names (includes R3)      | MINOR            | Slugs made from team names at build time (`src/data/teams.ts`), plus a rename map    |
+| 4        | R2  | Compact history series + run index                           | MINOR            | The build reads the `history/` folders                                               |
 | 5        | R4  | Zone short labels and which end of the table                 | MINOR            | Temporary `ZONE_DISPLAY` map in `src/data/leagues.ts` (build fails on a new zone id) |
 | 6        | R1  | Mark mathematically certain outcomes (**investigate first**) | MINOR            | Never show 0% or 100%                                                                |
 | 7        | R5  | Recent results in each snapshot                              | MINOR            | "Recent" shows locked matches only                                                   |
@@ -23,10 +23,16 @@ meantime. Numbers (R1, R2, ...) are stable ids; the list below is in
 | 11       | R10 | Backtest summary file for the methodology page               | MINOR            | Copied into `src/data/backtests.ts` with the README commit; a test checks them       |
 | 12       | R9  | Whether a kick-off time is confirmed (investigate)           | MINOR            | A general "kick-off times can still change" note                                     |
 | 13       | R13 | Can `upcoming_matches` include a match already kicked off?   | PATCH (wording)  | The site handles both: such a match shows as "kicked off", not upcoming              |
+| 14       | R15 | Teams that left each league since last season                | MINOR            | Neutral wording: "isn't in the leagues we cover this season"                         |
+| –        | R3  | Short team names: **folded into R14**                        | –                | Full names, wrapping onto two lines                                                  |
 
 R12 was added in Step 2 (the lock log is the only published file without a
 schema). It sits next to R7 because both are about the lock log. R13 was added
-in Step 3, at the end so the existing order is unchanged.
+in Step 3, at the end so the existing order is unchanged. R14 and R15 were
+added with favourite teams (website stage 2): R14 third, because team URLs and
+personal links are promises once the site is public; R3 (short names) is part
+of R14's team record, so it is folded in and keeps its id as a pointer; R15 at
+the end.
 
 ---
 
@@ -50,6 +56,47 @@ file after the first MINOR change.
 `code_commit` although the model did not change. With `pipeline_hash`, a
 reader can see that two predictions came from the same pipeline code.
 
+## R14. Permanent team ids, slugs and short names (MINOR)
+
+**What.** One record per team, in every snapshot (and for the two teams of
+each lock-log line), keyed by today's team name:
+
+```json
+"teams_info": {
+  "Arsenal": {
+    "id": "arsenal",
+    "slug": "arsenal",
+    "former_slugs": [],
+    "short_name": "Arsenal"
+  }
+}
+```
+
+- `id`: never changes once published, even if the club is renamed.
+- `slug`: the URL form (may equal `id`).
+- `former_slugs`: earlier slugs after a rename, so old links can be redirected.
+- `short_name`: what R3 asked for ("Man City", "M'gladbach").
+
+**Where the id comes from.** A new key per club in `configs/team_aliases.yaml`,
+set once. Not football-data.org's numeric team id: that is one source's
+number, the pipeline's history (football-data.co.uk, from 2010-11) has no
+such ids, and a change of source must not change a team's identity.
+
+**Why.** Favourite teams, team page URLs (`/premier-league/arsenal/`) and
+personal links (`?team=arsenal`) need an identity that survives seasons and
+name changes. Today the only identity is the display name.
+
+**Meanwhile.** `src/data/teams.ts` makes a slug from each name with a fixed
+rule (tested against all 327 canonical names: no two clash), the build fails
+on a clash or a reserved slug, and `TEAM_SLUG_RENAMES` maps old slugs to new
+ones if a canonical name ever changes (empty today). The risk: a renamed team
+would lose stored favourites and links until that map is updated.
+
+## R3. Short team names: folded into R14
+
+`short_name` is part of R14's team record. Kept as an id so earlier
+references still point somewhere.
+
 ## R2. History series and run index (MINOR)
 
 **What.**
@@ -66,15 +113,6 @@ run (around 300 MB a season).
 the build today (20 files) and about 2.2 s at the end of a season (1,500
 files); the whole build goes from about 4 s to about 8 s. Not urgent for build
 time; the bigger cost is `npm run data` copying ~250 MB of history.
-
-## R3. Short team names (MINOR)
-
-**What.** A `short_name` for every team (e.g. "Man City", "M'gladbach"), in
-`table[]`, `teams[]` and matches, or one `team_names` map per snapshot.
-
-**Why.** Names run to 25 characters ("Borussia Mönchengladbach"): tight on
-phones and in match cards. The site should not keep its own list, which would
-duplicate `configs/team_aliases.yaml`.
 
 ## R4. Zone display fields (MINOR)
 
@@ -200,3 +238,16 @@ run. Such a prediction is not the one that gets locked. The site already
 handles it (a snapshot made after a match's listed kick-off shows the match as
 "kicked off", with a sentence saying its prediction won't be the one
 recorded), but the contract should say which happens.
+
+## R15. Teams that left since last season (MINOR, low priority)
+
+**What.** Per league, `left_since_last_season`: the R14 ids of last season's
+teams that are not in this season, with a reason where the pipeline knows it
+(`"relegated"`).
+
+**Why.** A visitor whose favourite team was relegated is told "Hull City isn't
+in the leagues we cover this season". With R15 it could say "Hull City were
+relegated from the Premier League", and a personal link to that team could say
+so too.
+
+**Meanwhile.** The neutral wording.

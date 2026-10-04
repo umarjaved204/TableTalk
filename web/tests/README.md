@@ -2,10 +2,11 @@
 
 Two kinds:
 
-| Kind                       | Command            | What it runs against                                         |
-| -------------------------- | ------------------ | ------------------------------------------------------------ |
-| Unit (Vitest)              | `npm test`         | The data layer, formatting helpers and theme files, directly |
-| Browser (Playwright + axe) | `npm run test:e2e` | A **built** test site, served as plain files                 |
+| Kind                       | Command                 | What it runs against                                                                |
+| -------------------------- | ----------------------- | ----------------------------------------------------------------------------------- |
+| Unit (Vitest)              | `npm test`              | The data layer, formatting helpers and theme files, directly                        |
+| Browser (Playwright + axe) | `npm run test:e2e`      | A **built** test site, served as plain files                                        |
+| Season rollover            | `npm run test:rollover` | A second built site, from a simulated next season (`playwright.rollover.config.ts`) |
 
 ## Fixtures
 
@@ -112,6 +113,32 @@ Tests for stale data and kick-offs move the clock on.
   one data-colour set; the full WCAG 2.2 AA contrast report, recomputed from
   the CSS files (a failing theme fails the run); the inline theme script is
   complete and valid.
+
+## Favourite team: where it is tested
+
+| What                                                                | Unit test                  | Browser test                       |
+| ------------------------------------------------------------------- | -------------------------- | ---------------------------------- |
+| Slug rule (all 327 canonical names), clashes, reserved names        | `teams.test.ts`            |                                    |
+| Stored value: missing, corrupted, newer version, bad fields         | `favourite-core.test.ts`   | `favourites.spec.ts`               |
+| States: chosen, paused (league without data), gone (not covered)    | `favourite-core.test.ts`   | `favourites.spec.ts`               |
+| Personal link: offer, replace, same, unknown, parameter removed     | `favourite-core.test.ts`   | `favourites.spec.ts`               |
+| Injection attempts through the link and through a stored name       | `favourite-core.test.ts`   | `favourites.spec.ts`               |
+| Storage blocked (private window)                                    |                            | `favourites.spec.ts`               |
+| Early script: ASCII, LF line endings, CSP hash, `</script>` safety  | `themes.test.ts`           | `csp.spec.ts`                      |
+| Row tint contrast in all eight themes                               | `themes.test.ts`           |                                    |
+| Generated CSS, card data, QR codes, race extras                     | `favourites-build.test.ts` |                                    |
+| No layout shift in every state; header height the same in any font  |                            | `favourites.spec.ts`               |
+| Keyboard, axe (light and dark, 360 and 1280px)                      |                            | `favourites.spec.ts`               |
+| Every team's card complete and within the screen (320, 768, 1280px) |                            | `favourites.spec.ts`               |
+| Without JavaScript: nothing shown or reserved                       |                            | `no-js.spec.ts`                    |
+| Without `:has()` or `showModal()`: graceful fallback                |                            | `favourites.spec.ts`               |
+| Elements per page type, with and without a favourite (budgets)      |                            | `dom-budget.spec.ts`               |
+| A new season: relegated and promoted favourites, links, the picker  |                            | `rollover.spec.ts` (test:rollover) |
+
+QR codes were also decoded once with OpenCV (all 96, rendered at the dialog's
+148px on a dark page, all correct); that check isn't automated, because it
+would need a QR decoder as a dependency. A real phone scan is still to do
+once `SITE_URL` exists.
 
 ## Browser tests: accessibility coverage
 
