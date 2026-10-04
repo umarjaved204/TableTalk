@@ -6,7 +6,9 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { BACKTESTS, PREMIER_LEAGUE_LOG_LOSS } from "../../src/data/backtests.ts";
 
-const readme = readFileSync(resolve("..", "README.md"), "utf8");
+// Line endings normalised: Git on Windows checks the README out with CRLF
+// (core.autocrlf), which would leave a "\r" at the end of every line.
+const readme = readFileSync(resolve("..", "README.md"), "utf8").replaceAll("\r\n", "\n");
 
 /** Only the "five leagues side by side" section: other tables reuse row names. */
 const HEADING = "## Phase 2: the five leagues side by side";

@@ -12,8 +12,9 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { expect, test } from "@playwright/test";
-import { buildThemeScript } from "../../src/scripts/theme-script.ts";
-import { E2E_OUT_DIR } from "./site.ts";
+import { headIndex, loadTeamIndex } from "../../src/data/teams.ts";
+import { buildThemeScript, readSources } from "../../src/scripts/theme-script.ts";
+import { E2E_DATA_DIR, E2E_OUT_DIR } from "./site.ts";
 
 const DIST = resolve(E2E_OUT_DIR);
 
@@ -39,12 +40,21 @@ function allowedScriptHashes(html: string): string[] {
   return [...scriptSrc.matchAll(/'(sha256-[^']+)'/g)].map((m) => m[1]!);
 }
 
-/** The text of every inline <script> (one without a src attribute). */
+/** The text of every inline <script> that runs (no src attribute, and not a
+ *  data block such as <script type="application/json">, which the browser
+ *  never runs and the policy doesn't apply to). */
 function inlineScripts(html: string): string[] {
-  return [...html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]!);
+  return [
+    ...html.matchAll(/<script(?![^>]*\ssrc=)(?![^>]*\stype="application\/json")[^>]*>([\s\S]*?)<\/script>/g),
+  ].map((m) => m[1]!);
 }
 
-const themeScript = buildThemeScript(readFileSync(resolve("src/scripts/theme-head.js"), "utf8"));
+// Rebuilt here from the source files and the test site's data (not taken
+// from astro.config.mjs), so a mismatch between the two can't hide.
+function themeScript(): string {
+  process.env["TABLETALK_DATA_DIR"] = resolve(E2E_DATA_DIR);
+  return buildThemeScript(readSources(), headIndex(loadTeamIndex()));
+}
 
 // The pages are listed inside each test, not when this file loads: Playwright
 // loads test files before the webServer has built the test site.
@@ -57,11 +67,11 @@ function pages(): { page: string; html: string; allowed: string[] }[] {
   });
 }
 
-test("CSP: on every page, the theme script is exactly theme-head.js, and its hash is allowed", () => {
+test("CSP: on every page, the early script is exactly what the sources build, and its hash is allowed", () => {
+  const script = themeScript();
   for (const { page, html, allowed } of pages()) {
-    // Recomputed here from the source file, not taken from astro.config.mjs.
-    expect(inlineScripts(html), `${page}: theme script missing or changed`).toContain(themeScript);
-    expect(allowed, page).toContain(sha256(themeScript));
+    expect(inlineScripts(html), `${page}: early script missing or changed`).toContain(script);
+    expect(allowed, page).toContain(sha256(script));
   }
 });
 

@@ -47,7 +47,10 @@ function median(values) {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
-const server = await serve(process.argv[2] ?? "dist", PORT);
+// npm run lighthouse [-- <folder>] [-- --gzip]
+const args = process.argv.slice(2);
+const GZIP = args.includes("--gzip");
+const server = await serve(args.find((a) => !a.startsWith("--")) ?? "dist", PORT, { gzip: GZIP });
 const chrome = await launch({
   chromePath: chromium.executablePath(),
   chromeFlags: ["--headless=new", "--no-sandbox"],
@@ -97,10 +100,11 @@ try {
   server.close();
 }
 
+console.log(`[lighthouse] ${GZIP ? "gzip-compressed, as a real host serves it" : "uncompressed"}`);
 console.table(rows);
 writeFileSync(
   join(OUT, "summary.json"),
-  JSON.stringify({ runs: RUNS, budgets: BUDGETS, pages: rows }, null, 2),
+  JSON.stringify({ runs: RUNS, gzip: GZIP, budgets: BUDGETS, pages: rows }, null, 2),
 );
 if (failures.length > 0) {
   console.error(`[lighthouse] over budget (median of ${RUNS} runs):\n  ${failures.join("\n  ")}`);

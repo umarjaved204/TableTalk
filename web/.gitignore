@@ -8,5 +8,8 @@ playwright-report/
 # The browser tests' own data and build (tests/fixtures/make-e2e-data.ts).
 .e2e-data/
 dist-e2e/
+# The season-rollover test's data and build (tests/fixtures/make-rollover-data.ts).
+.rollover-data/
+dist-rollover/
 # Lighthouse reports (npm run lighthouse).
 lighthouse/

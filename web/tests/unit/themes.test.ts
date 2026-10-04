@@ -7,7 +7,17 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildThemeScript, cspHash } from "../../src/scripts/theme-script.ts";
+import type { HeadIndex } from "../../src/data/teams.ts";
+import {
+  FAV_STORAGE_KEY,
+  FILL_SCRIPT,
+  asciiJson,
+  buildThemeScript,
+  cspHash,
+  joinSources,
+  readSources,
+  stripExports,
+} from "../../src/scripts/theme-script.ts";
 import { STORAGE_KEY, THEMES } from "../../src/themes.ts";
 
 const STYLES = resolve("src/styles");
@@ -120,22 +130,120 @@ describe.each(THEMES.map((t) => [t.id]))("WCAG 2.2 AA contrast: %s", (id) => {
   });
 });
 
-describe("inline theme script", () => {
-  const source = readFileSync(resolve("src/scripts/theme-head.js"), "utf8");
-  const script = buildThemeScript(source);
+// The favourite team's row tint (src/styles/favourites.css): 12% of the
+// accent mixed into the surface, as CSS color-mix(in srgb, ...) does it
+// (straight mix of the 0-255 channel values). High Contrast uses no tint.
+function mix(a: string, b: string, share: number): string {
+  const channels = (hex: string) => {
+    let h = hex.replace("#", "");
+    if (h.length === 3) h = [...h].map((c) => c + c).join("");
+    return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  };
+  const [x, y] = [channels(a), channels(b)];
+  return `#${x
+    .map((c, i) => Math.round(c * share + y[i]! * (1 - share)))
+    .map((c) => c.toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+const TINT_SHARE =
+  Number(
+    /--fav-tint:\s*color-mix\(in srgb, var\(--accent\) (\d+)%/.exec(
+      readFileSync(join(STYLES, "favourites.css"), "utf8"),
+    )![1],
+  ) / 100;
+
+describe.each(THEMES.map((t) => [t.id]))("favourite team marking: %s", (id) => {
+  const tokens = themeTokens.get(id)!;
+  const tint =
+    id === "contrast"
+      ? tokens.get("--surface")!
+      : mix(tokens.get("--accent")!, tokens.get("--surface")!, TINT_SHARE);
+
+  it("text and muted text on the tinted row stay readable (>= 4.5)", () => {
+    expect(contrast(tokens.get("--text")!, tint)).toBeGreaterThanOrEqual(TEXT);
+    expect(contrast(tokens.get("--text-muted")!, tint)).toBeGreaterThanOrEqual(TEXT);
+  });
+
+  it("the star (accent) on the tinted row, and the accent rules on the surface, are visible (>= 3)", () => {
+    expect(contrast(tokens.get("--accent")!, tint)).toBeGreaterThanOrEqual(UI);
+    expect(contrast(tokens.get("--accent")!, tokens.get("--surface")!)).toBeGreaterThanOrEqual(UI);
+  });
+});
+
+describe("inline early script (theme and favourite team)", () => {
+  const sources = readSources();
+  const teams: HeadIndex = {
+    leagues: [
+      [
+        "premier_league",
+        "Premier League",
+        [
+          ["arsenal", "Arsenal"],
+          ["evil", "</script><b>"],
+        ],
+      ],
+      ["la_liga", "La Liga", [["atletico-madrid", "Atlético Madrid"]]],
+    ],
+    names: [["premier_league", "the Premier League"]],
+    unavailable: [],
+    renames: {},
+  };
+  const script = buildThemeScript(sources, teams);
 
   it("has every placeholder filled in and is valid JavaScript", () => {
     expect(script).not.toMatch(/__[A-Z_]+__/);
     expect(script).toContain(JSON.stringify(THEMES.map((t) => t.id)));
     expect(script).toContain(JSON.stringify(STORAGE_KEY));
+    expect(script).toContain(JSON.stringify(FAV_STORAGE_KEY));
     expect(() => new Function(script)).not.toThrow();
   });
 
-  it("refuses an unknown placeholder", () => {
-    expect(() => buildThemeScript(source + "\n__SOMETHING_NEW__")).toThrow(/placeholder/);
+  it("is plain ASCII with LF line endings, so its CSP hash can't depend on decoding or checkout", () => {
+    expect(script).toMatch(/^[\n\x20-\x7e]*$/);
+    expect(script).not.toContain("Atlético");
+    const crlf = {
+      theme: sources.theme.replaceAll("\n", "\r\n"),
+      core: sources.core,
+      favourite: sources.favourite,
+    };
+    // Windows line endings in a checkout change nothing in what ships.
+    expect(buildThemeScript(crlf, teams)).toBe(script);
   });
 
-  it("has a stable CSP hash", () => {
+  it("a team name can't end the <script> element", () => {
+    expect(script).not.toContain("</script>");
+    expect(asciiJson("</script>")).not.toContain("<");
+    expect(asciiJson("</script>")).toContain("u003c");
+  });
+
+  it("keeps the favourite helpers inside a function, out of the page's global scope", () => {
+    // Checked on the readable joined source (before minifying).
+    const joined = joinSources(sources, teams);
+    const wrapper = joined.indexOf("(function () {", joined.indexOf("apply(saved());"));
+    expect(wrapper).toBeGreaterThan(-1);
+    expect(joined.indexOf("function makeIndex")).toBeGreaterThan(wrapper);
+    expect(joined.trimEnd().endsWith("})();")).toBe(true);
+  });
+
+  it("is minified: much smaller than the readable source", () => {
+    expect(script.length).toBeLessThan(joinSources(sources, teams).length * 0.6);
+  });
+
+  it("drops comment lines and the export keywords", () => {
+    expect(script).not.toMatch(/^\s*\/\//m);
+    expect(script).not.toMatch(/^export /m);
+    expect(stripExports("export var A = 1;\nexport function f() {}")).toBe("var A = 1;\nfunction f() {}");
+  });
+
+  it("refuses an unknown placeholder", () => {
+    expect(() =>
+      buildThemeScript({ ...sources, favourite: sources.favourite + "\n__SOMETHING_NEW__" }, teams),
+    ).toThrow(/placeholder/);
+  });
+
+  it("has a stable CSP hash, and so does the one-line fill script", () => {
     expect(cspHash(script)).toMatch(/^sha256-[A-Za-z0-9+/]+=*$/);
+    expect(cspHash(script)).toBe(cspHash(buildThemeScript(readSources(), teams)));
+    expect(FILL_SCRIPT).not.toContain("\n");
   });
 });

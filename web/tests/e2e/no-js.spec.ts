@@ -25,3 +25,20 @@ test("matches page on a phone without JavaScript: both lists, no tabs", async ({
   await expect(page.locator("#upcoming")).toBeVisible();
   await expect(page.locator("#recent")).toBeVisible();
 });
+
+// Favourite team: needs JavaScript (and local storage), so without it nothing
+// of it shows, no space is reserved, and a personal link changes nothing.
+for (const path of ["/", "/?team=arsenal", "/premier-league/", "/premier-league/matches/"]) {
+  test(`favourites without JavaScript: nothing shown or reserved on ${path}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto(path);
+    await expect(page.locator("[data-open-favourite]")).toBeHidden();
+    await expect(page.locator(".your-team-slot")).toBeHidden();
+    await expect(page.locator(".offer-slot")).toBeHidden();
+    await expect(page.locator(".fav-filter")).toBeHidden();
+    await expect(page.locator(".fav-star:visible")).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.hasAttribute("data-fav"))).toBe(false);
+    // The rest of the page is all there.
+    await expect(page.locator("main h1")).toBeVisible();
+  });
+}

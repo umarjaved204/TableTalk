@@ -1,6 +1,8 @@
 dist/
 dist-e2e/
 .e2e-data/
+dist-rollover/
+.rollover-data/
 .astro/
 .data/
 node_modules/

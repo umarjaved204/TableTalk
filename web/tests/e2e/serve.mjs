@@ -8,8 +8,13 @@
 //   /404/          -> 404.html
 //   anything else missing -> 404.html with status 404
 //
+// Optionally gzip-compressed, as a real host (GitHub Pages, Cloudflare)
+// sends HTML, CSS and JavaScript: `npm run lighthouse -- --gzip` measures that.
+// Uncompressed is the default, as before, so earlier measurements stay comparable.
+//
 // Usage: node tests/e2e/serve.mjs <folder> <port>   (or import { serve })
 import { createServer } from "node:http";
+import { gzipSync } from "node:zlib";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,10 +28,14 @@ const TYPES = {
   ".png": "image/png",
   ".woff2": "font/woff2",
   ".txt": "text/plain; charset=utf-8",
+  ".webmanifest": "application/manifest+json",
 };
 
+/** File types a static host compresses. */
+const COMPRESSIBLE = new Set([".html", ".css", ".js", ".json", ".svg", ".txt", ".webmanifest"]);
+
 /** Serve `folder` on 127.0.0.1:`port`. Resolves with the running server. */
-export function serve(folder, port) {
+export function serve(folder, port, { gzip = false } = {}) {
   const root = resolve(folder);
 
   /** The file for a URL path, or null. Never leaves the root folder. */
@@ -41,10 +50,18 @@ export function serve(folder, port) {
     const urlPath = new URL(request.url ?? "/", "http://test").pathname;
     const file = fileFor(urlPath);
     const served = file ?? join(root, "404.html");
-    response.writeHead(file ? 200 : 404, {
-      "content-type": TYPES[extname(served)] ?? "application/octet-stream",
-    });
-    response.end(readFileSync(served));
+    const headers = { "content-type": TYPES[extname(served)] ?? "application/octet-stream" };
+    let body = readFileSync(served);
+    if (
+      gzip &&
+      COMPRESSIBLE.has(extname(served)) &&
+      (request.headers["accept-encoding"] ?? "").includes("gzip")
+    ) {
+      body = gzipSync(body);
+      headers["content-encoding"] = "gzip";
+    }
+    response.writeHead(file ? 200 : 404, headers);
+    response.end(body);
   });
   return new Promise((done) => server.listen(port, "127.0.0.1", () => done(server)));
 }

@@ -23,7 +23,8 @@ const REPRESENTATIVE = ["/premier-league/", "/premier-league/matches/", "/track-
 async function check(page: Page, path: string, theme: string, width: number): Promise<void> {
   const errors = await openAs(page, path, theme, width);
   expect(await page.evaluate(() => document.documentElement.dataset["theme"])).toBe(theme);
-  for (const summary of await page.locator("details summary").all()) await summary.click();
+  // Only the page's own details (the "Your team" dialog's are inside a closed dialog).
+  for (const summary of await page.locator("main details summary").all()) await summary.click();
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();

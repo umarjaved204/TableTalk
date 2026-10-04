@@ -2,6 +2,7 @@
 // data state. The test site's data (tests/fixtures/make-e2e-data.ts) has one
 // league per state and an illustrated lock log with every match status.
 import { DARK, LIGHT, openAs } from "./helpers.ts";
+import { FILL_SCRIPT } from "../../src/scripts/theme-script.ts";
 import { expect, test } from "./test.ts";
 
 // The accessibility runs for these pages are in a11y-matrix.spec.ts.
@@ -183,7 +184,10 @@ test.describe("how the race has moved", () => {
       "Projected points",
     ]);
     const title = race.locator("figure").first();
-    await expect(title.locator(".panel-head .team")).toHaveText(["Manchester City", "Arsenal"]);
+    // innerText: each name also carries a hidden " (your team)" label, shown only for a favourite.
+    await expect(title.locator(".panel-head .team")).toHaveText(["Manchester City", "Arsenal"], {
+      useInnerText: true,
+    });
     await title.locator("summary").click();
     // 6 runs, newest first; one column per team.
     await expect(title.locator("tbody tr")).toHaveCount(6);
@@ -199,7 +203,10 @@ test.describe("how the race has moved", () => {
   test("the chart is SVG in the HTML: no chart script", async ({ page }) => {
     await openAs(page, "/premier-league/", LIGHT, 1440);
     expect(await page.locator("section.race svg path.line").count()).toBeGreaterThan(0);
-    expect(await page.locator("section.race script").count()).toBe(0);
+    // The only scripts are the one-line favourite-team fill (one per chart),
+    // which copies in a pre-built panel; nothing draws the charts.
+    const scripts = await page.locator("section.race script").allTextContents();
+    expect(scripts.every((s) => s === FILL_SCRIPT)).toBe(true);
   });
 
   test("Bundesliga (six zones): relegation is 17th–18th, play-off place named as not included", async ({

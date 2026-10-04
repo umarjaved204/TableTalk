@@ -36,7 +36,12 @@ export default defineConfig({
   },
   retries: 0,
   projects: [
-    { name: "desktop-chrome", testIgnore: MOBILE, use: { ...devices["Desktop Chrome"] } },
+    // rollover.spec.ts needs its own build: playwright.rollover.config.ts (npm run test:rollover).
+    {
+      name: "desktop-chrome",
+      testIgnore: [MOBILE, /rollover\.spec\.ts/],
+      use: { ...devices["Desktop Chrome"] },
+    },
     phone("iphone-se", "iPhone SE"), // 320px: the narrowest common phone
     phone("iphone-13", "iPhone 13"),
     phone("iphone-15-pro-max", "iPhone 15 Pro Max"),
