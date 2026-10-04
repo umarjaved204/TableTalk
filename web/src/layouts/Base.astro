@@ -3,10 +3,10 @@
 // preload), skip link, header, main content, footer.
 import "../styles/global.css";
 import displayFont from "@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2?url";
+import FavouriteSlot from "../components/FavouriteSlot.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import SiteHeader from "../components/SiteHeader.astro";
-import themeHead from "../scripts/theme-head.js?raw";
-import { buildThemeScript } from "../scripts/theme-script.ts";
+import { earlyScript } from "../scripts/theme-script.ts";
 
 interface Props {
   title: string;
@@ -14,8 +14,9 @@ interface Props {
 }
 const { title, description } = Astro.props;
 
-// Placeholders filled from src/themes.ts; its CSP hash is added in astro.config.mjs.
-const themeScript = buildThemeScript(themeHead);
+// Theme and favourite team, with placeholders filled from src/themes.ts and
+// the data; its CSP hash is added in astro.config.mjs.
+const themeScript = earlyScript();
 
 const fullTitle = `${title} · TableTalk`;
 // The page's public address, only when the site URL is set (SITE_URL, see
@@ -41,6 +42,7 @@ const url = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : null;
     <meta name="twitter:card" content="summary" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preload" href={displayFont} as="font" type="font/woff2" crossorigin />
   </head>
   <body>
@@ -52,8 +54,65 @@ const url = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : null;
     </a>
     <SiteHeader />
     <main id="main" tabindex="-1">
+      <!-- A personal link (?team=...) was opened: ask before changing anything.
+           Shown from the first paint when the early script found one. -->
+      <FavouriteSlot kind="offer" class="container offer-slot" targetClass="offer">
+        <template data-for="offer">
+          <h2 class="offer-title">
+            Make <span data-fav-text="offer-name"></span> your team on this device?
+          </h2>
+          <p>
+            You opened a personal TableTalk link. Your team is starred in every table and shown first on the
+            home page. Nothing is saved unless you say so.
+          </p>
+          <p class="offer-actions">
+            <button type="button" class="button primary" data-fav-action="accept-offer">
+              Make it my team
+            </button>
+            <button type="button" class="button" data-fav-action="decline-offer">
+              No thanks
+            </button>
+          </p>
+        </template>
+        <template data-for="replace">
+          <h2 class="offer-title">
+            Replace <span data-fav-text="replacing"></span> with <span data-fav-text="offer-name"></span> as
+            your team on this device?
+          </h2>
+          <p>You opened a personal TableTalk link for a different team.</p>
+          <p class="offer-actions">
+            <button type="button" class="button primary" data-fav-action="accept-offer">
+              Replace
+            </button>
+            <button type="button" class="button" data-fav-action="decline-offer">
+              Keep <span data-fav-text="replacing"></span>
+            </button>
+          </p>
+        </template>
+        <template data-for="same">
+          <p class="offer-title small-title">
+            <span data-fav-text="offer-name"></span> is already your team on this device.
+          </p>
+          <p class="offer-actions">
+            <button type="button" class="button" data-fav-action="decline-offer">
+              OK
+            </button>
+          </p>
+        </template>
+        <template data-for="unknown">
+          <p class="offer-title small-title">This link's team isn't one we cover this season.</p>
+          <p>Nothing was changed. You can pick a team with the Your team button at the top of the page.</p>
+          <p class="offer-actions">
+            <button type="button" class="button" data-fav-action="decline-offer">
+              OK
+            </button>
+          </p>
+        </template>
+      </FavouriteSlot>
       <slot />
     </main>
+    <!-- Announces what a favourite action did ("Saved. Arsenal is your team on this device."). -->
+    <p class="visually-hidden" role="status" data-fav-status></p>
     <SiteFooter />
   </body>
 </html>

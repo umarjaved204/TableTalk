@@ -22,7 +22,9 @@ if (dialog && opener) {
   opener.addEventListener("click", () => {
     const current = window.tabletalkTheme?.current() ?? "system";
     radios.forEach((radio) => (radio.checked = radio.value === current));
-    dialog.showModal();
+    // Older browsers without showModal() (see README.md, browser support): shown in place.
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
   });
 
   dialog.addEventListener("change", (event) => {
@@ -32,7 +34,10 @@ if (dialog && opener) {
     }
   });
 
-  dialog.querySelector("[data-close]")?.addEventListener("click", () => dialog.close());
+  dialog.querySelector("[data-close]")?.addEventListener("click", () => {
+    if (typeof dialog.close === "function") dialog.close();
+    else dialog.removeAttribute("open");
+  });
   // Clicking the backdrop (outside the panel) closes it too.
   dialog.addEventListener("click", (event) => {
     if (event.target === dialog) dialog.close();

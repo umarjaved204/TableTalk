@@ -1,7 +1,6 @@
 // @ts-check
-import { readFileSync } from "node:fs";
 import { defineConfig } from "astro/config";
-import { buildThemeScript, cspHash } from "./src/scripts/theme-script.ts";
+import { FILL_SCRIPT, cspHash, earlyScript } from "./src/scripts/theme-script.ts";
 
 // The site's public address: ONE setting, the SITE_URL environment variable
 // (e.g. SITE_URL=https://example.org npm run build), decided at deployment.
@@ -13,10 +12,10 @@ if (site !== undefined && !/^https:\/\/[^/]+/.test(site)) {
   throw new Error(`SITE_URL must be an https:// address, got "${site}"`);
 }
 
-// The inline theme script that runs before the page paints (see Base.astro).
-const themeScript = buildThemeScript(
-  readFileSync(new URL("./src/scripts/theme-head.js", import.meta.url), "utf8"),
-);
+// The inline early script that runs before the page paints (theme and
+// favourite team, see Base.astro). It contains this build's team list, so it
+// is built from the data, here and in Base.astro, with the same function.
+const themeScript = earlyScript();
 
 export default defineConfig({
   // Only set when SITE_URL is (Astro's `site` can't be undefined).
@@ -33,8 +32,8 @@ export default defineConfig({
   security: {
     // Content Security Policy as a <meta> tag, because the likely host
     // (GitHub Pages) cannot send custom headers. Astro adds a hash for every
-    // script and style it bundles; the inline theme script's hash is added
-    // here. Nothing else can run, and inline style="" attributes are not
+    // script and style it bundles; the two inline scripts' hashes are added
+    // here (the early script, and the fixed one-line FILL_SCRIPT). Nothing else can run, and inline style="" attributes are not
     // allowed anywhere in the site.
     csp: {
       directives: [
@@ -46,7 +45,7 @@ export default defineConfig({
         "base-uri 'self'",
         "form-action 'none'",
       ],
-      scriptDirective: { hashes: [cspHash(themeScript)] },
+      scriptDirective: { hashes: [cspHash(themeScript), cspHash(FILL_SCRIPT)] },
     },
   },
 });

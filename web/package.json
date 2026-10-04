@@ -17,13 +17,15 @@
     "test:e2e": "playwright test",
     "lint": "eslint . && stylelint \"src/**/*.{css,astro}\" && prettier --check .",
     "format": "prettier --write .",
-    "lighthouse": "node scripts/lighthouse.mjs"
+    "lighthouse": "node scripts/lighthouse.mjs",
+    "test:rollover": "playwright test -c playwright.rollover.config.ts"
   },
   "dependencies": {
     "@fontsource-variable/source-sans-3": "5.3.0",
     "@fontsource/barlow-condensed": "5.3.0",
     "ajv": "8.20.0",
-    "astro": "7.3.5"
+    "astro": "7.3.5",
+    "qrcode-generator": "2.0.4"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",
@@ -31,6 +33,7 @@
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.63.0",
     "@types/node": "24.19.0",
+    "esbuild": "0.28.2",
     "eslint": "10.11.0",
     "eslint-plugin-astro": "3.2.1",
     "globals": "17.12.0",
