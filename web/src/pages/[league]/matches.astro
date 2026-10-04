@@ -50,6 +50,16 @@ const description = `${league.name}: predictions for the next matches, and how r
         <LeagueHead data={data} suffix="matches" />
         <LeagueNav league={league} current="matches" />
 
+        <!-- Shown only when the visitor's favourite plays in this league
+             (data-fav-league-item, favouriteCss in favourite-core.js) and with JavaScript. -->
+        <div class="fav-filter" data-fav-league-item={league.id} data-needs-js>
+          <input type="checkbox" id="fav-filter" data-fav-filter />
+          <label for="fav-filter">
+            <span class="star-icon" aria-hidden="true"></span>Your team only
+          </label>
+          <span class="visually-hidden" role="status" data-fav-filter-status></span>
+        </div>
+
         <div class="sections" data-tabs>
           <TabList
             tabs={[
@@ -117,6 +127,33 @@ const description = `${league.name}: predictions for the next matches, and how r
 </script>
 
 <style>
+  /* Shown only for the favourite's league (--fav-league-mark), see the markup. */
+  .fav-filter {
+    display: var(--fav-league-mark, none);
+    justify-self: start;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+  }
+
+  .fav-filter label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--tap-main);
+    padding-inline: var(--space-2) var(--space-4);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .fav-filter input {
+    width: 22px;
+    height: 22px;
+    margin: 0 0 0 var(--space-3);
+    vertical-align: middle;
+    accent-color: var(--accent);
+  }
+
   .page {
     display: grid;
     gap: var(--space-5);

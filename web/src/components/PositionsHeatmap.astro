@@ -18,6 +18,8 @@ const positions = rows.map((_, i) => i + 1);
 function expectedPosition(row: TeamRow): number {
   return row.finishing.reduce((sum, p, i) => sum + p * (i + 1), 0);
 }
+import { teamSlug } from "../data/teams.ts";
+import FavName from "./FavName.astro";
 ---
 
 <div class="heatmap">
@@ -40,9 +42,9 @@ function expectedPosition(row: TeamRow): number {
       </thead>
       <tbody>
         {byExpected.map((row) => (
-          <tr>
+          <tr data-team={teamSlug(row.team)}>
             <th scope="row" class="team">
-              {row.team}
+              <FavName name={row.team} />
             </th>
             {row.finishing.map((p) => (
               <td class={`heat-${heatStep(p)}`}>{heatLabel(p)}</td>

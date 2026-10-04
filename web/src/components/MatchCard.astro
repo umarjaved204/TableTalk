@@ -14,6 +14,8 @@ import { formatChance, matchPercents } from "../format/probability.ts";
 import { formatClock } from "../format/time.ts";
 import LabelParts from "./LabelParts.astro";
 import ProbabilityBar from "./ProbabilityBar.astro";
+import FavName from "./FavName.astro";
+import { teamSlug } from "../data/teams.ts";
 
 interface Props {
   match: MatchView;
@@ -45,9 +47,12 @@ const outcomes = percents
   data-date={match.date ?? undefined}
   data-predicted-at={status.kind === "upcoming" ? status.predictedAt : undefined}
   aria-label={`${match.home} v ${match.away}`}
+  data-teams={`${teamSlug(match.home)} ${teamSlug(match.away)}`}
 >
   <div class="scoreboard">
-    <span class="team home">{match.home}</span>
+    <span class="team home" data-team={teamSlug(match.home)}>
+      <FavName name={match.home} />
+    </span>
     <span class:list={["clock", { score: score !== null }]}>
       {score ? (
         <>
@@ -62,7 +67,9 @@ const outcomes = percents
         <abbr title="Time to be confirmed">TBC</abbr>
       )}
     </span>
-    <span class="team away">{match.away}</span>
+    <span class="team away" data-team={teamSlug(match.away)}>
+      <FavName name={match.away} />
+    </span>
   </div>
 
   {percents && (
@@ -137,6 +144,9 @@ const outcomes = percents
     gap: var(--space-2);
     padding: var(--space-3) var(--space-4);
     border-bottom: 1px solid var(--border);
+
+    /* Tinted when the visitor's favourite plays (favouriteCss in favourite-core.js). */
+    background: var(--fav-card-bg, transparent);
   }
 
   .scoreboard {

@@ -1,0 +1,248 @@
+---
+// The home page's "Your team" card, as ONE template with named holes. The
+// values for every team are in a small data block on the page
+// (cardFields in src/data/your-team.ts); the early script copies this
+// template and fills it for the visitor's favourite, before the page paints
+// (fill in src/scripts/favourite-head.js):
+//   data-fav-field="key"         text from that key
+//   data-fav-attrs="attr:key"    attributes from those keys
+//   data-fav-if / -unless="key"  removed when the key is missing / present
+// Same display rules as everywhere: whole percentages, "<1%" and ">99%",
+// never 0% or 100% (the values are formatted at build time).
+const CHANCES = [0, 1, 2, 3]; // title, top four or five, relegation, play-off place
+---
+
+<article class="your-team" aria-labelledby="your-team-heading">
+  <div class="top">
+    <p class="eyebrow">Your team</p>
+    <h2 id="your-team-heading">
+      <span class="star-icon" aria-hidden="true"></span>
+      <span data-fav-field="n"></span>
+    </h2>
+    <p class="context" data-fav-field="x"></p>
+  </div>
+
+  <dl class="chances">
+    {CHANCES.map((i) => (
+      <div class="chance" data-fav-if={`c${i}s`}>
+        <dt>
+          <span data-fav-field={`c${i}s`} />
+          <span class="places" data-fav-field={`c${i}p`} />
+        </dt>
+        <dd data-fav-field={`c${i}v`} />
+      </div>
+    ))}
+  </dl>
+
+  <div class="next">
+    <p class="label" data-fav-if="mh">
+      Next match ·{" "}
+      <time data-format="datetime" data-fav-if="mk" data-fav-attrs="datetime:mk" data-fav-field="mt"></time>
+      <span data-fav-unless="mk">time to be confirmed</span>
+    </p>
+    <p class="fixture" data-fav-if="mh">
+      <span data-fav-field="mh"></span> <span class="v">v</span> <span data-fav-field="ma"></span>
+    </p>
+    <svg
+      class="bar"
+      viewBox="0 0 100 8"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+      data-fav-if="mh"
+    >
+      <rect class="home" x="0" y="0" height="8" data-fav-attrs="width:b1w"></rect>
+      <rect class="draw" y="0" height="8" data-fav-attrs="x:b2x width:b2w"></rect>
+      <rect class="away" y="0" height="8" data-fav-attrs="x:b3x width:b3w"></rect>
+    </svg>
+    <p class="outcomes" data-fav-if="mh">
+      <span>
+        <span data-fav-field="mh"></span> <strong data-fav-field="ph"></strong>
+      </span>
+      <span>
+        Draw <strong data-fav-field="pd"></strong>
+      </span>
+      <span>
+        <span data-fav-field="ma"></span> <strong data-fav-field="pa"></strong>
+      </span>
+    </p>
+    <p class="label" data-fav-unless="mh">
+      No matches in the next four weeks.
+    </p>
+  </div>
+
+  <p class="links">
+    <a data-fav-attrs="href:lh" data-fav-field="lt"></a>
+    <button type="button" class="link-button" data-fav-action="open-picker">
+      Change team
+    </button>
+  </p>
+</article>
+
+<style>
+  .your-team {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 2px solid var(--accent);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+  }
+
+  .top {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .eyebrow {
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--step-3);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .context {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  .chances {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+    gap: var(--space-3);
+    margin: 0;
+  }
+
+  .chance {
+    display: grid;
+    align-content: start;
+  }
+
+  dt {
+    display: grid;
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .places {
+    font-family: var(--font-text);
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  dd {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--step-4);
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .next {
+    display: grid;
+    gap: var(--space-2);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border);
+  }
+
+  .label {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  .fixture {
+    font-weight: 600;
+  }
+
+  .v {
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  /* Home / draw / away bar, drawn as in ProbabilityBar.astro (decorative:
+     the percentages are printed under it). */
+  .bar {
+    display: block;
+    width: 100%;
+    height: 10px;
+  }
+
+  .bar .home {
+    fill: var(--data-home);
+  }
+
+  .bar .draw {
+    fill: var(--data-draw);
+  }
+
+  .bar .away {
+    fill: var(--data-away);
+  }
+
+  .outcomes {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-1) var(--space-3);
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  .outcomes strong {
+    color: var(--text);
+  }
+
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--space-4);
+  }
+
+  .links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
+  }
+
+  @media (width >= 900px) {
+    .your-team {
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      column-gap: var(--space-6);
+    }
+
+    .top,
+    .links {
+      grid-column: 1 / -1;
+    }
+
+    .next {
+      padding: 0 0 0 var(--space-5);
+      border-top: 0;
+      border-left: 1px solid var(--border);
+    }
+  }
+
+  @media (forced-colors: active) {
+    .bar rect {
+      fill: CanvasText;
+    }
+  }
+</style>

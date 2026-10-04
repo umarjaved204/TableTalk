@@ -1,0 +1,285 @@
+---
+// "Your team": a header button that opens a native <dialog> with a native
+// <select> of every team, grouped by league. Saving is an explicit button:
+// on Windows, arrowing through a closed select fires `change` on every key,
+// so saving on change would store teams the visitor only passed over.
+// The options are filled in when the dialog opens (src/scripts/favourites.ts),
+// from the team list in the early script, so they don't add to every page.
+//
+// The dialog also explains where the choice lives and how to keep it:
+//   - some browsers delete site storage after a while without a visit
+//     (Safari: 7 days of Safari use), so the team's own page is the bookmark to keep
+//     (it needs no stored data; shown once team pages exist, Step 3);
+//   - the personal link (?team=...) restores the favourite on another device;
+//   - an app added to the home screen keeps its own settings.
+import { FAV_STORAGE_KEY } from "../scripts/theme-script.ts";
+
+/** Team pages arrive in Step 3; until then the "bookmark your team's page" line is not shown. */
+const TEAM_PAGES = false;
+/** QR codes need the site's full address (SITE_URL), so they are made only when it is set. */
+const QR = Boolean(Astro.site);
+---
+
+<button type="button" class="open" data-open-favourite aria-haspopup="dialog" data-needs-js>
+  <span class="icon" aria-hidden="true"></span>
+  Your team
+</button>
+
+<dialog id="favourite" aria-labelledby="favourite-title" data-qr={QR ? "" : undefined}>
+  <div class="panel">
+    <div class="head">
+      <h2 id="favourite-title">Your team</h2>
+      <button type="button" class="button" data-close>
+        Close
+      </button>
+    </div>
+
+    <div class="field">
+      <label for="favourite-select">Choose a team</label>
+      <select id="favourite-select" data-fav-select data-fill-teams>
+        <option value="">No team</option>
+      </select>
+    </div>
+    <p class="actions">
+      <button
+        type="button"
+        class="button primary"
+        data-fav-action="save-select"
+        data-select="favourite-select"
+      >
+        Save
+      </button>
+      <button type="button" class="button" data-fav-action="remove" data-when-chosen>
+        Remove my team
+      </button>
+    </p>
+    <p class="status" role="status" data-fav-dialog-status></p>
+    <p class="warning" data-storage-warning hidden>
+      This browser isn't letting the site remember your choice (a private window, or a setting), so it applies
+      until you close this page.
+    </p>
+
+    <div class="keep" data-when-chosen>
+      {TEAM_PAGES && (
+        <p data-team-page-tip>
+          Some browsers forget this after a while.{" "}
+          <a href="/" data-team-page-link>
+            Bookmark your team's page
+          </a>{" "}
+          to keep it.
+        </p>
+      )}
+      <details>
+        <summary>Use on another device</summary>
+        <div class="details-body">
+          <p>Open this link on your other phone or computer. It asks before changing anything there.</p>
+          <p class="link-row">
+            <code data-personal-link></code>
+            <button type="button" class="button" data-fav-action="copy-link">
+              Copy link
+            </button>
+          </p>
+          <p class="copy-status" role="status" data-copy-status></p>
+          {QR && (
+            <p class="qr-row">
+              <img class="qr" data-qr-image alt="" width="148" height="148" />
+              <span>Or scan this with your phone's camera.</span>
+            </p>
+          )}
+          <p class="muted">
+            Tip: bookmark the link. If your browser syncs bookmarks, your other devices get it too.
+          </p>
+        </div>
+      </details>
+    </div>
+
+    <details>
+      <summary>Add TableTalk to your home screen</summary>
+      <div class="details-body">
+        <p>
+          On iPhone or iPad: tap Share, then Add to Home Screen. On Android: open the browser menu, then Add
+          to Home screen or Install.
+        </p>
+        <p class="muted">
+          An app added to the home screen keeps its own settings, separate from your browser, so pick your
+          team again the first time you open it. After that it keeps your choice.
+        </p>
+      </div>
+    </details>
+
+    <p class="note">
+      Saved only in this browser (key <code>{FAV_STORAGE_KEY}</code>). No account, no cookies, nothing sent
+      anywhere. <a href="/about/#your-team">What's stored and how to remove it</a>
+    </p>
+  </div>
+</dialog>
+
+<script>
+  import "../scripts/favourites.ts";
+</script>
+
+<style>
+  .open {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--tap-main);
+    padding: 0 var(--space-4);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: var(--step-0);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+  }
+
+  /* An outline star, filled once a team is chosen (set before the first paint). */
+  .icon {
+    width: 18px;
+    height: 18px;
+    background: currentcolor;
+    mask: var(--star-outline-mask) center / contain no-repeat;
+  }
+
+  :global(:root[data-fav-state="chosen"]) .icon {
+    background: var(--accent);
+    mask-image: var(--star-mask);
+  }
+
+  dialog {
+    width: min(560px, calc(100vw - 2 * var(--space-4)));
+    max-height: calc(100dvh - 2 * var(--space-4));
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow-2);
+  }
+
+  dialog::backdrop {
+    background: color-mix(in srgb, var(--bg) 70%, transparent);
+  }
+
+  .panel {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-5);
+  }
+
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .field {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  label {
+    font-weight: 600;
+  }
+
+  select {
+    width: 100%;
+    min-height: var(--tap-main);
+    padding: 0 var(--space-2);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-text);
+    font-size: var(--step-0);
+    font-weight: 600;
+  }
+
+  .actions,
+  .link-row,
+  .qr-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+  }
+
+  .status:empty,
+  .copy-status:empty {
+    display: none;
+  }
+
+  .warning {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-1);
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    font-size: var(--step--1);
+  }
+
+  /* Only when a team is chosen (the class is on <html>, set before paint). */
+  [data-when-chosen] {
+    display: none;
+  }
+
+  :global(:root[data-fav-state="chosen"]) .actions [data-when-chosen] {
+    display: inline-flex;
+  }
+
+  :global(:root[data-fav-state="chosen"]) .keep[data-when-chosen] {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
+    color: var(--accent);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .details-body {
+    display: grid;
+    gap: var(--space-3);
+    padding-bottom: var(--space-2);
+  }
+
+  code {
+    flex: 1 1 16rem;
+    min-width: 0;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-1);
+    background: var(--surface-2);
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    overflow-wrap: anywhere;
+    user-select: all;
+  }
+
+  .note code {
+    padding: 0 var(--space-1);
+    user-select: auto;
+  }
+
+  /* Always dark modules on white with a quiet zone (part of the image), in every theme. */
+  .qr {
+    display: block;
+    width: 148px;
+    height: 148px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-1);
+  }
+
+  .muted,
+  .note {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+</style>

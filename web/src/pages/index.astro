@@ -1,7 +1,14 @@
 ---
-// The home page: the five leagues at a glance, when the numbers were made,
-// and a one-line summary of the live track record.
+// The home page: the visitor's team (or the "Pick your team" prompt), the
+// five leagues at a glance, when the numbers were made, and a one-line
+// summary of the live track record.
+import FavouriteSlot from "../components/FavouriteSlot.astro";
 import LeagueCard from "../components/LeagueCard.astro";
+import TeamSelect from "../components/TeamSelect.astro";
+import YourTeamCard from "../components/YourTeamCard.astro";
+import { loadTeamIndex } from "../data/teams.ts";
+import { cardFields, yourTeamCards } from "../data/your-team.ts";
+import { scriptJson } from "../scripts/theme-script.ts";
 import Notice from "../components/Notice.astro";
 import { loadIndex, loadLeague } from "../data/league.ts";
 import { LEAGUES } from "../data/leagues.ts";
@@ -21,6 +28,21 @@ const simulations =
     ? `${new Intl.NumberFormat("en-GB").format(counts[0])} simulated seasons per league`
     : null;
 const lastUpdate = "index" in index ? index.index.generated_at : null;
+
+// The "Your team" card: one template, and every team's values as data
+// (slug -> fields); the visitor's is filled in before the page paints
+// (FavouriteSlot.astro). Data, not a copy of the card per team: that made the
+// page about 300 KB, over the agreed budget.
+const teams = loadTeamIndex().teams;
+const cardData = scriptJson(
+  Object.fromEntries(
+    leagues.flatMap((data) =>
+      data.state === "ready"
+        ? yourTeamCards(data).map((card) => [card.slug, cardFields(card, data.league)])
+        : [],
+    ),
+  ),
+);
 ---
 
 <Base
@@ -53,9 +75,80 @@ const lastUpdate = "index" in index ? index.index.generated_at : null;
       </Notice>
     )}
 
+    <!-- The visitor's team (or the prompt), in place before the first paint. -->
+    <FavouriteSlot kind="state" class="your-team-slot" values="your-team-values">
+      <template data-for="none">
+        <section class="prompt" aria-labelledby="pick-heading">
+          <h2 id="pick-heading">
+            <span class="star-icon" aria-hidden="true"></span>Pick your team
+          </h2>
+          <p>See your team's chances first, and find it starred in every table.</p>
+          <p class="standalone-note">
+            Home-screen apps keep their own settings, separate from your browser, so pick your team again
+            here.
+          </p>
+          <div class="pick">
+            <label for="pick-team" class="visually-hidden">
+              Choose a team
+            </label>
+            <TeamSelect id="pick-team" teams={teams} />
+            <button
+              type="button"
+              class="button primary"
+              data-fav-action="save-select"
+              data-select="pick-team"
+            >
+              Save
+            </button>
+          </div>
+          <p>
+            <button type="button" class="link-button" data-fav-action="dismiss">
+              Not now
+            </button>
+          </p>
+          <p class="note">
+            Saved in this browser only. <a href="/about/#your-team">What's stored</a>
+          </p>
+        </section>
+      </template>
+      <template data-for="gone">
+        <section class="prompt solid" aria-labelledby="gone-heading">
+          <h2 id="gone-heading">
+            <span data-fav-text="name"></span>
+            {" isn't in the leagues we cover this season"}
+          </h2>
+          <p data-fav-text="was-in"></p>
+          <p class="actions">
+            <button type="button" class="button primary" data-fav-action="open-picker">
+              Pick another team
+            </button>
+            <button type="button" class="button" data-fav-action="remove">
+              Remove
+            </button>
+          </p>
+        </section>
+      </template>
+      <template data-for="paused">
+        <section class="prompt solid" aria-labelledby="paused-heading">
+          <h2 id="paused-heading">
+            <span class="star-icon" aria-hidden="true"></span>
+            <span data-fav-text="name"></span>
+          </h2>
+          <p>
+            There's no forecast for <span data-fav-text="league"></span> right now, so your team's card can't
+            be shown. Your choice is kept, and the card comes back when the forecast does.
+          </p>
+        </section>
+      </template>
+      <template data-for="@card">
+        <YourTeamCard />
+      </template>
+      <script type="application/json" id="your-team-values" set:html={cardData} />
+    </FavouriteSlot>
+
     <ul class="cards">
       {leagues.map((data) => (
-        <li>
+        <li data-fav-league-item={data.league.id}>
           <LeagueCard data={data} />
         </li>
       ))}
@@ -131,8 +224,14 @@ const lastUpdate = "index" in index ? index.index.generated_at : null;
     list-style: none;
   }
 
+  /* The favourite's league card comes first and is outlined; the generated
+     rules set these properties (favouriteCss in src/scripts/favourite-core.js). */
   .cards li {
     display: grid;
+    order: var(--fav-order, 0);
+    border-radius: var(--radius-2);
+    outline: 2px solid var(--fav-league-ring, transparent);
+    outline-offset: 2px;
   }
 
   @media (width >= 640px) {
@@ -141,7 +240,11 @@ const lastUpdate = "index" in index ? index.index.generated_at : null;
     }
 
     .cards li:nth-child(5) {
-      grid-column: 1 / -1;
+      grid-column: var(--fav-col-md, 1 / -1);
+    }
+
+    .cards li:not(:nth-child(5)) {
+      grid-column: var(--fav-col-md, auto);
     }
   }
 
@@ -150,12 +253,13 @@ const lastUpdate = "index" in index ? index.index.generated_at : null;
       grid-template-columns: repeat(6, minmax(0, 1fr));
     }
 
-    .cards li {
-      grid-column: span 2;
+    .cards li,
+    .cards li:not(:nth-child(5)) {
+      grid-column: span var(--fav-span-lg, 2);
     }
 
     .cards li:nth-child(n + 4) {
-      grid-column: span 3;
+      grid-column: span var(--fav-span-lg, 3);
     }
   }
 
@@ -165,8 +269,98 @@ const lastUpdate = "index" in index ? index.index.generated_at : null;
     }
 
     .cards li,
+    .cards li:not(:nth-child(5)),
     .cards li:nth-child(n + 4) {
       grid-column: auto;
+    }
+  }
+
+  /* "Your team" space. Shown from the first paint in every state that has
+     something to show; collapsed for "dismissed" and "newer", and without
+     JavaScript (data-needs-js). No fixed height is reserved: the right block
+     is copied in while the page loads, before it is painted, so it is
+     already in place at the first paint. The only later changes follow the
+     visitor's own clicks (picking a team), which don't count as layout
+     shift. tests/e2e/favourites.spec.ts measures the shift in every state.
+     The slot element is rendered by FavouriteSlot.astro, so these rules are
+     :global (a page's scoped styles don't reach a child component's elements). */
+  :global(.your-team-slot) {
+    display: none;
+  }
+
+  :global(
+    :root[data-js]:is(
+        [data-fav-state="none"],
+        [data-fav-state="chosen"],
+        [data-fav-state="gone"],
+        [data-fav-state="paused"]
+      )
+      .your-team-slot
+  ) {
+    display: grid;
+  }
+
+  .prompt {
+    display: grid;
+    align-content: start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+  }
+
+  .prompt.solid {
+    border-style: solid;
+  }
+
+  .prompt h2 {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .pick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .pick :global(select) {
+    flex: 1 1 14rem;
+    width: 100%;
+    min-width: 0;
+    min-height: var(--tap-main);
+    padding: 0 var(--space-2);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-text);
+    font-size: var(--step-0);
+    font-weight: 600;
+  }
+
+  .note {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  /* Only inside an app added to the home screen, which has its own storage. */
+  .standalone-note {
+    display: none;
+    color: var(--text-muted);
+  }
+
+  @media (display-mode: standalone) {
+    .standalone-note {
+      display: block;
     }
   }
 

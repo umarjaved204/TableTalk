@@ -16,9 +16,11 @@ const { current, section = "" } = Astro.props;
 <nav class="switcher" aria-label="Leagues">
   <ul class="container" data-switcher>
     {LEAGUES.map((league) => (
-      <li>
+      <li data-fav-league-item={league.id}>
         <a href={`/${league.slug}/${section}`} aria-current={league.slug === current ? "page" : undefined}>
+          <span class="fav-league-star" aria-hidden="true"></span>
           {league.name}
+          <span class="fav-league-label visually-hidden"> (your team's league)</span>
         </a>
       </li>
     ))}

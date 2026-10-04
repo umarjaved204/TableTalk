@@ -1,0 +1,30 @@
+---
+// A native <select> of every team, grouped by league with <optgroup>. Native
+// on purpose: screen readers announce the groups, typing jumps to a team
+// ("ars" finds Arsenal), and phones show their own picker. Used by the
+// home page's "Pick your team" prompt; the header dialog fills the same
+// options in the browser (src/scripts/favourites.ts), from the same list.
+import { LEAGUES } from "../data/leagues.ts";
+import type { TeamInfo } from "../data/teams.ts";
+
+interface Props {
+  id: string;
+  teams: readonly TeamInfo[];
+}
+const { id, teams } = Astro.props;
+const groups = LEAGUES.map((league) => ({
+  league,
+  teams: teams.filter((t) => t.leagueId === league.id),
+})).filter((g) => g.teams.length > 0);
+---
+
+<select id={id} class="team-select" data-fav-select>
+  <option value="">Choose a team</option>
+  {groups.map((group) => (
+    <optgroup label={group.league.name}>
+      {group.teams.map((team) => (
+        <option value={team.slug}>{team.name}</option>
+      ))}
+    </optgroup>
+  ))}
+</select>

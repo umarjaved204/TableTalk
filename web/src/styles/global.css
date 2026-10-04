@@ -9,11 +9,18 @@
 @import "./themes/terrace.css";
 @import "./themes/contrast.css";
 @import "./data-colours.css";
+@import "./favourites.css";
 
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+/* `hidden` always hides, even on an element whose own styles set a display
+   value (a match card is display: grid). Scripts hide things with it. */
+[hidden] {
+  display: none !important;
 }
 
 html {

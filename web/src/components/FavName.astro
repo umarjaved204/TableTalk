@@ -1,0 +1,21 @@
+---
+// A team's name, ready to be marked as the visitor's favourite: a star before
+// it (decorative) and " (your team)" after it for screen readers. Both are
+// hidden unless an ancestor element carries data-team="<this team's slug>"
+// and that team is the favourite (src/styles/favourites.css). The caller puts
+// data-team on the row or card, so the row's tint and the star switch on together.
+interface Props {
+  name: string;
+}
+const { name } = Astro.props;
+---
+
+{
+  /* One expression, not separate lines of markup: a line break between the
+     parts would put a stray space inside what screen readers say. */
+  [
+    <span class="fav-star" aria-hidden="true" />,
+    name,
+    <span class="fav-label visually-hidden"> (your team)</span>,
+  ]
+}

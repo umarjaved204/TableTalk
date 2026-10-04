@@ -1,6 +1,12 @@
 ---
-// Brand, the two site-wide pages, and the theme picker. On narrow screens the
-// links take their own row under the brand, so nothing is squeezed.
+// Brand, the two site-wide pages, "Your team" and the theme picker.
+// Narrow screens: brand and Appearance on the first row; the links and "Your
+// team" share the second (three pill buttons don't fit 360px). From 800px
+// everything sits on one row. Both breakpoints are chosen so the header has
+// the same height in Barlow and in the fallback font at every width
+// (tests/e2e/favourites.spec.ts checks 320-1400px), so a late font can't
+// move the page.
+import FavouritePicker from "./FavouritePicker.astro";
 import ThemePicker from "./ThemePicker.astro";
 
 const path = Astro.url.pathname;
@@ -31,7 +37,12 @@ const LINKS = [
         ))}
       </ul>
     </nav>
-    <ThemePicker />
+    <div class="favourite">
+      <FavouritePicker />
+    </div>
+    <div class="theme">
+      <ThemePicker />
+    </div>
   </div>
 </header>
 
@@ -49,6 +60,9 @@ const LINKS = [
     gap: var(--space-2) var(--space-4);
     min-height: 56px;
     padding-block: var(--space-1);
+
+    /* For the enlarged-text rule below (@container, measured in em). */
+    container-type: inline-size;
   }
 
   .brand {
@@ -65,19 +79,58 @@ const LINKS = [
     text-decoration: none;
   }
 
-  /* Narrow screens: a full-width row under the brand and Appearance. */
+  /* Narrow screens: row 1 = brand + Appearance; row 2 = links + Your team.
+     Row 2 never wraps at normal text size, so its height is the same
+     whichever font is showing: the fallback font is wider than Barlow, and a
+     row that wrapped only before the web font arrived would push the whole
+     page down when it did (layout shift). The links are a little smaller on
+     phones so the row fits even in the fallback font at 320px; if it ever
+     doesn't (another device's fallback), the links scroll sideways, like the
+     league switcher. With enlarged text the row wraps instead (container
+     query below, measured in em, so it follows the text size, not the font). */
+  .theme {
+    order: 1;
+  }
+
   .site-nav {
     order: 3;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .favourite {
+    order: 4;
+    flex: none;
+  }
+
+  /* Forces the line break between the two rows. */
+  .bar::after {
+    content: "";
+    order: 2;
     flex-basis: 100%;
+  }
+
+  /* On the second row the button looks like the links next to it. */
+  .favourite :global(.open) {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
   }
 
   .site-nav ul {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0 var(--space-5);
+    flex-wrap: nowrap;
+    gap: 0 var(--space-4);
     margin: 0;
     padding: 0;
     list-style: none;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .site-nav li {
+    flex: none;
   }
 
   .site-nav a {
@@ -94,6 +147,32 @@ const LINKS = [
     text-decoration: none;
   }
 
+  @media (width < 800px) {
+    .site-nav a,
+    .favourite :global(.open) {
+      font-size: var(--step--1);
+      letter-spacing: 0.03em;
+    }
+  }
+
+  /* Enlarged text (the bar is narrower than 17.5 of its own ems: never at
+     normal size on a 320px screen, always at 200% on a phone): the links
+     wrap, and "Your team" takes its own line. */
+  @container (width < 17.5em) {
+    .site-nav ul {
+      flex-wrap: wrap;
+      overflow-x: visible;
+    }
+
+    .site-nav {
+      flex-basis: 100%;
+    }
+
+    .favourite {
+      flex-basis: 100%;
+    }
+  }
+
   .site-nav a:hover {
     color: var(--text);
   }
@@ -103,11 +182,38 @@ const LINKS = [
     border-bottom-color: var(--accent);
   }
 
-  @media (width >= 700px) {
-    .site-nav {
+  /* The narrowest phones: a smaller brand, so row 1 fits in either font. */
+  @media (width < 360px) {
+    .brand {
+      font-size: var(--step-1);
+    }
+
+    .theme :global(.open) {
+      padding-inline: var(--space-3);
+    }
+  }
+
+  @media (width >= 800px) {
+    .site-nav,
+    .favourite,
+    .theme {
       order: 0;
-      flex-basis: auto;
+    }
+
+    .site-nav {
+      flex: 0 1 auto;
       margin-left: auto;
+    }
+
+    .bar::after {
+      content: none;
+    }
+
+    .favourite :global(.open) {
+      padding: 0 var(--space-4);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-pill);
+      background: var(--surface);
     }
   }
 

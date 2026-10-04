@@ -7,6 +7,8 @@ import type { ReadyLeague } from "../data/models.ts";
 import { dataSource } from "../data/source.ts";
 import { ROLE_TEXT, sourcesUsed } from "../data/sources.ts";
 import Base from "../layouts/Base.astro";
+import { FAV_STORAGE_KEY } from "../scripts/theme-script.ts";
+import { STORAGE_KEY } from "../themes.ts";
 
 const REPO = "https://github.com/umarjaved204/TableTalk";
 const ready = LEAGUES.map(loadLeague).filter((l): l is ReadyLeague => l.state === "ready");
@@ -75,8 +77,67 @@ function uses(roles: string[]): string {
           numbers are built into each page.
         </li>
         <li>
-          Your theme and table settings are saved only in your own browser (local storage), and never sent
-          anywhere. Clearing your browser's site data removes them.
+          Your theme, table settings and favourite team are saved only in your own browser (local storage),
+          and never sent anywhere. Details below.
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="your-team">
+      <h2 id="your-team">Your team: what's stored</h2>
+      <p>
+        Nothing is stored until you choose something. When you pick a favourite team, or press "Not now" on
+        the "Pick your team" box, this browser keeps one small entry for this site:
+      </p>
+      <dl class="stored">
+        <div>
+          <dt>
+            <code>{FAV_STORAGE_KEY}</code>
+          </dt>
+          <dd>
+            Your team (for example{" "}
+            <code>{'{"v":1,"team":"arsenal","name":"Arsenal","league":"premier_league"}'}</code>
+            ): a format version, the team's short web name, its name, and the league it was in when you chose
+            it. If you pressed "Not now", it also notes that, so the box doesn't come back.
+          </dd>
+        </div>
+        <div>
+          <dt>
+            <code>{STORAGE_KEY}</code>
+          </dt>
+          <dd>
+            Your Appearance choice (for example <code>floodlights</code>), only if you picked one.
+          </dd>
+        </div>
+      </dl>
+      <p>
+        It is local storage, not a cookie: it is never sent to this site or anyone else with your requests,
+        and the site has no server that could read it. The pages work out what to show in your browser.
+      </p>
+      <h3>How to remove it</h3>
+      <ul>
+        <li>
+          "Your team" at the top of any page, then "Remove my team". (This keeps a note that you said "Not
+          now", so the box stays away.)
+        </li>
+        <li>
+          To remove everything, clear this site's data in your browser's settings (often called "site data" or
+          "cookies and site data"; it includes local storage). The site then behaves as on your first visit.
+        </li>
+      </ul>
+      <h3>Some browsers forget it</h3>
+      <p>
+        Safari (on iPhone, iPad and Mac) deletes a site's local storage after seven days of using Safari
+        without visiting that site. Other browsers may clear it to free up space. Two ways to keep your team:
+      </p>
+      <ul>
+        <li>
+          Use your personal link ("Your team", then "Use on another device"): opening it asks before setting
+          your team again, on any device.
+        </li>
+        <li>
+          Add TableTalk to your home screen. An app added this way keeps its own storage, which Safari doesn't
+          clear after seven days. It starts empty, separate from your browser, so pick your team once there.
         </li>
       </ul>
     </section>
@@ -118,6 +179,22 @@ function uses(roles: string[]): string {
   .lede {
     max-width: 70ch;
     font-size: var(--step-1);
+  }
+
+  .stored {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+  }
+
+  .stored dd {
+    margin: var(--space-1) 0 0;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    overflow-wrap: anywhere;
   }
 
   section {

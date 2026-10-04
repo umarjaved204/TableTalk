@@ -142,6 +142,10 @@ export interface RaceData {
   title: Series[];
   relegation: Series[];
   points: Series[];
+  /** Per chart, the teams NOT shown in it (alphabetical). The page pre-builds
+   *  a panel for each, and shows only the visitor's favourite's (if any), so
+   *  the chart always includes the favourite. */
+  extra: { title: Series[]; relegation: Series[]; points: Series[] };
 }
 
 export function buildRace(points: RunPoint[], relegationZone = "relegation"): RaceData {
@@ -155,6 +159,24 @@ export function buildRace(points: RunPoint[], relegationZone = "relegation"): Ra
     .map((team) => seriesFor(points, team, (t) => t.expectedPoints))
     .sort((a, b) => latest(b) - latest(a) || a.team.localeCompare(b.team));
 
+  // Teams in the latest run that a chart doesn't show (for the favourite's panel).
+  const current = [...(points.at(-1)?.teams.keys() ?? [])].sort((a, b) => a.localeCompare(b));
+  const missing = (shownIn: Series[], all: Series[]) => {
+    const inChart = new Set(shownIn.map((s) => s.team));
+    return all.filter((s) => current.includes(s.team) && !inChart.has(s.team));
+  };
+  const byName = (list: Series[]) => [...list].sort((a, b) => a.team.localeCompare(b.team));
+  const extra = {
+    title: byName(missing(title, zone("title"))),
+    relegation: byName(missing(relegation, zone(relegationZone))),
+    points: byName(
+      missing(
+        projected,
+        teams.map((team) => seriesFor(points, team, (t) => t.expectedPoints)),
+      ),
+    ),
+  };
+
   const resultDates = new Set(points.map((p) => p.dataThrough)).size;
   return {
     runDates: points.map((p) => p.generatedAt),
@@ -164,5 +186,6 @@ export function buildRace(points: RunPoint[], relegationZone = "relegation"): Ra
     title,
     relegation,
     points: projected,
+    extra,
   };
 }

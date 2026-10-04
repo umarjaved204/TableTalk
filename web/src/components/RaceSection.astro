@@ -30,6 +30,7 @@ const latestResults = race.dataThrough.at(-1);
         intro={`Teams whose title chance reached ${percent(TITLE_THRESHOLD)} at any point.`}
         kind="chance"
         series={race.title}
+        extra={race.extra.title}
         runDates={race.runDates}
         dataThrough={race.dataThrough}
       />
@@ -40,6 +41,7 @@ const latestResults = race.dataThrough.at(-1);
           intro={`Chance of finishing ${relegationPlaces}, for teams whose chance reached ${percent(RELEGATION_THRESHOLD)} at any point.${playoff ? ` The play-off place (${formatPlaces(playoff.positions)}) is not included.` : ""}`}
           kind="chance"
           series={race.relegation}
+          extra={race.extra.relegation}
           runDates={race.runDates}
           dataThrough={race.dataThrough}
         />
@@ -50,6 +52,7 @@ const latestResults = race.dataThrough.at(-1);
         intro="Average final points across the simulated seasons, for the teams in the two charts above."
         kind="points"
         series={race.points}
+        extra={race.extra.points}
         runDates={race.runDates}
         dataThrough={race.dataThrough}
       />

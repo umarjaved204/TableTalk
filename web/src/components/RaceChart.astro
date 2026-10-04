@@ -11,7 +11,17 @@
 //
 // Drawn as SVG at build time: no chart library and no browser JavaScript.
 // The SVG is decorative (aria-hidden); the same numbers are in the table.
+//
+// The visitor's favourite team is always included: a panel (and a table
+// column) is pre-built for every team NOT in this race, inside <template>
+// elements, which cost nothing until used. The early script copies in the
+// favourite's, if it has one (FILL_SCRIPT, see src/scripts/favourite-head.js).
+// The race teams' faint lines are drawn once (a <g> reused with <use>), not
+// once per pre-built panel.
 import type { Series } from "../data/race.ts";
+import { teamSlug } from "../data/teams.ts";
+import { FILL_SCRIPT } from "../scripts/theme-script.ts";
+import FavName from "./FavName.astro";
 import { chanceTop, lastPoint, linePath, pointsRange, scale, xPositions, type Box } from "../format/chart.ts";
 import { formatPoints } from "../format/number.ts";
 import { formatChance } from "../format/probability.ts";
@@ -25,14 +35,17 @@ interface Props {
   intro: string;
   kind: "chance" | "points";
   series: Series[];
+  /** Teams not in this race: one pre-built panel each, for the favourite. */
+  extra?: Series[];
   runDates: string[];
   dataThrough: (string | null)[];
 }
-const { id, heading, intro, kind, series, runDates, dataThrough } = Astro.props;
+const { id, heading, intro, kind, series, extra = [], runDates, dataThrough } = Astro.props;
 
 const BOX: Box = { width: 200, height: 72, pad: 5 };
 const xs = xPositions(runDates, BOX);
-const values = series.flatMap((s) => s.values.filter((v): v is number => v !== null));
+// The scale covers the pre-built panels too, so the favourite's line always fits.
+const values = [...series, ...extra].flatMap((s) => s.values.filter((v): v is number => v !== null));
 const [low, high] = kind === "chance" ? [0, chanceTop(Math.max(...values))] : pointsRange(values);
 const y = scale(low, high, BOX.height - BOX.pad, BOX.pad);
 
@@ -53,6 +66,16 @@ const panels = series.map((s) => ({
   others: series.filter((o) => o.team !== s.team).map((o) => linePath(o.values, xs, y)),
 }));
 
+const extraPanels = extra.map((s) => ({
+  team: s.team,
+  slug: teamSlug(s.team),
+  latest: s.values.at(-1) ?? null,
+  first: s.values.find((v) => v !== null) ?? null,
+  path: linePath(s.values, xs, y),
+  dot: lastPoint(s.values, xs, y),
+}));
+const raceLines = series.map((s) => linePath(s.values, xs, y));
+
 /** Table rows, newest first. */
 const rows = runDates.map((date, i) => ({ date, dataThrough: dataThrough[i] ?? null, i })).reverse();
 ---
@@ -64,11 +87,22 @@ const rows = runDates.map((date, i) => ({ date, dataThrough: dataThrough[i] ?? n
     {lastDate && formatShortDate(lastDate)}.
   </p>
 
-  <ul class="panels">
+  {extraPanels.length > 0 && (
+    <svg class="sprite" aria-hidden="true" focusable="false">
+      <g id={`${id}-race-lines`}>
+        {raceLines.map((d) => (
+          <path class="other" d={d} />
+        ))}
+      </g>
+    </svg>
+  )}
+  <ul class="panels" data-fav-slot={extraPanels.length > 0 ? "team" : undefined}>
     {panels.map((panel) => (
-      <li class="panel">
+      <li class="panel" data-team={teamSlug(panel.team)}>
         <p class="panel-head">
-          <span class="team">{panel.team}</span>
+          <span class="team">
+            <FavName name={panel.team} />
+          </span>
           <span class="value">
             {show(panel.latest)} <span class="was">(was {show(panel.first)})</span>
           </span>
@@ -84,12 +118,49 @@ const rows = runDates.map((date, i) => ({ date, dataThrough: dataThrough[i] ?? n
         </svg>
       </li>
     ))}
+    {extraPanels.map((panel) => (
+      <template data-for={panel.slug}>
+        <p class="panel-head" data-team={panel.slug}>
+          <span class="team">
+            <span class="fav-star" aria-hidden="true"></span>
+            {panel.team} <span class="your">(your team)</span>
+          </span>
+          <span class="value">
+            {show(panel.latest)} <span class="was">(was {show(panel.first)})</span>
+          </span>
+        </p>
+        <svg viewBox={`0 0 ${BOX.width} ${BOX.height}`} aria-hidden="true" focusable="false">
+          <line class="grid" x1="0" x2={BOX.width} y1={y(low)} y2={y(low)} />
+          <line class="grid" x1="0" x2={BOX.width} y1={y(high)} y2={y(high)} />
+          <use href={`#${id}-race-lines`} />
+          <path class="line" d={panel.path} />
+          {panel.dot && <circle class="dot" cx={panel.dot.x} cy={panel.dot.y} r="4" />}
+        </svg>
+        <table hidden data-fav-columns-for={`${id}-table`}>
+          <thead>
+            <tr>
+              <th scope="col" data-fav-cell>
+                {panel.team} (your team)
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr>
+                <td data-fav-cell>{show(extra.find((e) => e.team === panel.team)?.values[row.i] ?? null)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </template>
+    ))}
+    {extraPanels.length > 0 && <li class="panel extra" data-fav-target hidden></li>}
   </ul>
 
   <details class="numbers">
     <summary>Show the numbers</summary>
     <div class="scroll" role="region" aria-labelledby={`${id}-caption`} tabindex="0">
-      <table>
+      <table id={`${id}-table`}>
         <caption id={`${id}-caption`}>{heading}, by update (newest first)</caption>
         <thead>
           <tr>
@@ -114,6 +185,11 @@ const rows = runDates.map((date, i) => ({ date, dataThrough: dataThrough[i] ?? n
       </table>
     </div>
   </details>
+  {
+    /* After the table, not the panels: the favourite's column goes into that
+       table, so it must have been parsed when the block is filled. */
+    extraPanels.length > 0 && <script is:inline set:html={FILL_SCRIPT} />
+  }
 </figure>
 
 <style>
@@ -164,9 +240,19 @@ const rows = runDates.map((date, i) => ({ date, dataThrough: dataThrough[i] ?? n
     font-weight: 600;
   }
 
-  .was {
+  .was,
+  .your {
     color: var(--text-muted);
     font-weight: 400;
+  }
+
+  /* Holds the race lines reused by the favourite's pre-built panel. Not
+     display: none, which stops <use> from drawing it in some browsers. */
+  .sprite {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
   }
 
   svg {

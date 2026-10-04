@@ -22,19 +22,25 @@ for (const match of matches) {
 }
 ---
 
+<!-- Two lines on purpose: the browser rewrites "UTC" as "your time zone (BST)",
+     and a single line could then wrap in the narrow match column and push the
+     matches down after the page has appeared (layout shift). -->
 <p class="note">
-  Times in <span data-tz-label>UTC</span>. Kick-off times can still change.
+  <span class="line">
+    Times in <span data-tz-label>UTC</span>.
+  </span>
+  <span class="line">Kick-off times can still change.</span>
 </p>
 <div class="list" data-match-list data-heading-level={headingLevel}>
   {[...groups].map(([key, group]) => (
-    <>
+    <div class="day">
       <Heading class="day-heading">
         {key === "unknown" ? "Date to be confirmed" : formatDayHeading(key)}
       </Heading>
       {group.map((match) => (
         <MatchCard match={match} />
       ))}
-    </>
+    </div>
   ))}
 </div>
 
@@ -43,6 +49,17 @@ for (const match of matches) {
 </script>
 
 <style>
+  /* "Your team only" (matches page) hides other matches; a day left with no
+     match showing is hidden too. Needs :has(); a browser without it just
+     keeps the empty day's heading (see README, browser support). */
+  .list :global(.day:not(:has([data-match]:not([hidden])))) {
+    display: none;
+  }
+
+  .note .line {
+    display: block;
+  }
+
   .note {
     padding: var(--space-2) var(--space-4);
     font-size: var(--step--1);

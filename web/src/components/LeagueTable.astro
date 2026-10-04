@@ -11,6 +11,8 @@
 import type { TeamRow, Zone } from "../data/models.ts";
 import { formatPoints, formatRange, formatSigned } from "../format/number.ts";
 import { formatChance } from "../format/probability.ts";
+import { teamSlug } from "../data/teams.ts";
+import FavName from "./FavName.astro";
 
 interface Props {
   leagueName: string;
@@ -101,13 +103,13 @@ const firstZone = zones[0]?.id;
       </thead>
       <tbody>
         {rows.map((r) => (
-          <tr class:list={{ boundary: r.boundaryBelow }}>
+          <tr class:list={{ boundary: r.boundaryBelow }} data-team={teamSlug(r.team)}>
             <td class="pos" data-marker={r.zone?.marker} data-end={r.zone?.end}>
               {r.position}
               {r.zone && <span class="visually-hidden">, {zoneLabel.get(r.zone.id)}</span>}
             </td>
             <th scope="row" class="team">
-              {r.team}
+              <FavName name={r.team} />
               {r.pointsDeducted !== 0 && (
                 <sup>
                   <a href="#deductions" aria-label="points deduction, see note">
@@ -317,10 +319,6 @@ const firstZone = zones[0]?.id;
     border-bottom: 2px solid var(--border-strong);
   }
 
-  tbody tr:nth-child(even) > * {
-    background: var(--surface-2);
-  }
-
   /* Position and team stay put while the rest scrolls sideways. */
   .pos,
   .team {
@@ -347,6 +345,29 @@ const firstZone = zones[0]?.id;
     font-weight: 600;
     line-height: 1.25;
     border-right: 1px solid var(--border);
+  }
+
+  /* Row backgrounds: striped, and tinted for the visitor's favourite team
+     (--fav-bg is set only on that row, see favouriteCss in favourite-core.js).
+     The sticky cells always get a solid colour, so nothing shows through
+     them when the table scrolls sideways. */
+  tbody tr:nth-child(even) {
+    --row-bg: var(--surface-2);
+  }
+
+  tbody tr > :is(td, th) {
+    background-color: var(--fav-bg, var(--row-bg, transparent));
+  }
+
+  tbody tr > :is(.pos, .team) {
+    background-color: var(--fav-bg, var(--row-bg, var(--surface)));
+  }
+
+  /* The favourite's name also gets a 2px accent rule above and below. */
+  tbody .team {
+    box-shadow:
+      inset 0 2px 0 var(--fav-ring, transparent),
+      inset 0 -2px 0 var(--fav-ring, transparent);
   }
 
   .team sup a {

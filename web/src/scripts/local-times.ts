@@ -21,12 +21,17 @@ import { labelText, statusLabel } from "../format/match-status.ts";
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const now = new Date();
 
-// 1. Times
-for (const el of document.querySelectorAll<HTMLTimeElement>("time[data-format]")) {
-  const utc = el.dateTime;
-  el.textContent =
-    el.dataset["format"] === "clock" ? formatClock(utc, timeZone) : formatDateTime(utc, timeZone);
+// 1. Times. Run again when the favourite team changes: the home page's
+// "Your team" card is copied in fresh, with its times in UTC.
+function localTimes(): void {
+  for (const el of document.querySelectorAll<HTMLTimeElement>("time[data-format]")) {
+    const utc = el.dateTime;
+    el.textContent =
+      el.dataset["format"] === "clock" ? formatClock(utc, timeZone) : formatDateTime(utc, timeZone);
+  }
 }
+localTimes();
+document.addEventListener("tabletalk:favourite", localTimes);
 for (const el of document.querySelectorAll<HTMLElement>("[data-tz-label]")) {
   el.textContent = `your time zone (${timeZoneLabel(timeZone, now)})`;
 }
@@ -44,10 +49,13 @@ for (const list of document.querySelectorAll<HTMLElement>("[data-match-list]")) 
   }
   const fragment = document.createDocumentFragment();
   for (const [key, group] of groups) {
+    const day = document.createElement("div");
+    day.className = "day";
     const heading = document.createElement(list.dataset["headingLevel"] === "4" ? "h4" : "h3");
     heading.className = "day-heading";
     heading.textContent = key === "unknown" ? "Date to be confirmed" : formatDayHeading(key);
-    fragment.append(heading, ...group);
+    day.append(heading, ...group);
+    fragment.append(day);
   }
   list.replaceChildren(fragment);
 }
