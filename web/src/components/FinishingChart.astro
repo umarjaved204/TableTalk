@@ -181,6 +181,22 @@ const major = (position: number) => position === 1 || position === last || posit
     fill: var(--data-home);
   }
 
+  /* Grow up from the baseline once, only if the device allows motion. A
+     transform, so nothing else moves (no layout shift). */
+  @media (prefers-reduced-motion: no-preference) {
+    .bar {
+      transform-box: fill-box;
+      transform-origin: 50% 100%;
+      animation: grow-up 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    }
+  }
+
+  @keyframes grow-up {
+    from {
+      transform: scaleY(0);
+    }
+  }
+
   /* The most likely position: outlined in the text colour. */
   .bar.likely {
     stroke: var(--text);

@@ -21,6 +21,11 @@
 //   4c, two more fonts preloaded in <head> (so they arrive in time for
 //       font-display: optional): +2 on every page, budgets 1,923 and 1,936.
 //
+// Home, Step 4d: the league cards became "title races at a glance" (three
+// teams per race, each with a mini bar), an approved feature: 382 -> 468
+// (447 with a favourite). Only three leagues have numbers in the test data;
+// with all five (real data) it is about 560. Budget 490, about 5% headroom.
+//
 // Team pages (Step 3b): 208 (a league without numbers) to 710 (Brentford: the
 // trend charts, 3 next and 2 recent matches). The budget is for the largest,
 // with about 7% headroom. A team page grows with its match cards (at most 5
@@ -33,8 +38,8 @@
 import { expect, test } from "./test.ts";
 
 const BUDGETS: [string, number][] = [
-  // Home
-  ["/", 400],
+  // Home (title races since Step 4d)
+  ["/", 490],
   // League pages: no growth at all (the counts after Step 4c)
   ["/premier-league/", 1923],
   ["/bundesliga/", 1936],

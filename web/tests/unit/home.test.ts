@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TrackRecordSummary } from "../../src/data/contract.gen.ts";
-import { cardValues, zoneLeader } from "../../src/data/home.ts";
+import { RACE_SIZE, cardValues, zoneLeaders } from "../../src/data/home.ts";
 import { loadLeague } from "../../src/data/league.ts";
 import { LEAGUES } from "../../src/data/leagues.ts";
 import type { ReadyLeague, TeamRow, Zone } from "../../src/data/models.ts";
@@ -17,39 +17,45 @@ function ready(id: string): ReadyLeague {
   return data;
 }
 
-describe("home page card values (real 29 Sep files)", () => {
-  it("Premier League: favourite, most at risk, no play-off place", () => {
+describe("home page cards: title races at a glance (real 29 Sep files)", () => {
+  it("Premier League: the top three for the title and for relegation", () => {
     const values = cardValues(ready("premier_league"));
-    expect(values.favourite?.team).toBe("Manchester City");
-    expect(formatChance(values.favourite!.chance)).toBe("59%");
-    expect(values.relegation?.team).toBe("Coventry City");
-    expect(formatPlaces(values.relegation!.zone.positions)).toBe("18th–20th");
-    expect(values.playoff).toBeNull();
+    expect(values.title.map((l) => l.team)).toEqual(["Manchester City", "Arsenal", "Liverpool"]);
+    expect(formatChance(values.title[0]!.chance)).toBe("59%");
+    expect(values.relegation[0]!.team).toBe("Coventry City");
+    expect(values.relegation).toHaveLength(RACE_SIZE);
+    expect(formatPlaces(values.relegation[0]!.zone.positions)).toBe("18th–20th");
   });
 
-  it.each([["bundesliga"], ["ligue_1"]])("%s (six zones): also the play-off place, 16th", (id) => {
-    const values = cardValues(ready(id));
-    expect(formatPlaces(values.relegation!.zone.positions)).toBe("17th–18th");
-    expect(values.playoff).not.toBeNull();
-    expect(formatPlaces(values.playoff!.zone.positions)).toBe("16th");
-    expect(values.playoff!.team).not.toBe(values.relegation!.team);
-  });
+  it.each([["bundesliga"], ["ligue_1"]])(
+    "%s (six zones): relegation means the direct places, 17th–18th",
+    (id) => {
+      const values = cardValues(ready(id));
+      expect(formatPlaces(values.relegation[0]!.zone.positions)).toBe("17th–18th");
+    },
+  );
 
-  it("every card value is the highest chance in the league", () => {
+  it("always three per race, highest chance first, and the first is the league's highest", () => {
     for (const league of LEAGUES) {
       const data = ready(league.id);
       const values = cardValues(data);
-      const max = (zone: string) => Math.max(...data.rows.map((r) => r.zoneChances[zone] ?? 0));
-      expect(values.favourite!.chance).toBe(max("title"));
-      expect(values.relegation!.chance).toBe(max("relegation"));
+      for (const [race, zone] of [
+        [values.title, "title"],
+        [values.relegation, "relegation"],
+      ] as const) {
+        expect(race).toHaveLength(RACE_SIZE);
+        const chances = race.map((l) => l.chance);
+        expect(chances).toEqual([...chances].sort((a, b) => b - a));
+        expect(chances[0]).toBe(Math.max(...data.rows.map((r) => r.zoneChances[zone] ?? 0)));
+      }
     }
   });
 
   it("never shows 0% or 100%", () => {
     for (const league of LEAGUES) {
       const values = cardValues(ready(league.id));
-      for (const leader of [values.favourite, values.relegation, values.playoff]) {
-        if (leader) expect(["0%", "100%"]).not.toContain(formatChance(leader.chance));
+      for (const leader of [...values.title, ...values.relegation]) {
+        expect(["0%", "100%"]).not.toContain(formatChance(leader.chance));
       }
     }
   });
@@ -57,10 +63,11 @@ describe("home page card values (real 29 Sep files)", () => {
   it("ties: higher in the table for a top zone, lower for a bottom zone", () => {
     const row = (team: string, position: number, chance: number) =>
       ({ team, position, zoneChances: { z: chance } }) as unknown as TeamRow;
-    const rows = [row("A", 1, 0.3), row("B", 2, 0.3), row("C", 3, 0.1)];
+    const rows = [row("A", 1, 0.3), row("B", 2, 0.3), row("C", 3, 0.1), row("D", 4, 0)];
     const zone = (end: "top" | "bottom") => ({ id: "z", end }) as Zone;
-    expect(zoneLeader(rows, zone("top"))?.team).toBe("A");
-    expect(zoneLeader(rows, zone("bottom"))?.team).toBe("B");
+    expect(zoneLeaders(rows, zone("top")).map((l) => l.team)).toEqual(["A", "B", "C"]);
+    expect(zoneLeaders(rows, zone("bottom")).map((l) => l.team)).toEqual(["B", "A", "C"]);
+    expect(zoneLeaders(rows, undefined)).toEqual([]);
   });
 });
 

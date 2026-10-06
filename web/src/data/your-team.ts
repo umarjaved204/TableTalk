@@ -82,7 +82,7 @@ export function yourTeamCards(league: ReadyLeague): YourTeamCard[] {
  * markup per team made the home page about 300 KB (22 KB compressed), over
  * the agreed 15 KB budget, so the agreed fallback is used: data, not markup.
  *   n name · th team page link · x context line · lh/lt league page link and text ·
- *   c0..c3: s label, p positions, v chance ·
+ *   c0..c3: s label, p positions, v chance without its "%" (the card adds it at half size) ·
  *   next match: mh/ma teams, mk kick-off (ISO, for <time>), mt kick-off as text,
  *   ph/pd/pa percentages, b* the probability bar's segment positions.
  */
@@ -100,7 +100,7 @@ export function cardFields(
   card.chances.forEach((c, i) => {
     fields[`c${i}s`] = c.label;
     fields[`c${i}p`] = formatPlaces(c.positions);
-    fields[`c${i}v`] = formatChance(c.chance);
+    fields[`c${i}v`] = formatChance(c.chance).slice(0, -1); // every chance ends in "%"
   });
   const next = card.next;
   if (next) {

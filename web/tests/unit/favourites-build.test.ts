@@ -121,9 +121,9 @@ describe("the home page's card data", () => {
       x: "Premier League · 2nd · 12 pts from 5",
       lh: "/premier-league/",
       c0s: "Title",
-      c0v: "34%",
+      c0v: "34",
       c1p: "18th–20th",
-      c1v: "<1%", // never 0%
+      c1v: "<1", // never 0% (the card adds the "%")
       mh: "Arsenal",
       ph: "66%",
       pd: "22%",

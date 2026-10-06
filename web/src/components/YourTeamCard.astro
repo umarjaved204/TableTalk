@@ -29,7 +29,10 @@ const CHANCES = [0, 1, 2, 3]; // title, top four or five, relegation, play-off p
           <span data-fav-field={`c${i}s`} />
           <span class="places" data-fav-field={`c${i}p`} />
         </dt>
-        <dd data-fav-field={`c${i}v`} />
+        <dd>
+          <span data-fav-field={`c${i}v`} />
+          <small>%</small>
+        </dd>
       </div>
     ))}
   </dl>
@@ -159,12 +162,20 @@ const CHANCES = [0, 1, 2, 3]; // title, top four or five, relegation, play-off p
     text-transform: none;
   }
 
+  /* Scoreboard digits: equal width, "%" at half size. */
   dd {
     margin: 0;
     font-family: var(--font-display);
     font-size: var(--step-4);
     font-weight: 700;
+    font-variant-numeric: tabular-nums;
     line-height: 1;
+  }
+
+  dd small {
+    margin-left: 1px;
+    font-size: 0.5em;
+    font-weight: 600;
   }
 
   .next {

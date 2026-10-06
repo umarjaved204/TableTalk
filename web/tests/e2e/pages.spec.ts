@@ -124,17 +124,41 @@ test.describe("phone tabs on the matches page", () => {
 });
 
 test.describe("home page", () => {
-  test("a card per league, with the headline numbers", async ({ page }) => {
+  test("a card per league: title races at a glance, three per race, with bars", async ({ page }) => {
     await openAs(page, "/", LIGHT, 1440);
     const pl = page.locator('[data-league-card="premier_league"]');
-    await expect(pl).toContainText("Title favourite");
-    await expect(pl).toContainText("Manchester City 59%");
-    await expect(pl).toContainText("Most at risk of relegation (18th–20th)");
-    await expect(pl).toContainText("Coventry City 80%");
+    const race = (card: typeof pl, name: string) =>
+      card.locator(".race").filter({ has: page.getByRole("heading", { name, exact: true }) });
+    const title = race(pl, "Title race");
+    // innerText: each name also carries a hidden " (your team)" label.
+    await expect(title.locator("li .fav-name")).toHaveText(["Manchester City", "Arsenal", "Liverpool"], {
+      useInnerText: true,
+    });
+    await expect(title.locator("li .chance")).toHaveText(["59%", "34%", "4%"]);
+    const relegation = race(pl, "Relegation (18th–20th)");
+    await expect(relegation.locator("li")).toHaveCount(3);
+    await expect(relegation.locator("li").first()).toContainText("Coventry City");
+    await expect(relegation.locator("li .chance").first()).toHaveText("80%");
+    // The bar's length is the chance; it is decorative (the number is printed).
+    await expect(title.locator("li").first().locator("svg line")).toHaveAttribute("x2", "58.7");
+    await expect(title.locator("svg").first()).toHaveAttribute("aria-hidden", "true");
     await expect(pl).toContainText("Results up to 20 Sept");
+    // The direct relegation places, in a league with a play-off place too.
     const bl = page.locator('[data-league-card="bundesliga"]');
-    await expect(bl).toContainText("Most at risk of relegation (17th–18th)");
-    await expect(bl).toContainText("Most likely in the play-off place (16th)");
+    await expect(race(bl, "Relegation (17th–18th)").locator("li")).toHaveCount(3);
+  });
+
+  test("the bars grow in only when motion is allowed", async ({ page }) => {
+    const animation = () =>
+      page
+        .locator('[data-league-card="premier_league"] svg.bar line')
+        .first()
+        .evaluate((el) => getComputedStyle(el).animationName);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await openAs(page, "/", LIGHT, 1440);
+    expect(await animation()).toBe("none");
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    expect(await animation()).not.toBe("none");
   });
 
   test("last update, simulations and the track record line, linking to its page", async ({ page }) => {

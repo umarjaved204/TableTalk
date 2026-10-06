@@ -30,12 +30,20 @@ test.describe("a team page with numbers (Premier League, with history)", () => {
     await expect(crumbs.locator("[aria-current]")).toHaveCount(1);
   });
 
-  test("record, Proj. pts with range, and every zone's chance", async ({ page }) => {
+  test("record, Proj. pts with range, and every zone's chance, as scoreboard tiles", async ({ page }) => {
     await expect(page.getByRole("heading", { level: 1, name: "Brentford", exact: true })).toBeVisible();
     const now = page.getByRole("region", { name: "Now and projected" });
-    await expect(now.locator("dd").nth(5)).toHaveText(/^\d+ \(range \d+–\d+\)$/);
-    await expect(now.getByRole("list", { name: "Chances" }).getByRole("listitem")).toHaveCount(5);
-    await expect(now.getByRole("list", { name: "Chances" })).toContainText("Relegation (18th–20th)");
+    const tile = (label: string) =>
+      now.locator(".tile").filter({ has: page.locator("dt", { hasText: label }) });
+    await expect(tile("Position").locator(".v")).toHaveText("4th");
+    await expect(tile("Proj. pts").locator(".s")).toHaveText(/^range \d+–\d+$/);
+    await expect(tile("Points").locator(".s")).toHaveText("won 2, drawn 3, lost 0");
+    // The second list of tiles, labelled by its "Chances" heading.
+    await expect(now.locator('dl[aria-labelledby="chances-heading"] .tile')).toHaveCount(5);
+    await expect(tile("Relegation").locator(".s")).toHaveText("18th–20th");
+    // Scoreboard digits: the "%" at half size, in its own element.
+    await expect(tile("Top four").locator(".v")).toHaveText("22%");
+    await expect(tile("Top four").locator(".v small")).toHaveText("%");
   });
 
   test("finishing positions: a bar per position, 'Most likely' matches the table", async ({ page }) => {
