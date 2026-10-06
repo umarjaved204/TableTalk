@@ -70,17 +70,26 @@ Astro asks to collect anonymous usage data. To opt out on your machine:
 
 ## Everyday commands
 
+**Before every commit, run `npm run verify`.** It runs the type check, lint,
+the unit tests and the build (with the build check), in that order, and stops
+at the first step that fails, with a non-zero exit code. Each step is judged
+by its exit code only, so "it printed no errors" never counts as a pass. It
+takes about a minute. The browser tests (`npm run test:e2e`, about 10
+minutes) are separate.
+
 | Command              | What it does                                                                                                                                                                                                                               |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `npm run data`       | Copy the published files from `origin/data` into `web/.data/` (read-only: `git fetch` + `git cat-file`; never checks out or writes to `data`). Add `-- --offline` to skip the fetch                                                        |
 | `npm run types`      | Regenerate `src/data/contract.gen.ts` from `../contracts/*.schema.json` (after a contract change)                                                                                                                                          |
 | `npm run dev`        | Development server (no CSP in dev mode)                                                                                                                                                                                                    |
+| `npm run verify`     | Before every commit: type check, lint, unit tests, build; stops at the first failure (non-zero exit)                                                                                                                                       |
+| `npm run check`      | Type check only (`astro check`)                                                                                                                                                                                                            |
 | `npm run build`      | Type-check, build `dist/`, then check the build (`scripts/check-build.mjs`)                                                                                                                                                                |
 | `npm run preview`    | Serve `dist/` at http://localhost:4321 (with the CSP, as deployed)                                                                                                                                                                         |
 | `npm test`           | Unit tests                                                                                                                                                                                                                                 |
 | `npm run test:e2e`   | Browser and accessibility tests. Builds its own test site from fixed test data first (see tests/README.md)                                                                                                                                 |
 | `npm run lighthouse` | Lighthouse (mobile) on 6 pages of the built site (a team page among them), gzip-compressed, median of 3 runs; fails over budget (LCP 2.5 s, CLS 0.1, TBT 200 ms). `-- --uncompressed`: worst case, reported only. Reports in `lighthouse/` |
-| `npm run lint`       | ESLint, Stylelint, Prettier check                                                                                                                                                                                                          |
+| `npm run lint`       | ESLint, Stylelint, Prettier check. Prettier accepts each file's own line endings (`endOfLine: "auto"`): this checkout has both CRLF and LF files, and the check must not fail on that alone                                                |
 | `npm run format`     | Prettier, fix formatting                                                                                                                                                                                                                   |
 
 ## How it fits together
