@@ -44,6 +44,7 @@ at the address bar and press Tab.
 | Matches page with a favourite  | "Your team only" checkbox toggles with Space                                                     |
 | League page, team names        | Each name in the table, heatmap, race panels and cards is a link; Enter opens the team page      |
 | Team page                      | Breadcrumb first after the header; "Show the numbers" opens under both charts                    |
+| Home, league cards             | In each card: the league link, then each race's three team links, then the card's two links      |
 
 Pages: `/`, `/premier-league/`, `/premier-league/matches/`, `/bundesliga/`,
 `/premier-league/arsenal/`, `/track-record/`, `/methodology/`, `/about/`,
@@ -68,7 +69,7 @@ Tab (next control).
 | Match card                                 | Card named "Arsenal v Leeds United"; outcomes read as "Arsenal win 66%", "Draw 22%", "Leeds United win 12%" (not "Home"/"Away"); a played match reads "Final score 2–1" and "(what happened)" on the outcome |
 | Times                                      | Read in your time zone, e.g. "12:30"; the note says "Times in your time zone (BST)"                                                                                                                          |
 | Race chart and calibration chart           | The pictures are skipped; the "Show the numbers" table and the calibration table are read instead                                                                                                            |
-| Stale data (only when it happens)          | The "Last updated … ago" warning is read as part of the update line                                                                                                                                          |
+| Stale data (only when it happens)          | The "Updated" line is read with "(2 days ago): these numbers may be out of date" after it                                                                                                                    |
 | Favourite's row in a table (T)             | The row header reads "Arsenal (your team)"; no other row says "your team"; the star itself is silent                                                                                                         |
 | Your team dialog                           | "Your team, button, has popup dialog"; the list announces its league groups ("Premier League, grouping"); Save announces "Saved. Arsenal is your team on this device."                                       |
 | Personal link question                     | Read as a heading "Make Chelsea your team on this device?" with two buttons; after answering, the result is announced                                                                                        |
@@ -76,6 +77,8 @@ Tab (next control).
 | Team page, D (landmarks)                   | "Breadcrumb, navigation"; its last link is announced as current page                                                                                                                                         |
 | Team page, finishing position              | The bar chart is skipped; "Most likely: 2nd (42%)" is read; the table under "Show the numbers" reads position, chance and zone                                                                               |
 | Team names in tables                       | Read as "Arsenal, link" (the favourite's as "Arsenal (your team), link")                                                                                                                                     |
+| Home, a league card                        | "Title race", heading level 3, then a list of 3: "Manchester City, link, 59%" (the bars are silent); the same for "Relegation (18th–20th)"                                                                   |
+| Team page, tiles                           | Each tile read as its label then its number ("Proj. pts 58 range 46–69"); the "Chances" tiles as a list labelled "Chances"                                                                                   |
 
 ## Manual pass 3: real phones (to do)
 
@@ -93,6 +96,7 @@ home-screen app.
 | **In the home-screen app:** open Track record, Methodology, About (footer) and a wrong address | Each one has the TableTalk link back to Home                                            |
 | **In the home-screen app:** pick a team                                                        | It asks again (the app's storage is separate from Safari's); then the team is starred   |
 | Your team dialog, "Bookmark your team's page"                                                  | Opens the favourite's team page                                                         |
+| Reduce Motion on (iPhone: Settings, Accessibility, Motion), then the home page and a team page | The bars are simply there, nothing grows; with it off they grow in once                 |
 
 ## Results
 

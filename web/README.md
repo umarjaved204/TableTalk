@@ -18,21 +18,23 @@ the Python code.
 
 ## Status
 
-Website stage 2, Step 3 (team pages), awaiting review. Step 2 (favourite
-teams) is done. Next: the visual upgrade (Step 4). Built on the first frontend
+Website stage 2, Step 4 (the look), awaiting review. Steps 2 (favourite
+teams) and 3 (team pages) are done. This was the stage's last step. Built on the first frontend
 plan's Steps 1-5. Local preview only; no deployment and no workflows during
 the pipeline trial. Work happens on the `frontend` branch; nothing goes on
 `main` until the trial is reviewed (and contract request R8 is done).
 
-Speed (Lighthouse, median of 3, simulated slow phone, today's data): with
-files gzip-compressed as a real host serves them (`npm run lighthouse`, the
-default; the budgets apply to this), every page is within budget; favourites
-add about 150-300 ms to the largest paint. In the worst case, a host that
-doesn't compress (`npm run lighthouse -- --uncompressed`), the Premier League
-page is 53 ms over the 2.5 s budget. Team pages (6 Oct 2026): largest paint
-about 1.55-1.7 s, layout shift 0.002. Total blocking time depends on how busy
-the computer is: run it with other servers and builds stopped (the same pages
-gave 0 ms and over 300 ms on a busy machine).
+Speed (Lighthouse, median of 3, simulated slow phone, today's data, 6 Oct
+2026 after Step 4, nothing else running): with files gzip-compressed as a
+real host serves them (`npm run lighthouse`, the default; the budgets apply
+to this), every page is within budget: largest paint 1.5-1.8 s (budget 2.5 s),
+layout shift 0.000-0.003 (budget 0.1), blocking time 1-110 ms (budget
+200 ms); performance 97-100, accessibility 100. In the worst case, a host
+that doesn't compress (`npm run lighthouse -- --uncompressed`), the matches
+page is 57 ms over the 2.5 s largest-paint budget (before Step 4, the Premier
+League page was 53 ms over). Blocking time depends on how busy the computer
+is: run it with other servers and builds stopped (the same pages gave 0 ms
+and over 300 ms on a busy machine).
 
 ## The site's address (one setting)
 
@@ -112,16 +114,16 @@ origin/data ──(npm run data)──▶ .data/  ──▶ src/data/  (load, ve
 
 ## Pages
 
-| Page                 | What it shows                                                                                                                                                                     |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`                  | The visitor's team (or a "Pick your team" prompt), a card per league (the favourite's league first), last update, track record line                                               |
-| `/<league>/`         | Table and chances, next 10 matches, finishing positions, how the race has moved                                                                                                   |
-| `/<league>/matches/` | Upcoming (next 4 weeks) and Recent (locked predictions from the last 4 weeks)                                                                                                     |
-| `/track-record/`     | Locked predictions scored: counts, comparisons with base rates and the market, calibration (chart once there are enough matches), the latest 50 scored matches, the honesty rules |
-| `/methodology/`      | How the model works, how to read the numbers, backtests per league (copied from the README, checked by a test), limitations                                                       |
-| `/about/`            | Not betting advice, data sources (listed from the snapshots), privacy, source code                                                                                                |
-| `/<league>/<team>/`  | A team: record, projected points and chances, finishing positions, chances over time, next and recent matches (see Team pages). Last season's teams that left get a stub page     |
-| `/sitemap.xml`       | Every real page (no stubs). Built only when `SITE_URL` is set; `/robots.txt` then points to it                                                                                    |
+| Page                 | What it shows                                                                                                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/`                  | The visitor's team (or a "Pick your team" prompt), "title races at a glance": a card per league with its top three for the title and for relegation (the favourite's league first), last update, track record line |
+| `/<league>/`         | Table and chances, next 10 matches, finishing positions, how the race has moved                                                                                                                                    |
+| `/<league>/matches/` | Upcoming (next 4 weeks) and Recent (locked predictions from the last 4 weeks)                                                                                                                                      |
+| `/track-record/`     | Locked predictions scored: counts, comparisons with base rates and the market, calibration (chart once there are enough matches), the latest 50 scored matches, the honesty rules                                  |
+| `/methodology/`      | How the model works, how to read the numbers, backtests per league (copied from the README, checked by a test), limitations                                                                                        |
+| `/about/`            | Not betting advice, data sources (listed from the snapshots), privacy, source code                                                                                                                                 |
+| `/<league>/<team>/`  | A team: record, projected points and chances, finishing positions, chances over time, next and recent matches (see Team pages). Last season's teams that left get a stub page                                      |
+| `/sitemap.xml`       | Every real page (no stubs). Built only when `SITE_URL` is set; `/robots.txt` then points to it                                                                                                                     |
 
 ## Favourite team
 
@@ -247,6 +249,36 @@ the test data (budget 760).
 only when `SITE_URL` is set (as the QR codes are), and `robots.txt` then has
 the `Sitemap:` line.
 
+## The look (stage 2, Step 4)
+
+The approved Step 1 plan's visual upgrade, with the same themes, tokens, data
+colours and contrast rules:
+
+- **Title races at a glance** (`LeagueCard.astro`, `src/data/home.ts`): each
+  home card shows the three teams most likely to win the title and the three
+  most likely to be relegated (the direct places), each with its chance and a
+  mini bar. Always three, so every card is the same height. The number is
+  always printed; the bar is decorative. Title bars use the table's top-zone
+  blue, relegation bars its bottom-zone red with a dashed fill (a shape cue,
+  not colour alone). The play-off place is on the league pages only.
+- **Scoreboard numbers:** the display face, bold, equal-width digits, "%" at
+  half size. On team pages they sit in tiles with a solid top rule in the text
+  colour ("Now and projected", "Chances"); the Your team card uses the same
+  digits. Text colour only, never a data colour.
+- **Motion, only if allowed:** the home mini bars grow in from the left (0.6 s,
+  staggered by at most 120 ms) and the team page's finishing bars grow up,
+  once, inside `prefers-reduced-motion: no-preference`. A transform only, so
+  nothing else moves; every number is in the HTML from the first frame.
+- **Lighter league page:** the race panels reuse one drawing of the race's
+  faint lines (`<use>`) instead of drawing them in every panel, and runs of
+  blank heatmap cells are one cell each (`heatCells` in `src/format/heat.ts`).
+  About 120 fewer elements; the budgets were lowered to match.
+- **"Show the numbers" tables, one row per round of results** (`tableRows` in
+  `src/data/race.ts`): updates between matchdays only add simulation noise,
+  so a season has about 38 rows instead of about 250. The charts still plot
+  every day.
+- Team colour chips: not built (decided to wait for contract request R14).
+
 ## Browser support
 
 **Supported:** the current and previous major versions of Chrome, Edge,
@@ -304,6 +336,8 @@ the same race as faint lines behind. Every chart has a "Show the numbers" table.
   whose chance reached 20%; projected points, the teams on those two charts.
   At most 6 per chance chart. Constants in `src/data/race.ts`.
 - **One point per day:** the last run of each UTC day, current season only.
+  The "Show the numbers" table has one row per round of results instead (the
+  last update with each "results up to" date).
 - **Too early:** the charts appear once the runs cover results up to **3
   different dates**. Runs with the same results differ only by simulation
   noise. (On 1 Oct 2026 every run so far has results up to 20 Sep.)
@@ -329,16 +363,33 @@ With team pages (6 Oct 2026, same data, median of 3): `npm run build` about
 2.0 s). The 96 team pages add about 0.3 s, because each league's files are
 read once for all its team pages.
 
+After Step 4 (6 Oct 2026, same data, median of 3, nothing else running):
+`npm run build` 16.9 s, `astro build` 4.4 s. The build itself is unchanged
+(4.3 s before team pages); the total is lower because `astro check` is
+faster on an idle machine (12-14 s instead of 18), not because of the site.
+
 ## Nothing moves while the page loads
 
 Measured with Lighthouse on a simulated slow phone (layout shift was 0.12 to
 0.18 on two pages before, against a budget of 0.1). Two causes, two fixes:
 
-- **Fonts swapping in.** While a web font downloads the browser shows a
-  fallback, then swaps. The fallback is now Arial scaled to the web font's
-  measured width and line height (`size-adjust` and the `-override`
-  properties in `src/styles/fonts.css`, measured by
-  `scripts/font-fallback-metrics.mjs`), so the swap barely moves anything.
+- **Fonts arriving late.** The fonts use `font-display: optional`: the browser
+  waits about 100 ms for a web font, and if it hasn't arrived, the fallback is
+  used for that page view and the font from the next page (cached by then). A
+  font never swaps in after the page has appeared. (With `swap`, a late font
+  moved the header and table columns sideways and, on a phone, re-wrapped the
+  track record page: a shift of 0.17 with the fonts 1.5 s late.) The three
+  fonts used at the top of every page are preloaded, so they usually arrive
+  in time. The fallback is Arial scaled to the web fonts' measured width and
+  line height (`size-adjust` and the `-override` properties in
+  `src/styles/fonts.css`, measured by `scripts/font-fallback-metrics.mjs`), so
+  a page shown in it looks almost the same.
+- **The out-of-date warning.** Numbers older than 30 hours are flagged by the
+  early script before the first paint (`staleCss` in
+  `src/scripts/favourite-core.js`): one CSS rule styles that "Updated" line as
+  a warning and adds "(2 days ago): these numbers may be out of date". It was
+  text rewritten after load, which pushed the page down on phones.
+  `tests/e2e/layout-shift.spec.ts` checks both with every font 1.5 s late.
 - **Controls appearing late.** The phone tabs and the table's Short/Full
   switch need JavaScript, so they were hidden until the scripts ran, and then
   pushed the page down. The theme script (which already runs before the first

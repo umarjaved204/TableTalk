@@ -157,6 +157,17 @@ once `SITE_URL` exists.
 | Elements per team page (budget)                                                 |                     | `dom-budget.spec.ts`                |
 | Accessibility, keyboard, phones: one team page per data state (`TEAM_PAGES`)    |                     | `a11y-matrix`, `keyboard`, `mobile` |
 
+## The look (Step 4): where it is tested
+
+| What                                                                           | Unit test                             | Browser test                                  |
+| ------------------------------------------------------------------------------ | ------------------------------------- | --------------------------------------------- |
+| Home cards: top three per race, ties, never 0%/100%                            | `home.test.ts`                        | `pages.spec.ts` (names, numbers, bar lengths) |
+| Bars grow only when motion is allowed                                          |                                       | `pages.spec.ts`                               |
+| Scoreboard tiles on team pages ("%" at half size)                              |                                       | `team-pages.spec.ts`                          |
+| Numbers tables: one row per round of results                                   | `race.test.ts`                        | `pages.spec.ts`, `team-pages.spec.ts`         |
+| Heatmap: runs of blank cells merged                                            | `heat.test.ts`                        | `a11y-matrix`, `dom-budget.spec.ts`           |
+| No layout shift with every font 1.5 s late; out-of-date warning at first paint | `favourite-core.test.ts` (`staleCss`) | `layout-shift.spec.ts`                        |
+
 ## Browser tests: accessibility coverage
 
 The full record, with the manual keyboard and NVDA checklists still to do, is
