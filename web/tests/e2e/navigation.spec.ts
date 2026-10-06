@@ -2,7 +2,8 @@
 // the site opens as an app (manifest: display standalone), and on iPhones
 // that app has no back button and no address bar. So, walking the built test
 // site from the home page and following only links in the pages:
-//   - every page is reached (the 404 page only by a wrong address);
+//   - every page is reached (the 404 page only by a wrong address, and stub
+//     pages for last season's teams only by old bookmarks and links);
 //   - every page links to the home page (the brand in the header);
 //   - every team page links up to its league page (the breadcrumb);
 //   - no link inside the site is broken.
@@ -50,10 +51,15 @@ test("every page can be reached, and left, with the site's own links", async ({ 
   }
 
   expect(broken, "links inside the site that lead nowhere").toEqual([]);
-  expect(
-    built.filter((p) => !seen.has(p)),
-    "pages no link leads to",
-  ).toEqual([]);
+  // Stub pages (last season's teams, noindex) are for old bookmarks and links,
+  // so they needn't be linked to; like every page, they must link out.
+  const unlinked: string[] = [];
+  for (const path of built.filter((p) => !seen.has(p))) {
+    const html = await (await request.get(path)).text();
+    seen.set(path, pageLinks(html));
+    if (!html.includes('<meta name="robots" content="noindex">')) unlinked.push(path);
+  }
+  expect(unlinked, "pages no link leads to").toEqual([]);
   expect(
     built.filter((p) => !(seen.get(p) ?? []).includes("/")),
     "pages without a link to the home page",

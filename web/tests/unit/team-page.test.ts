@@ -8,15 +8,18 @@ import type { LeagueData, ReadyLeague } from "../../src/data/models.ts";
 import { MIN_RESULT_DATES, loadLeagueHistory, type RunPoint } from "../../src/data/race.ts";
 import {
   TEAM_MATCHES,
+  buildStubs,
   buildTeamPages,
   mostLikely,
   rosterFor,
+  sitemapPaths,
   teamDescription,
   teamHrefs,
   teamTrend,
   teamView,
   zoneBands,
 } from "../../src/data/team-page.ts";
+import { robotsTxt, sitemapXml } from "../../src/data/site-files.ts";
 import { TeamSlugError } from "../../src/data/teams.ts";
 import { cardFields, yourTeamCards } from "../../src/data/your-team.ts";
 import { writeIllustratedHistory } from "../fixtures/illustrated.ts";
@@ -24,10 +27,10 @@ import { REAL, copyOfReal, useDataDir } from "./helpers.ts";
 
 const info = (id: string) => LEAGUES.find((l) => l.id === id) as LeagueInfo;
 const ready = (id: string) => loadLeague(info(id)) as ReadyLeague;
-const run = (teams: string[]): RunPoint => ({
+const run = (teams: string[], season = "2026-27"): RunPoint => ({
   generatedAt: "2026-09-29T04:40:00Z",
   dataThrough: "2026-09-28",
-  season: "2026-27",
+  season,
   teams: new Map(teams.map((t) => [t, { expectedPoints: 50, zones: {} }])),
 });
 
@@ -190,5 +193,94 @@ describe("chances over time (the race charts' rules)", () => {
     // A run from another season is left out.
     const other = { ...history[0]!, season: "2025-26", generatedAt: "2026-05-01T04:40:00Z" };
     expect(teamTrend(pl, "Arsenal", [other, ...history]).runDates).toEqual(trend.runDates);
+  });
+});
+
+describe("stub pages for last season's teams", () => {
+  const league = (id: string, teams: string[], season: string, history: RunPoint[]) => ({
+    league: info(id),
+    data: {
+      state: "ready",
+      league: info(id),
+      season,
+      rows: teams.map((team) => ({ team })),
+    } as unknown as LeagueData,
+    history,
+  });
+
+  it("last season's teams that left, from the last run of the newest earlier season", () => {
+    const leagues = [
+      league("premier_league", ["Arsenal", "Burnley"], "2027-28", [
+        run(["Arsenal", "Old Team"], "2025-26"),
+        run(["Arsenal", "Hull City"], "2026-27"),
+        run(["Arsenal", "Hull City", "Coventry City"], "2026-27"),
+        run(["Arsenal", "Burnley"], "2027-28"),
+      ]),
+    ];
+    const stubs = buildStubs(leagues, buildTeamPages(leagues));
+    expect(stubs.map((s) => [s.slug, s.league.id, s.lastSeason])).toEqual([
+      ["coventry-city", "premier_league", "2026-27"],
+      ["hull-city", "premier_league", "2026-27"],
+    ]);
+  });
+
+  it("none in a team's first covered season, or when the history has one season only", () => {
+    const leagues = [
+      league("premier_league", ["Arsenal"], "2026-27", [run(["Arsenal", "Hull City"], "2026-27")]),
+    ];
+    expect(buildStubs(leagues, buildTeamPages(leagues))).toEqual([]);
+  });
+
+  it("no stub for a team still covered, even in another league", () => {
+    const leagues = [
+      league("premier_league", ["Arsenal"], "2027-28", [run(["Arsenal", "Wanderers"], "2026-27")]),
+      league("bundesliga", ["Wanderers"], "2027-28", []),
+    ];
+    expect(buildStubs(leagues, buildTeamPages(leagues))).toEqual([]);
+  });
+
+  it("a league without numbers uses its newest history run's season as this season", () => {
+    const missing: LeagueData = {
+      state: "unavailable",
+      league: info("la_liga"),
+      reason: "missing",
+      error: null,
+    };
+    const leagues = [
+      {
+        league: info("la_liga"),
+        data: missing,
+        history: [run(["Málaga", "Elche"], "2026-27"), run(["Málaga", "Leganés"], "2027-28")],
+      },
+    ];
+    expect(buildStubs(leagues, buildTeamPages(leagues)).map((s) => s.slug)).toEqual(["elche"]);
+  });
+});
+
+describe("sitemap.xml and robots.txt", () => {
+  it("lists every real page and never a stub, the 404 page or a QR image", () => {
+    const pl = { league: info("premier_league"), data: ready("premier_league"), history: [] };
+    const paths = sitemapPaths(buildTeamPages([pl]));
+    expect(paths.slice(0, 3)).toEqual(["/", "/premier-league/", "/premier-league/matches/"]);
+    expect(paths).toContain("/premier-league/brighton-and-hove-albion/");
+    expect(paths).toContain("/la-liga/matches/");
+    expect(paths.slice(-3)).toEqual(["/track-record/", "/methodology/", "/about/"]);
+    expect(paths.filter((p) => p.includes("404") || p.includes("/qr/"))).toEqual([]);
+    expect(new Set(paths).size).toBe(paths.length);
+  });
+
+  it("writes full addresses on the site's own domain", () => {
+    const xml = sitemapXml(new URL("https://example.org"), ["/", "/premier-league/arsenal/"]);
+    expect(xml).toBe(
+      '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
+        "<url><loc>https://example.org/</loc></url><url><loc>https://example.org/premier-league/arsenal/</loc></url></urlset>\n",
+    );
+  });
+
+  it("robots.txt allows everything, and points to the sitemap once the address is known", () => {
+    expect(robotsTxt(undefined)).toBe("User-agent: *\nAllow: /\n");
+    expect(robotsTxt(new URL("https://example.org"))).toBe(
+      "User-agent: *\nAllow: /\n\nSitemap: https://example.org/sitemap.xml\n",
+    );
   });
 });

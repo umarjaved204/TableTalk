@@ -4,8 +4,11 @@
 //   - a favourite relegated last season: said plainly, with a way to pick another;
 //   - a favourite promoted this season: works like any other team;
 //   - personal links to relegated teams change nothing; to promoted teams, they work;
-//   - the picker lists this season's teams only.
-// Team pages (and stub pages for last season's teams) are added in Step 3.
+//   - the picker lists this season's teams only;
+//   - last season's teams that left keep a stub page ("not covered this
+//     season", noindex) that can be left with the site's own links; promoted
+//     teams get a real team page.
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { stars } from "./helpers.ts";
 
@@ -75,4 +78,52 @@ test("the picker lists this season's teams only", async ({ page }) => {
     expect(options).toContain(team);
   for (const team of ["Coventry City", "Ipswich Town", "Hull City", "Hamburger SV"])
     expect(options).not.toContain(team);
+});
+
+/** Last season's teams that left: one stub page each, under last season's league. */
+const STUBS = [
+  ["/premier-league/coventry-city/", "Coventry City", "the Premier League", "Premier League"],
+  ["/premier-league/hull-city/", "Hull City", "the Premier League", "Premier League"],
+  ["/premier-league/ipswich-town/", "Ipswich Town", "the Premier League", "Premier League"],
+  ["/bundesliga/hamburger-sv/", "Hamburger SV", "the Bundesliga", "Bundesliga"],
+] as const;
+
+for (const [path, name, inSentence, league] of STUBS) {
+  test(`stub page for ${name}: not covered this season, noindex, links back into the site`, async ({
+    page,
+  }) => {
+    const response = await page.goto(path, { waitUntil: "networkidle" });
+    expect(response?.status()).toBe(200);
+    await expect(page).toHaveTitle(`${name}: not covered this season · TableTalk`);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex");
+    await expect(page.getByRole("heading", { level: 1, name, exact: true })).toBeVisible();
+    await expect(page.getByText(`${name} isn't in the leagues we cover this season`)).toBeVisible();
+    await expect(page.getByText(`It was in ${inSentence} in 2026-27.`)).toBeVisible();
+    // No numbers: this season has none for the team.
+    await expect(page.locator("rect.bar")).toHaveCount(0);
+    // Not in the main test site, so the accessibility matrix doesn't see it.
+    const axe = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+      .analyze();
+    expect(axe.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+    // The way out without a back button: breadcrumb, header brand, links.
+    const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
+    await expect(crumbs.getByRole("link")).toHaveText(["Home", league, name]);
+    await expect(crumbs.getByRole("link", { name })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("link", { name: "TableTalk" })).toHaveAttribute("href", "/");
+    await page.getByRole("link", { name: `${league} table and chances` }).click();
+    await expect(page.getByRole("heading", { level: 1, name: new RegExp(`^${league}`) })).toBeVisible();
+  });
+}
+
+test("promoted teams get real team pages; teams still covered get no stub", async ({ page }) => {
+  await page.goto("/premier-league/burnley/", { waitUntil: "networkidle" });
+  await expect(page).toHaveTitle("Burnley 2027-28 predictions · TableTalk");
+  await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
+  await page.goto("/premier-league/arsenal/", { waitUntil: "networkidle" });
+  await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
+  await expect(page.getByText("isn't in the leagues we cover")).toHaveCount(0);
+  // A team in neither season has no page.
+  const response = await page.goto("/premier-league/not-a-team/");
+  expect(response?.status()).toBe(404);
 });

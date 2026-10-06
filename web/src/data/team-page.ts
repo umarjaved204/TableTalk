@@ -79,15 +79,65 @@ export function buildTeamPages(
   return pages;
 }
 
+// ---------------------------------------------------------------------------
+// Stub pages: last season's teams that aren't covered this season.
+//
+// A visitor may have bookmarked a relegated team's page, added it to the home
+// screen, or followed an old link. Instead of a 404, the address keeps a
+// short page that says the team isn't covered this season, with links back
+// into the site. Stubs are noindex and left out of the sitemap.
+//
+// Until contract request R15 publishes the list, it is worked out from the
+// history folders: per league, the teams in the last run of the newest season
+// before the current one, minus every team that has a real page this season.
+// ---------------------------------------------------------------------------
+
+export interface StubEntry extends TeamPageEntry {
+  /** The season the team was last covered in (as the data writes it, "2026-27"). */
+  lastSeason: string;
+}
+
+export function buildStubs(
+  leagues: readonly { league: LeagueInfo; data: LeagueData; history: readonly RunPoint[] }[],
+  pages: readonly TeamPageEntry[],
+): StubEntry[] {
+  const covered = new Set(pages.map((p) => p.slug));
+  const bySlug = new Map<string, TeamInfo>();
+  const stubs: StubEntry[] = [];
+  for (const { league, data, history } of leagues) {
+    const current = data.state === "ready" ? data.season : history.at(-1)?.season;
+    if (current === undefined) continue;
+    // History is oldest first, and season names sort in time order ("2026-27").
+    const last = history.filter((p) => p.season < current).at(-1);
+    if (!last) continue;
+    for (const name of [...last.teams.keys()].sort((a, b) => a.localeCompare(b, "en-GB"))) {
+      const slug = teamSlug(name);
+      if (covered.has(slug)) continue; // still covered (in this or another league)
+      checkSlug(slug, `${league.id}: last season's team "${name}"`, bySlug.get(slug));
+      bySlug.set(slug, { slug, name, leagueId: league.id, leagueSlug: league.slug, leagueName: league.name });
+      stubs.push({ slug, name, league, lastSeason: last.season });
+    }
+  }
+  return stubs;
+}
+
 let pagesCache: TeamPageEntry[] | null = null;
+let stubsCache: StubEntry[] | null = null;
 let hrefCache: Map<string, string> | null = null;
+
+const allLeagues = () =>
+  LEAGUES.map((league) => ({ league, data: cachedLeague(league), history: cachedHistory(league.id) }));
 
 /** Every team page in this build (worked out once). */
 export function teamPages(): TeamPageEntry[] {
-  pagesCache ??= buildTeamPages(
-    LEAGUES.map((league) => ({ league, data: cachedLeague(league), history: cachedHistory(league.id) })),
-  );
+  pagesCache ??= buildTeamPages(allLeagues());
   return pagesCache;
+}
+
+/** Every stub page in this build (worked out once). */
+export function stubPages(): StubEntry[] {
+  stubsCache ??= buildStubs(allLeagues(), teamPages());
+  return stubsCache;
 }
 
 /** The address of a team's page, by name, from a list of pages. */
@@ -95,11 +145,24 @@ export function teamHrefs(pages: readonly TeamPageEntry[]): Map<string, string> 
   return new Map(pages.map((p) => [p.name, `/${p.league.slug}/${p.slug}/`]));
 }
 
-/** Where a team name links to: its page, or undefined if it has none in this
- *  build (a name is only a link when the page exists). */
+/** Where a team name links to: its page (or its stub, for last season's
+ *  team), or undefined if it has neither (a name is only a link when the
+ *  page exists). */
 export function teamHref(name: string): string | undefined {
-  hrefCache ??= teamHrefs(teamPages());
+  hrefCache ??= teamHrefs([...stubPages(), ...teamPages()]);
   return hrefCache.get(name);
+}
+
+/** The sitemap's pages: every real page, never a stub, the 404 page or a QR image. */
+export function sitemapPaths(pages: readonly TeamPageEntry[] = teamPages()): string[] {
+  return [
+    "/",
+    ...LEAGUES.flatMap((league) => [`/${league.slug}/`, `/${league.slug}/matches/`]),
+    ...pages.map((p) => `/${p.league.slug}/${p.slug}/`),
+    "/track-record/",
+    "/methodology/",
+    "/about/",
+  ];
 }
 
 // ---------------------------------------------------------------------------

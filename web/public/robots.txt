@@ -1,3 +1,0 @@
-# Every page may be indexed. (A sitemap line is added at deployment, when the site's address is known.)
-User-agent: *
-Allow: /
