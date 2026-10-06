@@ -109,8 +109,11 @@
 }
 
 /* A team name that links to its page: the text's own colour, with a light
-   underline, so a table or card of names stays calm but the links show. */
+   underline, so a table or card of names stays calm but the links show. The
+   padding makes the tap area at least 24px tall (WCAG 2.5.8) where the line
+   is tighter (match cards); on an inline link it moves nothing. */
 .fav-name {
+  padding-block: 4px;
   color: inherit;
   text-decoration: underline;
   text-decoration-color: var(--border-strong);

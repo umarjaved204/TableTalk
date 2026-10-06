@@ -5,8 +5,8 @@
 //
 // Serves dist/ locally, gzip-compressed as a real host serves it, runs
 // Lighthouse's mobile profile (a mid-range phone on a slow 4G connection,
-// simulated) on five representative pages, prints the scores, and fails if a
-// budget is missed:
+// simulated) on six representative pages (a team page among them), prints
+// the scores, and fails if a budget is missed:
 //   LCP (largest contentful paint)  <= 2.5 s
 //   CLS (cumulative layout shift)   <= 0.1
 //   TBT (total blocking time)       <= 200 ms
@@ -37,7 +37,14 @@ import { serve } from "../tests/e2e/serve.mjs";
 
 const PORT = 4330;
 const RUNS = 3;
-const PAGES = ["/", "/premier-league/", "/premier-league/matches/", "/track-record/", "/methodology/"];
+const PAGES = [
+  "/",
+  "/premier-league/",
+  "/premier-league/matches/",
+  "/premier-league/arsenal/",
+  "/track-record/",
+  "/methodology/",
+];
 const BUDGETS = {
   "largest-contentful-paint": { max: 2500, label: "LCP", unit: "ms" },
   "cumulative-layout-shift": { max: 0.1, label: "CLS", unit: "" },

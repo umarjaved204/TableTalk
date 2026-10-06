@@ -18,8 +18,8 @@ the Python code.
 
 ## Status
 
-Website stage 2, Step 2 (favourite teams), awaiting review. Next: team pages
-(Step 3), then the visual upgrade (Step 4). Built on the first frontend
+Website stage 2, Step 3 (team pages), awaiting review. Step 2 (favourite
+teams) is done. Next: the visual upgrade (Step 4). Built on the first frontend
 plan's Steps 1-5. Local preview only; no deployment and no workflows during
 the pipeline trial. Work happens on the `frontend` branch; nothing goes on
 `main` until the trial is reviewed (and contract request R8 is done).
@@ -29,7 +29,10 @@ files gzip-compressed as a real host serves them (`npm run lighthouse`, the
 default; the budgets apply to this), every page is within budget; favourites
 add about 150-300 ms to the largest paint. In the worst case, a host that
 doesn't compress (`npm run lighthouse -- --uncompressed`), the Premier League
-page is 53 ms over the 2.5 s budget.
+page is 53 ms over the 2.5 s budget. Team pages (6 Oct 2026): largest paint
+about 1.55-1.7 s, layout shift 0.002. Total blocking time depends on how busy
+the computer is: run it with other servers and builds stopped (the same pages
+gave 0 ms and over 300 ms on a busy machine).
 
 ## The site's address (one setting)
 
@@ -65,18 +68,18 @@ Astro asks to collect anonymous usage data. To opt out on your machine:
 
 ## Everyday commands
 
-| Command              | What it does                                                                                                                                                                                                      |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run data`       | Copy the published files from `origin/data` into `web/.data/` (read-only: `git fetch` + `git cat-file`; never checks out or writes to `data`). Add `-- --offline` to skip the fetch                               |
-| `npm run types`      | Regenerate `src/data/contract.gen.ts` from `../contracts/*.schema.json` (after a contract change)                                                                                                                 |
-| `npm run dev`        | Development server (no CSP in dev mode)                                                                                                                                                                           |
-| `npm run build`      | Type-check, build `dist/`, then check the build (`scripts/check-build.mjs`)                                                                                                                                       |
-| `npm run preview`    | Serve `dist/` at http://localhost:4321 (with the CSP, as deployed)                                                                                                                                                |
-| `npm test`           | Unit tests                                                                                                                                                                                                        |
-| `npm run test:e2e`   | Browser and accessibility tests. Builds its own test site from fixed test data first (see tests/README.md)                                                                                                        |
-| `npm run lighthouse` | Lighthouse (mobile) on 5 pages of the built site, gzip-compressed, median of 3 runs; fails over budget (LCP 2.5 s, CLS 0.1, TBT 200 ms). `-- --uncompressed`: worst case, reported only. Reports in `lighthouse/` |
-| `npm run lint`       | ESLint, Stylelint, Prettier check                                                                                                                                                                                 |
-| `npm run format`     | Prettier, fix formatting                                                                                                                                                                                          |
+| Command              | What it does                                                                                                                                                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run data`       | Copy the published files from `origin/data` into `web/.data/` (read-only: `git fetch` + `git cat-file`; never checks out or writes to `data`). Add `-- --offline` to skip the fetch                                                        |
+| `npm run types`      | Regenerate `src/data/contract.gen.ts` from `../contracts/*.schema.json` (after a contract change)                                                                                                                                          |
+| `npm run dev`        | Development server (no CSP in dev mode)                                                                                                                                                                                                    |
+| `npm run build`      | Type-check, build `dist/`, then check the build (`scripts/check-build.mjs`)                                                                                                                                                                |
+| `npm run preview`    | Serve `dist/` at http://localhost:4321 (with the CSP, as deployed)                                                                                                                                                                         |
+| `npm test`           | Unit tests                                                                                                                                                                                                                                 |
+| `npm run test:e2e`   | Browser and accessibility tests. Builds its own test site from fixed test data first (see tests/README.md)                                                                                                                                 |
+| `npm run lighthouse` | Lighthouse (mobile) on 6 pages of the built site (a team page among them), gzip-compressed, median of 3 runs; fails over budget (LCP 2.5 s, CLS 0.1, TBT 200 ms). `-- --uncompressed`: worst case, reported only. Reports in `lighthouse/` |
+| `npm run lint`       | ESLint, Stylelint, Prettier check                                                                                                                                                                                                          |
+| `npm run format`     | Prettier, fix formatting                                                                                                                                                                                                                   |
 
 ## How it fits together
 
@@ -117,6 +120,8 @@ origin/data ──(npm run data)──▶ .data/  ──▶ src/data/  (load, ve
 | `/track-record/`     | Locked predictions scored: counts, comparisons with base rates and the market, calibration (chart once there are enough matches), the latest 50 scored matches, the honesty rules |
 | `/methodology/`      | How the model works, how to read the numbers, backtests per league (copied from the README, checked by a test), limitations                                                       |
 | `/about/`            | Not betting advice, data sources (listed from the snapshots), privacy, source code                                                                                                |
+| `/<league>/<team>/`  | A team: record, projected points and chances, finishing positions, chances over time, next and recent matches (see Team pages). Last season's teams that left get a stub page     |
+| `/sitemap.xml`       | Every real page (no stubs). Built only when `SITE_URL` is set; `/robots.txt` then points to it                                                                                    |
 
 ## Favourite team
 
@@ -131,6 +136,8 @@ team is built for every team at build time:
 - Elements that already exist for every team (table rows, heatmap rows, match
   cards, race panels) carry `data-team="<slug>"` (match cards
   `data-teams="<home> <away>"`) and a hidden star and " (your team)" label.
+  Where the name links to the team's page, the star is the link's `::before`
+  rather than a `<span>` (`FavName.astro`), so the link costs no element.
 - Blocks that exist only for the favourite (the home page's "Your team" card,
   the race chart's extra panel for a team outside the race) are pre-built
   inside `<template>` elements, which the browser parses but doesn't show or
@@ -179,6 +186,66 @@ view only, and the dialog says so).
 on iPhone and iPad an app added to the home screen has its own storage,
 separate from Safari, and is exempt from Safari's 7-day storage deletion. It
 starts empty, so the prompt says to pick the team again there.
+
+## Team pages
+
+`/<league>/<team-slug>/`, one per team (96 today), built by
+`src/pages/[league]/[team].astro` from `src/data/team-page.ts`:
+
+- **Now and projected:** position, points, played, won-drawn-lost, goals,
+  Proj. pts with its 80% range, and every zone's chance in plain words
+  ("Top four (1st–4th) 95%").
+- **Finishing position:** a bar per position over bands shading the table's
+  zones (the innermost zone, as the table's row markers do), "Most likely:
+  2nd (42%)", and a "Show the numbers" table. SVG drawn at build time, heights
+  as attributes (the CSP allows no `style=""`).
+- **Chances over time:** the race charts' rules (one point per day this
+  season; "too early" until the updates cover 3 different result dates). One
+  panel per Your-team-card zone on a shared scale, plus projected points.
+- **Next and recent matches:** up to 5 each, as match cards.
+- **Breadcrumb** (Home › League › Team): a navigation landmark, the current
+  page marked `aria-current="page"`.
+- Title, description and Open Graph per page ("Arsenal in the Premier League
+  2026-27: 2nd with 12 points from 5 matches, projected 79 points. Chances:
+  …").
+
+**Every data state.** When a league has no numbers in a build (unavailable,
+or a newer format), its team pages still exist, so bookmarks and home-screen
+links keep working: the team list comes from the newest readable history run,
+and the page shows the same notice as the league page. That league page then
+lists its teams as links.
+
+**Links.** Team names link to their pages from the league table, the heatmap,
+the race panels, every match card and the Your team card. A name is a link
+only when the page exists (`teamHref()`). Linking every name added no
+element to the league page (see the star above): its DOM budget is unchanged.
+The Your team dialog links "Bookmark your team's page".
+
+**Stub pages for last season's teams.** A team that left the covered leagues
+keeps its address: a short page says it isn't covered this season ("It was in
+the Premier League in 2026-27"), with the breadcrumb and links back. Stubs are
+`noindex` and not in the sitemap. Until contract request R15, the list is
+worked out from the history folders: per league, the teams in the last run of
+the newest earlier season that have no page this season. Today there are none
+(history has 2026-27 runs only); the rollover test has four.
+
+**The home-screen app.** The manifest uses `display: standalone`, so on an
+iPhone the app has no back button and no address bar. Every page can be left
+with the site's own links (the header's TableTalk link on every page, the
+breadcrumb on team pages, the league links), and every page can be reached
+from the home page. `tests/e2e/navigation.spec.ts` walks the built site from
+`/` following only links to check this; the real-phone pass in
+`docs/accessibility-review.md` checks it by hand.
+
+**Cost.** All the team pages of a league read the same files, so each
+league's data, history and the track record are read once per build, not once
+per page (cached in `team-page.ts`). Team pages are 208 to 710 elements on
+the test data (budget 760).
+
+**sitemap.xml and robots.txt** are built by `src/pages/[sitemap].xml.ts` and
+`src/pages/robots.txt.ts`. The sitemap needs full addresses, so it is built
+only when `SITE_URL` is set (as the QR codes are), and `robots.txt` then has
+the `Sitemap:` line.
 
 ## Browser support
 
@@ -255,8 +322,12 @@ make this one small file per league.
 
 Baseline before team pages (6 Oct 2026, commit 069ba57, today's data, median
 of 3): `npm run build` about 23.5 s in all: `astro check` 18.5 s, `astro
-build` 4.3 s (15 pages generated in 1.8 s), the build check 0.1 s. Step 3
-compares the team pages' build time against this.
+build` 4.3 s (15 pages generated in 1.8 s), the build check 0.1 s.
+
+With team pages (6 Oct 2026, same data, median of 3): `npm run build` about
+22.3 s, the same within noise; `astro build` 4.6 s (111 pages generated in
+2.0 s). The 96 team pages add about 0.3 s, because each league's files are
+read once for all its team pages.
 
 ## Nothing moves while the page loads
 

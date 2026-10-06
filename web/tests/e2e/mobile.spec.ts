@@ -12,6 +12,7 @@ const PAGES = [
   "/premier-league/",
   "/bundesliga/",
   "/premier-league/matches/",
+  "/premier-league/brentford/",
   "/track-record/",
   "/methodology/",
   "/",

@@ -8,8 +8,8 @@ level AA.
 | Check             | What it covers                                                                                                                                                                                                                                                                                                                                                                          | Where                           |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
 | **axe matrix A**  | 3 representative pages (a league page, a matches page, the track record) × all 7 colour themes × 5 widths (360, 390, 768, 1024, 1440 px) = 105 runs. The 8th choice, System, is not a theme of its own: it shows Matchday, Floodlights or High Contrast, all covered.                                                                                                                   | `tests/e2e/a11y-matrix.spec.ts` |
-| **axe matrix B**  | Every other page (12) × Matchday and Floodlights × 5 widths = 120 runs                                                                                                                                                                                                                                                                                                                  | same                            |
-| **Keyboard walk** | Every page (15) at 1440 and 390 px: Tab from the top until focus comes back round. The skip link is first and moves focus to the content; every stop is visible, on screen and has a focus ring; every control is reached; no tabindex above 0; no keyboard trap. The Appearance dialog on every page: opens with Enter, focus moves in, Escape closes it, focus returns to the button. | `tests/e2e/keyboard.spec.ts`    |
+| **axe matrix B**  | Every other page (16, with one team page per data state) × Matchday and Floodlights × 5 widths = 160 runs                                                                                                                                                                                                                                                                               | same                            |
+| **Keyboard walk** | Every page (19) at 1440 and 390 px: Tab from the top until focus comes back round. The skip link is first and moves focus to the content; every stop is visible, on screen and has a focus ring; every control is reached; no tabindex above 0; no keyboard trap. The Appearance dialog on every page: opens with Enter, focus moves in, Escape closes it, focus returns to the button. | `tests/e2e/keyboard.spec.ts`    |
 | **Phones**        | 7 phone profiles (WebKit and Chromium): no sideways scroll, tap targets ≥ 24 px (main controls 44 px), no text under 12 px, 200% text, wider text spacing                                                                                                                                                                                                                               | `tests/e2e/mobile.spec.ts`      |
 | **No JavaScript** | Every section and number still shown; no controls that can't work                                                                                                                                                                                                                                                                                                                       | `tests/e2e/no-js.spec.ts`       |
 | **Contrast**      | Every theme's token pairs, recomputed from the CSS (text 4.5:1, controls and data marks 3:1)                                                                                                                                                                                                                                                                                            | `tests/unit/themes.test.ts`     |
@@ -42,9 +42,12 @@ at the address bar and press Tab.
 | Your team → Enter              | Dialog opens on the current team; arrowing the list never saves; Save does; Escape returns focus |
 | `/?team=chelsea`               | The question at the top of the page is reached first after the skip link; both buttons work      |
 | Matches page with a favourite  | "Your team only" checkbox toggles with Space                                                     |
+| League page, team names        | Each name in the table, heatmap, race panels and cards is a link; Enter opens the team page      |
+| Team page                      | Breadcrumb first after the header; "Show the numbers" opens under both charts                    |
 
 Pages: `/`, `/premier-league/`, `/premier-league/matches/`, `/bundesliga/`,
-`/track-record/`, `/methodology/`, `/about/`, `/404/`.
+`/premier-league/arsenal/`, `/track-record/`, `/methodology/`, `/about/`,
+`/404/`.
 
 ## Manual pass 2: NVDA screen reader (to do)
 
@@ -70,6 +73,26 @@ Tab (next control).
 | Your team dialog                           | "Your team, button, has popup dialog"; the list announces its league groups ("Premier League, grouping"); Save announces "Saved. Arsenal is your team on this device."                                       |
 | Personal link question                     | Read as a heading "Make Chelsea your team on this device?" with two buttons; after answering, the result is announced                                                                                        |
 | Matches, Your team only                    | Ticking it announces "Showing 12 of 330 matches: Brentford only."                                                                                                                                            |
+| Team page, D (landmarks)                   | "Breadcrumb, navigation"; its last link is announced as current page                                                                                                                                         |
+| Team page, finishing position              | The bar chart is skipped; "Most likely: 2nd (42%)" is read; the table under "Show the numbers" reads position, chance and zone                                                                               |
+| Team names in tables                       | Read as "Arsenal, link" (the favourite's as "Arsenal (your team), link")                                                                                                                                     |
+
+## Manual pass 3: real phones (to do)
+
+On a real iPhone (Safari) and a real Android phone (Chrome). The emulated
+phones in `tests/e2e/mobile.spec.ts` can't show real fonts, touch or the
+home-screen app.
+
+| Step                                                                                           | Expected                                                                                |
+| ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Home, a league page, a matches page, a team page                                               | Text looks normal weight; nothing scrolls sideways; tabs and Short/Full respond to taps |
+| Tap a team name in the table, then in a match card                                             | Its team page opens                                                                     |
+| Add to Home Screen (iPhone: Share, Add to Home Screen)                                         | The TableTalk icon appears; opening it shows the site with no Safari bars               |
+| **In the home-screen app:** go Home → league → team → match card's other team                  | Every step by tapping the site's own links                                              |
+| **In the home-screen app:** from that team page, get back to Home without a back button        | The breadcrumb ("Home" or the league) and the TableTalk link in the header do it        |
+| **In the home-screen app:** open Track record, Methodology, About (footer) and a wrong address | Each one has the TableTalk link back to Home                                            |
+| **In the home-screen app:** pick a team                                                        | It asks again (the app's storage is separate from Safari's); then the team is starred   |
+| Your team dialog, "Bookmark your team's page"                                                  | Opens the favourite's team page                                                         |
 
 ## Results
 
@@ -78,6 +101,7 @@ Tab (next control).
 | 2 Oct 2026 | automated | Playwright 1.63, axe-core 4.13, Chromium + WebKit | All automated checks above | None open    |
 |            |           |                                                   | Manual keyboard            |              |
 |            |           | NVDA … with …                                     | Manual screen reader       |              |
+|            |           | iPhone … / Android …                              | Real phones                |              |
 
 Write each issue with the page, what happened, what was expected, and how
 serious it is (blocks a task / confusing / cosmetic).

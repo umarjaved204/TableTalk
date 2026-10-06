@@ -250,4 +250,8 @@ in the leagues we cover this season". With R15 it could say "Hull City were
 relegated from the Premier League", and a personal link to that team could say
 so too.
 
-**Meanwhile.** The neutral wording.
+**Meanwhile.** The neutral wording. The site also works the list out itself
+from the history folders, for the stub pages (`stubPages()` in
+`src/data/team-page.ts`): per league, the teams in the last run of the
+newest earlier season that have no page this season. R15 would replace that
+guess with the pipeline's own list.

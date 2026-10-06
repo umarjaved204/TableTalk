@@ -38,13 +38,13 @@ start while the real site was being previewed.) Both folders
 are git-ignored. Each league shows one data state, so every state is built
 and checked by axe:
 
-| League         | State in the test site                                                          |
-| -------------- | ------------------------------------------------------------------------------- |
-| Premier League | Ready: every match status, race charts drawn                                    |
-| Bundesliga     | Ready, six zones: race charts drawn, relegation play-off place                  |
-| La Liga        | Unavailable: its file breaks the contract                                       |
-| Serie A        | Numbers hidden: a newer MAJOR contract version                                  |
-| Ligue 1        | Older numbers kept (`kept_previous`), provisional with a notice, race too early |
+| League         | State in the test site                                                           |
+| -------------- | -------------------------------------------------------------------------------- |
+| Premier League | Ready: every match status, race charts drawn                                     |
+| Bundesliga     | Ready, six zones: race charts drawn, relegation play-off place                   |
+| La Liga        | Unavailable: its file breaks the contract (team pages from one history run)      |
+| Serie A        | Numbers hidden: a newer MAJOR contract version (team pages from one history run) |
+| Ligue 1        | Older numbers kept (`kept_previous`), provisional with a notice, race too early  |
 
 The visitor's clock is fixed (`e2e/test.ts`) at 30 Sep 2026 09:00 UTC, 15
 hours after the snapshot, so nothing is stale and nothing has kicked off.
@@ -64,6 +64,7 @@ Tests for stale data and kick-offs move the clock on.
 | Postponed and re-locked                         | `match-records.test.ts`                    | Premier League matches page (Hull City)     |
 | `locks.jsonl` missing, zero locks (fine)        | `matches.test.ts`, `track-record.test.ts`  | (the real data, every build until 9 Oct)    |
 | `locks.jsonl` missing, locks counted (fails)    | `matches.test.ts`, `track-record.test.ts`  |                                             |
+| Team page in each state above                   | `team-page.test.ts`                        | `team-pages.spec.ts` (one page per state)   |
 
 ## Unit tests (what they guard)
 
@@ -140,6 +141,22 @@ QR codes were also decoded once with OpenCV (all 96, rendered at the dialog's
 would need a QR decoder as a dependency. A real phone scan is still to do
 once `SITE_URL` exists.
 
+## Team pages: where they are tested
+
+| What                                                                            | Unit test           | Browser test                        |
+| ------------------------------------------------------------------------------- | ------------------- | ----------------------------------- |
+| Which pages exist (table, or newest history run when the league has none)       | `team-page.test.ts` | `team-pages.spec.ts`                |
+| Slug clashes and reserved names, including history-built pages and stubs        | `team-page.test.ts` |                                     |
+| Record, chances, finishing bars and zone bands, "Most likely", the table        | `team-page.test.ts` | `team-pages.spec.ts`                |
+| Chances over time: "too early", one point per day, this season only             | `team-page.test.ts` | `team-pages.spec.ts`                |
+| Title, description, Open Graph, breadcrumb (`aria-current`)                     |                     | `team-pages.spec.ts`                |
+| Team names link to their pages (table, heatmap, race, cards, Your team, dialog) | `team-page.test.ts` | `team-pages.spec.ts`                |
+| Every page reachable from `/` and can be left with the site's own links         |                     | `navigation.spec.ts`                |
+| Stub pages for last season's teams: wording, noindex, links out, axe            | `team-page.test.ts` | `rollover.spec.ts` (test:rollover)  |
+| sitemap.xml (no stubs) and robots.txt                                           | `team-page.test.ts` |                                     |
+| Elements per team page (budget)                                                 |                     | `dom-budget.spec.ts`                |
+| Accessibility, keyboard, phones: one team page per data state (`TEAM_PAGES`)    |                     | `a11y-matrix`, `keyboard`, `mobile` |
+
 ## Browser tests: accessibility coverage
 
 The full record, with the manual keyboard and NVDA checklists still to do, is
@@ -157,7 +174,7 @@ first, so axe checks those too.
 | Matrix         | Pages                                                                   | Themes                                  | Runs | Why                                                                                  |
 | -------------- | ----------------------------------------------------------------------- | --------------------------------------- | ---- | ------------------------------------------------------------------------------------ |
 | A: every theme | 3 representative pages: a league page, a matches page, the track record | all 7 colour themes                     | 105  | Colour problems are per theme; these three pages contain every component             |
-| B: every page  | the other 12 pages (all 15 built pages are covered)                     | Matchday (light) and Floodlights (dark) | 120  | Structure problems (headings, labels, landmarks, reflow) are per page, not per theme |
+| B: every page  | the other 16 pages (every page type; team pages by one per data state)  | Matchday (light) and Floodlights (dark) | 160  | Structure problems (headings, labels, landmarks, reflow) are per page, not per theme |
 
 The picker's 8th choice, System, is not a theme of its own: it shows Matchday,
 Floodlights or High Contrast, all in matrix A.

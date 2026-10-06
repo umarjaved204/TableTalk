@@ -90,31 +90,34 @@ const major = (position: number) => position === 1 || position === last || posit
   )}
   <details class="numbers">
     <summary>Show the numbers</summary>
-    <table>
-      <caption>{team}: chance of each finishing position</caption>
-      <thead>
-        <tr>
-          <th scope="col">Position</th>
-          <th scope="col">Chance</th>
-          <th scope="col">Zone</th>
-        </tr>
-      </thead>
-      <tbody>
-        {finishing.map((p, i) => (
+    <div class="scroll" role="region" aria-labelledby="finishing-caption" tabindex="0">
+      <table>
+        <caption id="finishing-caption">{team}: chance of each finishing position</caption>
+        <thead>
           <tr>
-            <th scope="row">{formatOrdinal(i + 1)}</th>
-            <td>{formatChance(p)}</td>
-            <td>{bandAt(i + 1)?.name ?? ""}</td>
+            <th scope="col">Position</th>
+            <th scope="col">Chance</th>
+            <th scope="col">Zone</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {finishing.map((p, i) => (
+            <tr>
+              <th scope="row">{formatOrdinal(i + 1)}</th>
+              <td>{formatChance(p)}</td>
+              <td>{bandAt(i + 1)?.name ?? ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   </details>
 </figure>
 
 <style>
   .finishing {
     display: grid;
+    grid-template-columns: minmax(0, 1fr); /* never wider than the card */
     gap: var(--space-3);
     margin: 0;
     padding: var(--space-4);
@@ -187,7 +190,10 @@ const major = (position: number) => position === 1 || position === last || posit
 
   .axis {
     display: grid;
-    grid-auto-columns: 1fr;
+
+    /* Equal columns that may be narrower than their number (with large
+       text): the number overflows its column instead of widening the chart. */
+    grid-auto-columns: minmax(0, 1fr);
     grid-auto-flow: column;
     margin: 0;
     padding: 0;
@@ -243,6 +249,10 @@ const major = (position: number) => position === 1 || position === last || posit
     min-height: var(--tap-main);
     color: var(--accent);
     cursor: pointer;
+  }
+
+  .scroll {
+    overflow-x: auto;
   }
 
   table {
