@@ -187,6 +187,7 @@ describe("inline early script (theme and favourite team)", () => {
     names: [["premier_league", "the Premier League"]],
     unavailable: [],
     renames: {},
+    updated: ["2026-09-29T17:56:40Z"],
   };
   const script = buildThemeScript(sources, teams);
 
