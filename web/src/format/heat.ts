@@ -17,3 +17,30 @@ export function heatStep(p: number): number {
 export function heatLabel(p: number): string {
   return heatStep(p) === 0 ? "" : formatChance(p).replace("%", "");
 }
+
+/** One cell of a heatmap row: a coloured value, or a run of blank cells. */
+export interface HeatCell {
+  step: number;
+  label: string;
+  /** How many positions the cell covers (more than 1 only for a blank run). */
+  span: number;
+}
+
+/**
+ * A row's cells, with each run of blank cells (under 0.5%) merged into one
+ * cell spanning those positions. It looks the same (blank cells have no
+ * colour and no text) but needs fewer elements: about 65 fewer on a 20-team
+ * league page early in the season, more later, when more finishes are out of
+ * reach. Every position still has a value somewhere in its column, so the
+ * column widths don't change.
+ */
+export function heatCells(finishing: readonly number[]): HeatCell[] {
+  const cells: HeatCell[] = [];
+  for (const p of finishing) {
+    const step = heatStep(p);
+    const last = cells.at(-1);
+    if (step === 0 && last?.step === 0) last.span += 1;
+    else cells.push({ step, label: heatLabel(p), span: 1 });
+  }
+  return cells;
+}

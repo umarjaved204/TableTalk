@@ -1,8 +1,9 @@
 ---
 // Team x finishing position. A real table, so it is its own text version:
-// every coloured cell prints its value, and cells under 0.5% are blank.
+// every coloured cell prints its value, and cells under 0.5% are blank (a run
+// of blank cells is one cell spanning those positions: heatCells).
 import type { TeamRow } from "../data/models.ts";
-import { heatLabel, heatStep } from "../format/heat.ts";
+import { heatCells } from "../format/heat.ts";
 
 interface Props {
   leagueName: string;
@@ -46,8 +47,10 @@ import FavName from "./FavName.astro";
             <th scope="row" class="team">
               <FavName name={row.team} />
             </th>
-            {row.finishing.map((p) => (
-              <td class={`heat-${heatStep(p)}`}>{heatLabel(p)}</td>
+            {heatCells(row.finishing).map((cell) => (
+              <td class={`heat-${cell.step}`} colspan={cell.span > 1 ? cell.span : undefined}>
+                {cell.label}
+              </td>
             ))}
           </tr>
         ))}

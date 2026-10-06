@@ -17,7 +17,10 @@
 // elements, which cost nothing until used. The early script copies in the
 // favourite's, if it has one (FILL_SCRIPT, see src/scripts/favourite-head.js).
 // The race teams' faint lines are drawn once (a <g> reused with <use>), not
-// once per pre-built panel.
+// once per panel: with 9 teams that is 9 paths instead of 72. Each panel's
+// own line then also has a faint copy, hidden under its thick line. (With
+// only 2 or 3 teams and no pre-built panels, drawing them in each panel takes
+// fewer elements, so then they are.)
 import { tableRows, type Series } from "../data/race.ts";
 import { teamHref } from "../data/team-page.ts";
 import { teamSlug } from "../data/teams.ts";
@@ -76,6 +79,7 @@ const extraPanels = extra.map((s) => ({
   dot: lastPoint(s.values, xs, y),
 }));
 const raceLines = series.map((s) => linePath(s.values, xs, y));
+const shareLines = extraPanels.length > 0 || series.length >= 4;
 
 /** Table rows: one per round of results, newest first (tableRows). */
 const rows = tableRows(dataThrough).map((i) => ({
@@ -92,7 +96,7 @@ const rows = tableRows(dataThrough).map((i) => ({
     {lastDate && formatShortDate(lastDate)}.
   </p>
 
-  {extraPanels.length > 0 && (
+  {shareLines && (
     <svg class="sprite" aria-hidden="true" focusable="false">
       <g id={`${id}-race-lines`}>
         {raceLines.map((d) => (
@@ -115,9 +119,11 @@ const rows = tableRows(dataThrough).map((i) => ({
         <svg viewBox={`0 0 ${BOX.width} ${BOX.height}`} aria-hidden="true" focusable="false">
           <line class="grid" x1="0" x2={BOX.width} y1={y(low)} y2={y(low)} />
           <line class="grid" x1="0" x2={BOX.width} y1={y(high)} y2={y(high)} />
-          {panel.others.map((d) => (
-            <path class="other" d={d} />
-          ))}
+          {shareLines ? (
+            <use href={`#${id}-race-lines`} />
+          ) : (
+            panel.others.map((d) => <path class="other" d={d} />)
+          )}
           <path class="line" d={panel.path} />
           {panel.dot && <circle class="dot" cx={panel.dot.x} cy={panel.dot.y} r="4" />}
         </svg>
