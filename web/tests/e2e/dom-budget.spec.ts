@@ -1,26 +1,36 @@
 // How many elements each page type has, with and without a favourite team.
 // Lighthouse flags large pages ("Optimize DOM size"): a big DOM costs memory
-// and makes style and layout work slower. These budgets are the measured
-// sizes after the favourites step plus a little headroom, so growth is a
-// decision, not an accident. Measured in the browser after the page's
-// scripts have run (template contents are not page elements and don't count).
+// and makes style and layout work slower. Each budget is an explicit limit
+// per page type, so growth is a decision, not an accident. Measured in the
+// browser after the page's scripts have run (template contents are not page
+// elements and don't count), at 1280px, on the fixed test data.
 //
-// Before the favourites step (commit 108512b, same test data, 1280px):
-//   /  253 · league page 1,744 (Bundesliga 1,760) · matches 1,238 ·
-//   track record 1,185 · methodology 310 · about 178
-// The league pages were already above Lighthouse's older 1,400-element
-// warning level; most of that is the finishing-positions heatmap (a cell per
-// team per position: 400 cells in a 20-team league).
+// Measured at the start of Step 3 (commit 069ba57), without / with a favourite:
+//   home 382 / 355 · Premier League 2,022 / 2,041 · Bundesliga 2,033 / 2,090 ·
+//   matches 1,468 · track record 1,232 · methodology 357 · about 249
+// The league pages are above Lighthouse's DOM-size warning level (most of it
+// is the finishing-positions heatmap: a cell per team per position, 400 cells
+// in a 20-team league). Their budget is today's count exactly, so they can't
+// grow; Step 4 tries to bring them down. The other page types have about 5%
+// headroom. The team page's budget is set in Step 3b, once its size is known.
+//
+// Before the favourites step (commit 108512b): home 253 · league page 1,744
+// (Bundesliga 1,760) · matches 1,238 · track record 1,185 · methodology 310 ·
+// about 178.
 import { expect, test } from "./test.ts";
 
 const BUDGETS: [string, number][] = [
-  ["/", 480],
-  ["/premier-league/", 2100],
-  ["/bundesliga/", 2150],
-  ["/premier-league/matches/", 1550],
-  ["/track-record/", 1300],
-  ["/methodology/", 400],
-  ["/about/", 300],
+  // Home
+  ["/", 400],
+  // League pages: no growth at all
+  ["/premier-league/", 2041],
+  ["/bundesliga/", 2090],
+  // Matches
+  ["/premier-league/matches/", 1540],
+  // Other pages
+  ["/track-record/", 1290],
+  ["/methodology/", 375],
+  ["/about/", 260],
 ];
 const FAVOURITE: Record<string, string> = { "/bundesliga/": "mainz-05" };
 

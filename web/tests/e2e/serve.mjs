@@ -9,8 +9,8 @@
 //   anything else missing -> 404.html with status 404
 //
 // Optionally gzip-compressed, as a real host (GitHub Pages, Cloudflare)
-// sends HTML, CSS and JavaScript: `npm run lighthouse -- --gzip` measures that.
-// Uncompressed is the default, as before, so earlier measurements stay comparable.
+// sends HTML, CSS and JavaScript: `npm run lighthouse` measures that by default
+// (`-- --uncompressed` is its worst case). The browser tests serve uncompressed.
 //
 // Usage: node tests/e2e/serve.mjs <folder> <port>   (or import { serve })
 import { createServer } from "node:http";

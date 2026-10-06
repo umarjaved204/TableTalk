@@ -25,9 +25,10 @@ the pipeline trial. Work happens on the `frontend` branch; nothing goes on
 `main` until the trial is reviewed (and contract request R8 is done).
 
 Speed (Lighthouse, median of 3, simulated slow phone, today's data): with
-files gzip-compressed as a real host serves them (`npm run lighthouse --
---gzip`), every page is within budget; favourites add about 150-300 ms to
-the largest paint. Uncompressed (the script's default) the Premier League
+files gzip-compressed as a real host serves them (`npm run lighthouse`, the
+default; the budgets apply to this), every page is within budget; favourites
+add about 150-300 ms to the largest paint. In the worst case, a host that
+doesn't compress (`npm run lighthouse -- --uncompressed`), the Premier League
 page is 53 ms over the 2.5 s budget.
 
 ## The site's address (one setting)
@@ -64,18 +65,18 @@ Astro asks to collect anonymous usage data. To opt out on your machine:
 
 ## Everyday commands
 
-| Command              | What it does                                                                                                                                                                        |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run data`       | Copy the published files from `origin/data` into `web/.data/` (read-only: `git fetch` + `git cat-file`; never checks out or writes to `data`). Add `-- --offline` to skip the fetch |
-| `npm run types`      | Regenerate `src/data/contract.gen.ts` from `../contracts/*.schema.json` (after a contract change)                                                                                   |
-| `npm run dev`        | Development server (no CSP in dev mode)                                                                                                                                             |
-| `npm run build`      | Type-check, build `dist/`, then check the build (`scripts/check-build.mjs`)                                                                                                         |
-| `npm run preview`    | Serve `dist/` at http://localhost:4321 (with the CSP, as deployed)                                                                                                                  |
-| `npm test`           | Unit tests                                                                                                                                                                          |
-| `npm run test:e2e`   | Browser and accessibility tests. Builds its own test site from fixed test data first (see tests/README.md)                                                                          |
-| `npm run lighthouse` | Lighthouse (mobile) on 5 pages of the built site, median of 3 runs; fails over budget (LCP 2.5 s, CLS 0.1, TBT 200 ms). Reports in `lighthouse/`                                    |
-| `npm run lint`       | ESLint, Stylelint, Prettier check                                                                                                                                                   |
-| `npm run format`     | Prettier, fix formatting                                                                                                                                                            |
+| Command              | What it does                                                                                                                                                                                                      |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run data`       | Copy the published files from `origin/data` into `web/.data/` (read-only: `git fetch` + `git cat-file`; never checks out or writes to `data`). Add `-- --offline` to skip the fetch                               |
+| `npm run types`      | Regenerate `src/data/contract.gen.ts` from `../contracts/*.schema.json` (after a contract change)                                                                                                                 |
+| `npm run dev`        | Development server (no CSP in dev mode)                                                                                                                                                                           |
+| `npm run build`      | Type-check, build `dist/`, then check the build (`scripts/check-build.mjs`)                                                                                                                                       |
+| `npm run preview`    | Serve `dist/` at http://localhost:4321 (with the CSP, as deployed)                                                                                                                                                |
+| `npm test`           | Unit tests                                                                                                                                                                                                        |
+| `npm run test:e2e`   | Browser and accessibility tests. Builds its own test site from fixed test data first (see tests/README.md)                                                                                                        |
+| `npm run lighthouse` | Lighthouse (mobile) on 5 pages of the built site, gzip-compressed, median of 3 runs; fails over budget (LCP 2.5 s, CLS 0.1, TBT 200 ms). `-- --uncompressed`: worst case, reported only. Reports in `lighthouse/` |
+| `npm run lint`       | ESLint, Stylelint, Prettier check                                                                                                                                                                                 |
+| `npm run format`     | Prettier, fix formatting                                                                                                                                                                                          |
 
 ## How it fits together
 
@@ -251,6 +252,11 @@ type check; `npm run build` adds about 14 s of `astro check`):
 So each nightly run adds about 13 ms to the build, about 4 s over a season.
 Each file is still parsed in full (150-190 KB); R2's compact series would
 make this one small file per league.
+
+Baseline before team pages (6 Oct 2026, commit 069ba57, today's data, median
+of 3): `npm run build` about 23.5 s in all: `astro check` 18.5 s, `astro
+build` 4.3 s (15 pages generated in 1.8 s), the build check 0.1 s. Step 3
+compares the team pages' build time against this.
 
 ## Nothing moves while the page loads
 

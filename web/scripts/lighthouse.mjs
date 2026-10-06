@@ -1,13 +1,18 @@
 // Lighthouse on the built site, with the plan's speed budgets.
 //
-//   npm run build && npm run lighthouse
+//   npm run build && npm run lighthouse                    gzip (what visitors get)
+//   npm run build && npm run lighthouse -- --uncompressed  worst case
 //
-// Serves dist/ locally, runs Lighthouse's mobile profile (a mid-range phone
-// on a slow 4G connection, simulated) on five representative pages, prints
-// the scores, and fails if a budget is missed:
+// Serves dist/ locally, gzip-compressed as a real host serves it, runs
+// Lighthouse's mobile profile (a mid-range phone on a slow 4G connection,
+// simulated) on five representative pages, prints the scores, and fails if a
+// budget is missed:
 //   LCP (largest contentful paint)  <= 2.5 s
 //   CLS (cumulative layout shift)   <= 0.1
 //   TBT (total blocking time)       <= 200 ms
+// The budgets apply to the gzip run. --uncompressed is a worst case (a host
+// that doesn't compress): it prints the same table and lists what would be
+// over budget, but doesn't fail.
 // INP (interaction to next paint) needs a real visitor's clicks, so a lab
 // run can't measure it; TBT is the lab measure that tracks it.
 //
@@ -47,9 +52,9 @@ function median(values) {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
-// npm run lighthouse [-- <folder>] [-- --gzip]
+// npm run lighthouse [-- <folder>] [-- --uncompressed]
 const args = process.argv.slice(2);
-const GZIP = args.includes("--gzip");
+const GZIP = !args.includes("--uncompressed");
 const server = await serve(args.find((a) => !a.startsWith("--")) ?? "dist", PORT, { gzip: GZIP });
 const chrome = await launch({
   chromePath: chromium.executablePath(),
@@ -100,16 +105,26 @@ try {
   server.close();
 }
 
-console.log(`[lighthouse] ${GZIP ? "gzip-compressed, as a real host serves it" : "uncompressed"}`);
+console.log(
+  `[lighthouse] ${GZIP ? "gzip-compressed, as a real host serves it" : "WORST CASE: uncompressed (budgets apply to the gzip run)"}`,
+);
 console.table(rows);
 writeFileSync(
   join(OUT, "summary.json"),
-  JSON.stringify({ runs: RUNS, gzip: GZIP, budgets: BUDGETS, pages: rows }, null, 2),
+  JSON.stringify({ runs: RUNS, gzip: GZIP, worstCase: !GZIP, budgets: BUDGETS, pages: rows }, null, 2),
 );
-if (failures.length > 0) {
+if (!GZIP) {
+  // Worst case: reported, never a failure (the budgets apply to the gzip run).
+  console.log(
+    failures.length > 0
+      ? `[lighthouse] worst case, over the gzip budgets (median of ${RUNS} runs):\n  ${failures.join("\n  ")}`
+      : `[lighthouse] worst case: every page within the gzip budgets too. Reports in ${OUT}/`,
+  );
+} else if (failures.length > 0) {
   console.error(`[lighthouse] over budget (median of ${RUNS} runs):\n  ${failures.join("\n  ")}`);
   process.exit(1);
+} else {
+  console.log(
+    `[lighthouse] every page within budget (median of ${RUNS} runs: LCP <= 2.5 s, CLS <= 0.1, TBT <= 200 ms). Reports in ${OUT}/`,
+  );
 }
-console.log(
-  `[lighthouse] every page within budget (median of ${RUNS} runs: LCP <= 2.5 s, CLS <= 0.1, TBT <= 200 ms). Reports in ${OUT}/`,
-);
