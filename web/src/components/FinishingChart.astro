@@ -1,0 +1,292 @@
+---
+// A team's chance of each finishing position: one bar per position, over
+// bands shading the table's zones (the innermost zone, as the table's row
+// markers do: 1st is the title, 2nd-4th the rest of the top four). Drawn as
+// SVG at build time; heights are attributes (the CSP allows no style="").
+// The SVG is decorative (aria-hidden); "Most likely" is text, and every
+// value is in the table under "Show the numbers".
+import type { Band } from "../data/team-page.ts";
+import { chanceTop } from "../format/chart.ts";
+import { formatOrdinal, formatPlaces } from "../format/number.ts";
+import { formatChance } from "../format/probability.ts";
+import type { Zone } from "../data/models.ts";
+
+interface Props {
+  team: string;
+  finishing: number[];
+  mostLikely: { position: number; chance: number };
+  bands: Band[];
+  zones: Zone[];
+  nSimulations: number;
+}
+const { team, finishing, mostLikely, bands, zones, nSimulations } = Astro.props;
+
+const SLOT = 10; // viewBox units per position
+const HEIGHT = 100;
+const top = chanceTop(Math.max(...finishing));
+const height = (p: number) => Math.round((Math.min(p, top) / top) * HEIGHT * 10) / 10;
+const simulations = new Intl.NumberFormat("en-GB").format(nSimulations);
+const bandAt = (position: number) => bands.find((b) => position >= b.from && position <= b.to);
+const zonePlaces = (id: string) => {
+  const zone = zones.find((z) => z.id === id);
+  return zone ? formatPlaces(zone.positions) : "";
+};
+const last = finishing.length;
+/** On narrow screens only these positions are labelled. */
+const major = (position: number) => position === 1 || position === last || position % 5 === 0;
+---
+
+<figure class="finishing" aria-labelledby="finishing-heading">
+  <h2 id="finishing-heading">Finishing position</h2>
+  <p class="likely">
+    Most likely:{" "}
+    <strong>
+      {formatOrdinal(mostLikely.position)} ({formatChance(mostLikely.chance)})
+    </strong>
+  </p>
+  <p class="intro">
+    Chance of each finishing position, from {simulations} simulated seasons. Bars run from 0 to{" "}
+    {Math.round(top * 100)}%.
+  </p>
+  <div class="plot" aria-hidden="true">
+    <svg viewBox={`0 0 ${last * SLOT} ${HEIGHT}`} preserveAspectRatio="none" focusable="false">
+      {bands.map((b) => (
+        <rect
+          class="band"
+          data-end={b.end}
+          data-marker={b.marker}
+          x={(b.from - 1) * SLOT}
+          width={(b.to - b.from + 1) * SLOT}
+          y="0"
+          height={HEIGHT}
+        />
+      ))}
+      <line class="base" x1="0" x2={last * SLOT} y1={HEIGHT} y2={HEIGHT} />
+      {finishing.map((p, i) => (
+        <rect
+          class:list={["bar", { likely: i + 1 === mostLikely.position }]}
+          x={i * SLOT + 2}
+          width={SLOT - 4}
+          y={HEIGHT - height(p)}
+          height={height(p)}
+        />
+      ))}
+    </svg>
+    <ol class="axis">
+      {finishing.map((_, i) => (
+        <li class:list={{ minor: !major(i + 1) }}>{i + 1}</li>
+      ))}
+    </ol>
+  </div>
+  {bands.length > 0 && (
+    <ul class="key" aria-label="Key to the shading">
+      {bands.map((b) => (
+        <li>
+          <span class="sample" data-end={b.end} data-marker={b.marker} aria-hidden="true"></span>
+          {b.name} ({zonePlaces(b.id)})
+        </li>
+      ))}
+    </ul>
+  )}
+  <details class="numbers">
+    <summary>Show the numbers</summary>
+    <table>
+      <caption>{team}: chance of each finishing position</caption>
+      <thead>
+        <tr>
+          <th scope="col">Position</th>
+          <th scope="col">Chance</th>
+          <th scope="col">Zone</th>
+        </tr>
+      </thead>
+      <tbody>
+        {finishing.map((p, i) => (
+          <tr>
+            <th scope="row">{formatOrdinal(i + 1)}</th>
+            <td>{formatChance(p)}</td>
+            <td>{bandAt(i + 1)?.name ?? ""}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </details>
+</figure>
+
+<style>
+  .finishing {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+    padding: var(--space-4);
+  }
+
+  h2 {
+    font-size: var(--step-1);
+  }
+
+  .likely {
+    font-size: var(--step-1);
+  }
+
+  .intro,
+  .key {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  .plot {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 9rem;
+  }
+
+  /* The zone shading: the table's colours (blue top, red bottom), lighter the
+     wider the zone, so nested zones stay apart. */
+  [data-end="top"] {
+    --zone: var(--zone-top);
+  }
+
+  [data-end="bottom"] {
+    --zone: var(--zone-rel);
+  }
+
+  .band {
+    fill: var(--zone);
+    fill-opacity: 0.22;
+  }
+
+  .band[data-marker="light"] {
+    fill-opacity: 0.13;
+  }
+
+  .band[data-marker="outline"] {
+    fill-opacity: 0.07;
+  }
+
+  .base {
+    stroke: var(--border-strong);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .bar {
+    fill: var(--data-home);
+  }
+
+  /* The most likely position: outlined in the text colour. */
+  .bar.likely {
+    stroke: var(--text);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .axis {
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--text-muted);
+    font-size: var(--step--1);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
+  @media (width < 480px) {
+    .axis .minor {
+      visibility: hidden;
+    }
+  }
+
+  .key {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .key li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .sample {
+    display: inline-block;
+    width: 18px;
+    height: 12px;
+    border-radius: 2px;
+    background: var(--surface-2); /* browsers without color-mix() */
+    background: color-mix(in srgb, var(--zone) 22%, transparent);
+  }
+
+  .sample[data-marker="light"] {
+    background: color-mix(in srgb, var(--zone) 13%, transparent);
+  }
+
+  .sample[data-marker="outline"] {
+    background: color-mix(in srgb, var(--zone) 7%, transparent);
+    box-shadow: inset 0 0 0 1px var(--zone);
+  }
+
+  summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  table {
+    border-collapse: collapse;
+    font-size: var(--step--1);
+  }
+
+  caption {
+    padding-block: var(--space-1);
+    color: var(--text-muted);
+    text-align: left;
+  }
+
+  th,
+  td {
+    padding: var(--space-1) var(--space-3) var(--space-1) 0;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+
+  td:nth-child(2) {
+    text-align: right;
+  }
+
+  thead th {
+    font-weight: 600;
+  }
+
+  @media (forced-colors: active) {
+    .bar {
+      fill: CanvasText;
+    }
+
+    .band {
+      fill: none;
+    }
+
+    .base {
+      stroke: CanvasText;
+    }
+
+    .sample {
+      forced-color-adjust: none;
+      border: 1px solid CanvasText;
+    }
+  }
+</style>

@@ -25,14 +25,20 @@ export interface YourTeamCard {
 }
 
 /** The card spells zones out: its labels aren't squeezed into a table column
- *  like the table's ("Top 4", "Down"). */
+ *  like the table's ("Top 4", "Down"). The team pages use the same words. */
 const CARD_LABELS: Readonly<Record<string, string>> = {
   title: "Title",
   top_four: "Top four",
   top_five: "Top five",
+  top_half: "Top half",
   relegation: "Relegation",
   relegation_playoff: "Play-off place",
 };
+
+/** A zone's name in plain words ("Top four", "Relegation"). */
+export function zoneName(zone: Pick<Zone, "id" | "short">): string {
+  return CARD_LABELS[zone.id] ?? zone.short;
+}
 
 /** The zones the card shows, in order. Ids are the pipeline's (see ZONE_DISPLAY in leagues.ts). */
 export function cardZones(zones: readonly Zone[]): Zone[] {
@@ -53,7 +59,7 @@ export function yourTeamCards(league: ReadyLeague): YourTeamCard[] {
     points: row.points,
     played: row.played,
     chances: zones.map((z) => ({
-      label: CARD_LABELS[z.id] ?? z.short,
+      label: zoneName(z),
       positions: [...z.positions],
       chance: row.zoneChances[z.id] ?? 0,
     })),

@@ -1,0 +1,68 @@
+---
+// Where this page sits: Home › League › Team. A navigation landmark, and the
+// last link is the current page (aria-current). It is also the way back up
+// in the home-screen app, which has no back button or address bar on iPhones.
+interface Props {
+  items: { href: string; text: string }[];
+}
+const { items } = Astro.props;
+---
+
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    {items.map((item, i) => (
+      <li>
+        <a href={item.href} aria-current={i === items.length - 1 ? "page" : undefined}>
+          {item.text}
+        </a>
+      </li>
+    ))}
+  </ol>
+</nav>
+
+<style>
+  ol {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--step--1);
+  }
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* A chevron drawn with borders: no text, so screen readers don't read it. */
+  li + li::before {
+    content: "";
+    width: 0.4em;
+    height: 0.4em;
+    border-top: 1.5px solid var(--text-muted);
+    border-right: 1.5px solid var(--text-muted);
+    transform: rotate(45deg);
+  }
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
+    color: var(--accent);
+  }
+
+  a[aria-current="page"] {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  @media (forced-colors: active) {
+    li + li::before {
+      border-color: CanvasText;
+    }
+  }
+</style>

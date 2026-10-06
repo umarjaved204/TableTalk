@@ -71,7 +71,7 @@ export class TeamSlugError extends Error {
 }
 
 /** Stop the build on a slug that can't be used. */
-function checkSlug(slug: string, where: string, clash: TeamInfo | undefined): void {
+export function checkSlug(slug: string, where: string, clash: TeamInfo | undefined): void {
   if (!SLUG_PATTERN.test(slug)) throw new TeamSlugError(`${where} has no usable slug ("${slug}")`);
   if (slug.length > SLUG_MAX_LENGTH)
     throw new TeamSlugError(`${where}: slug "${slug}" is over ${SLUG_MAX_LENGTH} characters`);

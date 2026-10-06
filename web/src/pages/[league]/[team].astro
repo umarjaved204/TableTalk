@@ -1,0 +1,329 @@
+---
+// A team page: where the team stands, its projected points and zone chances,
+// its chance of each finishing position, how its chances have moved, and its
+// next and recent matches. Which pages exist, and their numbers, come from
+// src/data/team-page.ts. When the league has no numbers in this build, the
+// page still exists and says so (as the league page does).
+import Breadcrumb from "../../components/Breadcrumb.astro";
+import FavName from "../../components/FavName.astro";
+import FinishingChart from "../../components/FinishingChart.astro";
+import LeagueUnavailable from "../../components/LeagueUnavailable.astro";
+import MatchList from "../../components/MatchList.astro";
+import Notice from "../../components/Notice.astro";
+import TeamTrend from "../../components/TeamTrend.astro";
+import UpdatedStamp from "../../components/UpdatedStamp.astro";
+import { RECENT_DAYS, UPCOMING_DAYS } from "../../data/matches.ts";
+import {
+  cachedHistory,
+  cachedLeague,
+  cachedRecords,
+  teamDescription,
+  teamPages,
+  teamView,
+  type TeamPageEntry,
+} from "../../data/team-page.ts";
+import { formatOrdinal, formatPlaces, formatPoints, formatRange, formatSigned } from "../../format/number.ts";
+import { formatChance } from "../../format/probability.ts";
+import Base from "../../layouts/Base.astro";
+
+export function getStaticPaths() {
+  return teamPages().map((entry) => ({
+    params: { league: entry.league.slug, team: entry.slug },
+    props: { entry },
+  }));
+}
+
+interface Props {
+  entry: TeamPageEntry;
+}
+const { entry } = Astro.props;
+const { league, name, slug } = entry;
+const data = cachedLeague(league);
+const records = cachedRecords();
+const view = data.state === "ready" ? teamView(data, name, records, cachedHistory(league.id)) : null;
+
+const title = data.state === "ready" ? `${name} ${data.season} predictions` : `${name} predictions`;
+const description =
+  data.state === "ready" && view
+    ? teamDescription(data, view)
+    : `${name}: ${league.name} season predictions from TableTalk.`;
+const simulations = data.state === "ready" ? new Intl.NumberFormat("en-GB").format(data.nSimulations) : "";
+const crumbs = [
+  { href: "/", text: "Home" },
+  { href: `/${league.slug}/`, text: league.name },
+  { href: `/${league.slug}/${slug}/`, text: name },
+];
+---
+
+<Base title={title} description={description}>
+  <div class="container page">
+    <Breadcrumb items={crumbs} />
+    {data.state !== "ready" && (
+      <>
+        <h1>{name}</h1>
+        <LeagueUnavailable data={data} />
+        <p>
+          <a href={`/${league.slug}/`}>{league.name} page</a>
+        </p>
+      </>
+    )}
+    {data.state === "ready" && view && (
+      <>
+        <header class="team-head" data-team={slug}>
+          <h1>
+            <FavName name={name} />
+          </h1>
+          <p class="league">
+            {league.name} <span class="season">{data.season}</span>
+          </p>
+          <UpdatedStamp
+            generatedAt={data.generatedAt}
+            dataThrough={data.dataThrough}
+            runStatus={data.runStatus}
+          />
+          {data.provisional && (
+            <Notice title="Provisional" tone="warn">
+              <p>The table includes a result that is not confirmed yet.</p>
+            </Notice>
+          )}
+          {data.notices.map((notice) => (
+            <Notice title="Note">
+              <p>{notice}</p>
+            </Notice>
+          ))}
+        </header>
+
+        <div class="top">
+          <section class="card" aria-labelledby="now-heading">
+            <h2 id="now-heading">Now and projected</h2>
+            <dl class="stats">
+              <div>
+                <dt>Position</dt>
+                <dd>{formatOrdinal(view.row.position)}</dd>
+              </div>
+              <div>
+                <dt>Points</dt>
+                <dd>
+                  {view.row.points}
+                  {view.row.pointsDeducted !== 0 && (
+                    <span class="small">
+                      {" "}
+                      (includes a {formatSigned(view.row.pointsDeducted)} points adjustment)
+                    </span>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>Played</dt>
+                <dd>{view.row.played}</dd>
+              </div>
+              <div>
+                <dt>Won, drawn, lost</dt>
+                <dd>
+                  {view.row.won}–{view.row.drawn}–{view.row.lost}
+                </dd>
+              </div>
+              <div>
+                <dt>Goals</dt>
+                <dd>
+                  {view.row.goalsFor}–{view.row.goalsAgainst}{" "}
+                  <span class="small">({formatSigned(view.row.goalDifference)})</span>
+                </dd>
+              </div>
+              <div>
+                <dt>Proj. pts</dt>
+                <dd>
+                  {formatPoints(view.row.projectedPoints)}{" "}
+                  <span class="small">(range {formatRange(view.row.pointsP10, view.row.pointsP90)})</span>
+                </dd>
+              </div>
+            </dl>
+            <ul class="chances" aria-label="Chances">
+              {view.chances.map((c) => (
+                <li>
+                  <span class="chance-name">
+                    {c.name} <span class="small">({formatPlaces(c.positions)})</span>
+                  </span>
+                  <span class="chance-value">{formatChance(c.chance)}</span>
+                </li>
+              ))}
+            </ul>
+            <p class="note">
+              <strong>Proj. pts</strong>: average final points across {simulations} simulated seasons;{" "}
+              <strong>range</strong>: 80% of them end between these totals. <strong>Chances</strong> are the
+              share of simulated seasons that end in that zone; “&lt;1%” is rare, not impossible.
+            </p>
+          </section>
+
+          <div class="card">
+            <FinishingChart
+              team={name}
+              finishing={view.row.finishing}
+              mostLikely={view.mostLikely}
+              bands={view.bands}
+              zones={data.zones}
+              nSimulations={data.nSimulations}
+            />
+          </div>
+        </div>
+
+        <TeamTrend team={name} trend={view.trend} />
+
+        <div class="matches">
+          <section class="card" aria-labelledby="upcoming-heading">
+            <h2 id="upcoming-heading">Next matches</h2>
+            {view.upcoming.length > 0 ? (
+              <MatchList matches={view.upcoming} />
+            ) : (
+              <p class="empty">No matches in the next {UPCOMING_DAYS / 7} weeks.</p>
+            )}
+          </section>
+          <section class="card" aria-labelledby="recent-heading">
+            <h2 id="recent-heading">Recent matches</h2>
+            {view.recent === null ? (
+              <p class="empty">
+                The track record can't be read right now, so recent matches aren't shown. Upcoming predictions
+                are not affected.
+              </p>
+            ) : view.recent.length > 0 ? (
+              <MatchList matches={view.recent} />
+            ) : (
+              <p class="empty">
+                No locked predictions for {name} in the last {RECENT_DAYS / 7} weeks.
+              </p>
+            )}
+          </section>
+        </div>
+        <p class="more">
+          <a href={`/${league.slug}/`}>{league.name} table and chances</a>
+          <a href={`/${league.slug}/matches/`}>All {league.name} matches</a>
+        </p>
+      </>
+    )}
+  </div>
+</Base>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--space-5);
+    padding-block: var(--space-4) 0;
+  }
+
+  .team-head {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .league {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .season {
+    color: var(--text-muted);
+  }
+
+  .top,
+  .matches {
+    display: grid;
+    gap: var(--space-5);
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  @media (width >= 900px) {
+    .top,
+    .matches {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .card {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+  }
+
+  .card > h2 {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--step-1);
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    gap: var(--space-3) var(--space-4);
+    margin: 0;
+    padding: var(--space-4);
+  }
+
+  dt {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  dd {
+    margin: 0;
+    font-size: var(--step-1);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .small {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+    font-weight: 400;
+  }
+
+  .chances {
+    display: grid;
+    margin: 0;
+    padding: 0 var(--space-4);
+    list-style: none;
+  }
+
+  .chances li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-3);
+    padding-block: var(--space-2);
+    border-top: 1px solid var(--border);
+  }
+
+  .chance-value {
+    font-size: var(--step-1);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .note {
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  .empty {
+    padding: var(--space-4);
+    color: var(--text-muted);
+  }
+
+  .more {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-5);
+  }
+
+  .more a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
+  }
+</style>

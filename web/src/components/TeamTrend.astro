@@ -1,0 +1,270 @@
+---
+// A team's chances over time: one small panel per zone (the Your team card's
+// zones) and one for projected points. The race charts' rules: one point per
+// day this season, and "too early" until the updates cover MIN_RESULT_DATES
+// different "results up to" dates. The chance panels share one scale, so
+// they can be compared. Drawn as SVG at build time and decorative
+// (aria-hidden); the same numbers are in the table under "Show the numbers".
+import type { TeamTrend } from "../data/team-page.ts";
+import { chanceTop, lastPoint, linePath, pointsRange, scale, xPositions, type Box } from "../format/chart.ts";
+import { formatPlaces, formatPoints } from "../format/number.ts";
+import { formatChance } from "../format/probability.ts";
+import { formatShortDate } from "../format/time.ts";
+import TooEarly from "./TooEarly.astro";
+
+interface Props {
+  team: string;
+  trend: TeamTrend;
+}
+const { team, trend } = Astro.props;
+
+const BOX: Box = { width: 200, height: 72, pad: 5 };
+const xs = xPositions(trend.runDates, BOX);
+const known = (values: (number | null)[]) => values.filter((v): v is number => v !== null);
+const chanceHigh = chanceTop(Math.max(0, ...trend.chances.flatMap((c) => known(c.values))));
+const yChance = scale(0, chanceHigh, BOX.height - BOX.pad, BOX.pad);
+const pointValues = known(trend.points);
+const [pointsLow, pointsHigh] = pointValues.length > 0 ? pointsRange(pointValues) : [0, 10];
+const yPoints = scale(pointsLow, pointsHigh, BOX.height - BOX.pad, BOX.pad);
+
+const first = (values: (number | null)[]) => values.find((v) => v !== null) ?? null;
+const chance = (v: number | null) => (v === null ? "–" : formatChance(v));
+const points = (v: number | null) => (v === null ? "–" : formatPoints(v));
+
+const panels = [
+  ...trend.chances.map((c) => ({
+    heading: `${c.name} (${formatPlaces(c.positions)})`,
+    values: c.values,
+    show: chance,
+    y: yChance,
+    low: 0,
+    high: chanceHigh,
+  })),
+  {
+    heading: "Projected points",
+    values: trend.points,
+    show: points,
+    y: yPoints,
+    low: pointsLow,
+    high: pointsHigh,
+  },
+];
+const firstDate = trend.runDates[0]?.slice(0, 10);
+const lastDate = trend.runDates.at(-1)?.slice(0, 10);
+const rows = trend.runDates
+  .map((date, i) => ({ date, dataThrough: trend.dataThrough[i] ?? null, i }))
+  .reverse();
+---
+
+<section class="trend" aria-labelledby="trend-heading">
+  <h2 id="trend-heading">Chances over time</h2>
+  {trend.enoughForTrend ? (
+    <figure class="chart">
+      <p class="intro">
+        {team}'s chances after each update, {firstDate && formatShortDate(firstDate)} to{" "}
+        {lastDate && formatShortDate(lastDate)}. The chance panels all run from 0% at the bottom to{" "}
+        {Math.round(chanceHigh * 100)}% at the top; projected points from {pointsLow} to {pointsHigh}.
+      </p>
+      <ul class="panels">
+        {panels.map((panel) => {
+          const dot = lastPoint(panel.values, xs, panel.y);
+          return (
+            <li class="panel">
+              <p class="panel-head">
+                <span class="name">{panel.heading}</span>
+                <span class="value">
+                  {panel.show(panel.values.at(-1) ?? null)}{" "}
+                  <span class="was">(was {panel.show(first(panel.values))})</span>
+                </span>
+              </p>
+              <svg viewBox={`0 0 ${BOX.width} ${BOX.height}`} aria-hidden="true" focusable="false">
+                <line class="grid" x1="0" x2={BOX.width} y1={panel.y(panel.low)} y2={panel.y(panel.low)} />
+                <line class="grid" x1="0" x2={BOX.width} y1={panel.y(panel.high)} y2={panel.y(panel.high)} />
+                <path class="line" d={linePath(panel.values, xs, panel.y)} />
+                {dot && <circle class="dot" cx={dot.x} cy={dot.y} r="4" />}
+              </svg>
+            </li>
+          );
+        })}
+      </ul>
+      <details class="numbers">
+        <summary>Show the numbers</summary>
+        <div class="scroll" role="region" aria-labelledby="trend-caption" tabindex="0">
+          <table>
+            <caption id="trend-caption">{team}: chances by update (newest first)</caption>
+            <thead>
+              <tr>
+                <th scope="col">Updated</th>
+                <th scope="col">Results up to</th>
+                {trend.chances.map((c) => (
+                  <th scope="col">{c.name}</th>
+                ))}
+                <th scope="col">Proj. pts</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr>
+                  <th scope="row">{formatShortDate(row.date.slice(0, 10))}</th>
+                  <td>{row.dataThrough ? formatShortDate(row.dataThrough) : "–"}</td>
+                  {trend.chances.map((c) => (
+                    <td>{chance(c.values[row.i] ?? null)}</td>
+                  ))}
+                  <td>{points(trend.points[row.i] ?? null)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </figure>
+  ) : (
+    <TooEarly resultDates={trend.resultDates} latestResults={trend.dataThrough.at(-1)} />
+  )}
+</section>
+
+<style>
+  .trend {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+  }
+
+  h2 {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--step-1);
+  }
+
+  .chart {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+    padding: var(--space-4);
+  }
+
+  .intro {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  .panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: var(--space-3) var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Name on top, chart at the bottom: panels line up when a heading wraps. */
+  .panel {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: var(--space-1);
+  }
+
+  .panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0 var(--space-2);
+    font-size: var(--step--1);
+    line-height: 1.3;
+  }
+
+  .name,
+  .value {
+    font-weight: 600;
+  }
+
+  .was {
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .grid {
+    stroke: var(--border);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .line {
+    fill: none;
+    stroke: var(--data-home);
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .dot {
+    fill: var(--data-home);
+    stroke: var(--surface);
+    stroke-width: 2;
+  }
+
+  summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  .scroll {
+    overflow-x: auto;
+  }
+
+  table {
+    border-collapse: collapse;
+    font-size: var(--step--1);
+  }
+
+  caption {
+    padding-block: var(--space-1);
+    color: var(--text-muted);
+    text-align: left;
+  }
+
+  th,
+  td {
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  thead th {
+    font-weight: 600;
+    vertical-align: bottom;
+  }
+
+  th:first-child,
+  td:nth-child(2) {
+    text-align: left;
+  }
+
+  @media (forced-colors: active) {
+    .line {
+      stroke: CanvasText;
+    }
+
+    .dot {
+      fill: CanvasText;
+    }
+
+    .grid {
+      stroke: GrayText;
+    }
+  }
+</style>

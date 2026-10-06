@@ -11,9 +11,11 @@
 //       Serie A   numbers hidden (a newer MAJOR contract version)
 //       Ligue 1   kept_previous + provisional with a notice, and no history
 //                 (so its race section says "too early")
+//   La Liga and Serie A keep their real file as one history run, so their
+//   team pages are built from it (a team page exists in every data state).
 //
 // Run: node tests/fixtures/make-e2e-data.ts (playwright.config.ts does this).
-import { cpSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { writeIllustratedHistory, writeMatureTrackRecord } from "./illustrated.ts";
 import { E2E_DATA_DIR } from "../e2e/site.ts";
@@ -43,6 +45,17 @@ writeFileSync(
 writeMatureTrackRecord(out);
 writeIllustratedHistory(out, "premier_league");
 writeIllustratedHistory(out, "bundesliga");
+
+/** Keep a league's real latest file as a history run (before it is broken below). */
+function keepAsHistory(leagueId: string): void {
+  const latest = join(out, "latest", `${leagueId}.json`);
+  const made = (JSON.parse(readFileSync(latest, "utf8")) as { generated_at: string }).generated_at;
+  const folder = join(out, "history", made.slice(0, 16).replace(/:/g, "") + "Z");
+  mkdirSync(folder, { recursive: true });
+  cpSync(latest, join(folder, `${leagueId}.json`));
+}
+keepAsHistory("la_liga");
+keepAsHistory("serie_a");
 
 // La Liga: a file that breaks the contract.
 writeFileSync(

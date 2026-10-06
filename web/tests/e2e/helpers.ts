@@ -7,10 +7,23 @@ export const WIDTHS = [360, 390, 768, 1024, 1440] as const;
 export const LIGHT = "matchday";
 export const DARK = "floodlights";
 
-/** Every page the site builds (the test site has one data state per league). */
+/** One team page per data state: numbers with a trend (Premier League), too
+ *  early with a provisional table and older numbers (Ligue 1), unavailable
+ *  (La Liga) and a newer format (Serie A). The other team pages are the same
+ *  page with other numbers. */
+export const TEAM_PAGES = [
+  "/premier-league/brentford/",
+  "/ligue-1/monaco/",
+  "/la-liga/atletico-madrid/",
+  "/serie-a/inter-milan/",
+];
+
+/** Every page the site builds (the test site has one data state per league),
+ *  with the team pages represented by TEAM_PAGES. */
 export const ALL_PAGES = [
   "/",
   ...LEAGUES.flatMap((league) => [`/${league.slug}/`, `/${league.slug}/matches/`]),
+  ...TEAM_PAGES,
   "/track-record/",
   "/methodology/",
   "/about/",

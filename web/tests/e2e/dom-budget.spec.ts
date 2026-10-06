@@ -12,7 +12,14 @@
 // is the finishing-positions heatmap: a cell per team per position, 400 cells
 // in a 20-team league). Their budget is today's count exactly, so they can't
 // grow; Step 4 tries to bring them down. The other page types have about 5%
-// headroom. The team page's budget is set in Step 3b, once its size is known.
+// headroom.
+//
+// Team pages (Step 3b): 208 (a league without numbers) to 710 (Brentford: the
+// trend charts, 3 next and 2 recent matches). The budget is for the largest,
+// with about 7% headroom. A team page grows with its match cards (at most 5
+// next and 5 recent) and, over a season, with the rows of its "Show the
+// numbers" table under the trend (one per day), as the league page's race
+// tables do; the fixed test data doesn't grow.
 //
 // Before the favourites step (commit 108512b): home 253 · league page 1,744
 // (Bundesliga 1,760) · matches 1,238 · track record 1,185 · methodology 310 ·
@@ -27,6 +34,8 @@ const BUDGETS: [string, number][] = [
   ["/bundesliga/", 2090],
   // Matches
   ["/premier-league/matches/", 1540],
+  // Team page
+  ["/premier-league/brentford/", 760],
   // Other pages
   ["/track-record/", 1290],
   ["/methodology/", 375],
