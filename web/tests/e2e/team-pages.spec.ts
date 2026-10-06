@@ -66,6 +66,8 @@ test.describe("a team page with numbers (Premier League, with history)", () => {
     await expect(trend.locator("[data-race-too-early]")).toHaveCount(0);
     await expect(trend.locator(".panel")).toHaveCount(4); // title, top four, relegation, projected points
     await trend.getByText("Show the numbers").click();
+    // One row per round of results: the test data's last two updates share results up to 20 Sep.
+    await expect(trend.locator("tbody tr")).toHaveCount(5);
     await expect(trend.locator("thead th")).toHaveText([
       "Updated",
       "Results up to",

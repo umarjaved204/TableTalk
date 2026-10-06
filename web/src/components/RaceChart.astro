@@ -18,7 +18,7 @@
 // favourite's, if it has one (FILL_SCRIPT, see src/scripts/favourite-head.js).
 // The race teams' faint lines are drawn once (a <g> reused with <use>), not
 // once per pre-built panel.
-import type { Series } from "../data/race.ts";
+import { tableRows, type Series } from "../data/race.ts";
 import { teamHref } from "../data/team-page.ts";
 import { teamSlug } from "../data/teams.ts";
 import { FILL_SCRIPT } from "../scripts/theme-script.ts";
@@ -77,8 +77,12 @@ const extraPanels = extra.map((s) => ({
 }));
 const raceLines = series.map((s) => linePath(s.values, xs, y));
 
-/** Table rows, newest first. */
-const rows = runDates.map((date, i) => ({ date, dataThrough: dataThrough[i] ?? null, i })).reverse();
+/** Table rows: one per round of results, newest first (tableRows). */
+const rows = tableRows(dataThrough).map((i) => ({
+  date: runDates[i] ?? "",
+  dataThrough: dataThrough[i] ?? null,
+  i,
+}));
 ---
 
 <figure class="race-chart" aria-labelledby={`${id}-heading`}>
@@ -164,7 +168,7 @@ const rows = runDates.map((date, i) => ({ date, dataThrough: dataThrough[i] ?? n
     <summary>Show the numbers</summary>
     <div class="scroll" role="region" aria-labelledby={`${id}-caption`} tabindex="0">
       <table id={`${id}-table`}>
-        <caption id={`${id}-caption`}>{heading}, by update (newest first)</caption>
+        <caption id={`${id}-caption`}>{heading}, after each round of results (newest first)</caption>
         <thead>
           <tr>
             <th scope="col">Updated</th>

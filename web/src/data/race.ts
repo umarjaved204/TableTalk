@@ -95,6 +95,20 @@ export const MAX_TEAMS = 6;
  *  noise; three dates means at least two rounds of new results. */
 export const MIN_RESULT_DATES = 3;
 
+/**
+ * The rows of a "Show the numbers" table: one per round of results (each
+ * different "results up to" date), from the last update made with those
+ * results, newest first. Updates between matchdays use the same results, so
+ * their numbers differ only by simulation noise; one row per day would grow
+ * to about 250 rows a season, one per round to about 38. The charts still
+ * plot every day. Returns indexes into the chart's points.
+ */
+export function tableRows(dataThrough: readonly (string | null)[]): number[] {
+  const last = new Map<string | null, number>();
+  dataThrough.forEach((date, i) => last.set(date, i));
+  return [...last.values()].sort((a, b) => b - a);
+}
+
 export interface Series {
   team: string;
   /** One value per chart point (null if the team isn't in that run). */

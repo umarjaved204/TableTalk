@@ -189,8 +189,9 @@ test.describe("how the race has moved", () => {
       useInnerText: true,
     });
     await title.locator("summary").click();
-    // 6 runs, newest first; one column per team.
-    await expect(title.locator("tbody tr")).toHaveCount(6);
+    // 6 runs, one row per round of results (the last two share results up to
+    // 20 Sep, so the newer one is kept), newest first; one column per team.
+    await expect(title.locator("tbody tr")).toHaveCount(5);
     await expect(title.locator("tbody tr").first()).toContainText("59%");
     await expect(title.locator("thead th")).toHaveText([
       "Updated",

@@ -7,6 +7,7 @@ import {
   chartPoints,
   loadLeagueHistory,
   selectTeams,
+  tableRows,
   type RunPoint,
   type Series,
 } from "../../src/data/race.ts";
@@ -183,5 +184,30 @@ describe("chart geometry", () => {
     expect(chanceTop(0.84)).toBe(1);
     expect(pointsRange([28.6, 81.9])).toEqual([20, 90]);
     expect(pointsRange([40, 40])).toEqual([40, 50]);
+  });
+});
+
+describe("the numbers tables: one row per round of results", () => {
+  it("keeps the last update for each 'results up to' date, newest first", () => {
+    // Updates: two with results up to 20 Sep, then three with 27 Sep.
+    expect(tableRows(["2026-09-20", "2026-09-20", "2026-09-27", "2026-09-27", "2026-09-27"])).toEqual([4, 1]);
+  });
+
+  it("one row per update when every update has new results", () => {
+    expect(tableRows(["2026-08-17", "2026-08-24", "2026-08-31"])).toEqual([2, 1, 0]);
+  });
+
+  it("before any results (null) counts as one round, and an empty chart has no rows", () => {
+    expect(tableRows([null, null, "2026-08-17"])).toEqual([2, 1]);
+    expect(tableRows([])).toEqual([]);
+  });
+
+  it("a whole season of daily updates gives one row per matchday, not per day", () => {
+    const days = Array.from(
+      { length: 250 },
+      (_, i) => `round-${String(Math.floor(i / 6.5)).padStart(2, "0")}`,
+    );
+    expect(tableRows(days)).toHaveLength(new Set(days).size);
+    expect(new Set(days).size).toBeLessThan(40);
   });
 });

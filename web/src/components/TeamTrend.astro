@@ -5,6 +5,7 @@
 // different "results up to" dates. The chance panels share one scale, so
 // they can be compared. Drawn as SVG at build time and decorative
 // (aria-hidden); the same numbers are in the table under "Show the numbers".
+import { tableRows } from "../data/race.ts";
 import type { TeamTrend } from "../data/team-page.ts";
 import { chanceTop, lastPoint, linePath, pointsRange, scale, xPositions, type Box } from "../format/chart.ts";
 import { formatPlaces, formatPoints } from "../format/number.ts";
@@ -51,9 +52,12 @@ const panels = [
 ];
 const firstDate = trend.runDates[0]?.slice(0, 10);
 const lastDate = trend.runDates.at(-1)?.slice(0, 10);
-const rows = trend.runDates
-  .map((date, i) => ({ date, dataThrough: trend.dataThrough[i] ?? null, i }))
-  .reverse();
+/** Table rows: one per round of results, newest first (tableRows). */
+const rows = tableRows(trend.dataThrough).map((i) => ({
+  date: trend.runDates[i] ?? "",
+  dataThrough: trend.dataThrough[i] ?? null,
+  i,
+}));
 ---
 
 <section class="trend" aria-labelledby="trend-heading">
@@ -91,7 +95,7 @@ const rows = trend.runDates
         <summary>Show the numbers</summary>
         <div class="scroll" role="region" aria-labelledby="trend-caption" tabindex="0">
           <table>
-            <caption id="trend-caption">{team}: chances by update (newest first)</caption>
+            <caption id="trend-caption">{team}: chances after each round of results (newest first)</caption>
             <thead>
               <tr>
                 <th scope="col">Updated</th>
