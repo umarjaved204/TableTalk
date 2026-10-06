@@ -9,7 +9,7 @@
 // The risk: if the pipeline ever renames a team, its slug changes. Stored
 // favourites, links and URLs would then point at the old slug. TEAM_SLUG_RENAMES
 // below maps old slugs to new ones for that case (empty today).
-import { loadLeague } from "./league.ts";
+import { loadIndex, loadLeague } from "./league.ts";
 import { LEAGUES } from "./leagues.ts";
 import type { LeagueData } from "./models.ts";
 
@@ -64,6 +64,10 @@ export interface TeamIndex {
   /** Leagues with no readable data in this build (unavailable or a newer format).
    *  A favourite in one of these is kept, not treated as "no longer covered". */
   unavailableLeagues: string[];
+  /** When each league with data was made (UTC), and the run index: the early
+   *  script marks any older than 30 hours as out of date before the first
+   *  paint (staleCss in src/scripts/favourite-core.js). */
+  updated: string[];
 }
 
 export class TeamSlugError extends Error {
@@ -91,12 +95,14 @@ const collator = new Intl.Collator("en-GB", { sensitivity: "base", numeric: true
 export function buildTeamIndex(leagues: readonly LeagueData[]): TeamIndex {
   const teams: TeamInfo[] = [];
   const unavailableLeagues: string[] = [];
+  const updated: string[] = [];
   const bySlug = new Map<string, TeamInfo>();
   for (const data of leagues) {
     if (data.state !== "ready") {
       unavailableLeagues.push(data.league.id);
       continue;
     }
+    updated.push(data.generatedAt);
     const names = [...new Set(data.rows.map((r) => r.team))].sort(collator.compare);
     for (const name of names) {
       const slug = teamSlug(name);
@@ -116,14 +122,19 @@ export function buildTeamIndex(leagues: readonly LeagueData[]): TeamIndex {
     if (!bySlug.has(to))
       console.warn(`[tabletalk] TEAM_SLUG_RENAMES: "${from}" -> "${to}", but no team has "${to}"`);
   }
-  return { teams, unavailableLeagues };
+  return { teams, unavailableLeagues, updated };
 }
 
 let cached: TeamIndex | null = null;
 
 /** The team list for this build (read once). */
 export function loadTeamIndex(): TeamIndex {
-  cached ??= buildTeamIndex(LEAGUES.map(loadLeague));
+  if (!cached) {
+    const built = buildTeamIndex(LEAGUES.map(loadLeague));
+    const index = loadIndex();
+    if ("index" in index) built.updated.push(index.index.generated_at);
+    cached = built;
+  }
   return cached;
 }
 
@@ -138,6 +149,8 @@ export interface HeadIndex {
    *  ones ("no forecast for La Liga", "in the Premier League"). */
   names: [string, string][];
   unavailable: string[];
+  /** Update times (UTC) the page may show, for the out-of-date check. */
+  updated: string[];
   renames: Record<string, string>;
 }
 
@@ -152,6 +165,7 @@ export function headIndex(index: TeamIndex): HeadIndex {
     leagues,
     names: LEAGUES.map((l): [string, string] => [l.id, l.inSentence]),
     unavailable: [...index.unavailableLeagues],
+    updated: [...new Set(index.updated)].sort(),
     renames: { ...TEAM_SLUG_RENAMES },
   };
 }

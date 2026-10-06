@@ -60,12 +60,12 @@ async function watchShifts(page: Page): Promise<void> {
 }
 // Layout shift allowed after load. Favourite blocks are in place at the first
 // paint, so anything moving up or down must stay tiny (a fifth of the site's
-// 0.1 budget). Under heavy test load there is also pre-existing, sideways
-// movement: header items and table columns re-flowing when a late web font
-// arrives, and the "Last updated 2 days ago" warning on the test data's
-// stale Ligue 1 card. All movement together stays under half the budget.
+// 0.1 budget). Since Step 4c a late web font no longer swaps in (font-display:
+// optional) and the out-of-date warning is set before the first paint, so the
+// only other movement is times rewritten in the visitor's zone (sideways,
+// about 0.002). All movement together stays under a fifth of the budget too.
 const MAX_VERTICAL_SHIFT = 0.02;
-const MAX_TOTAL_SHIFT = 0.05;
+const MAX_TOTAL_SHIFT = 0.02;
 
 async function expectNoShift(page: Page): Promise<void> {
   const { total, vertical, moved } = await page.evaluate(() => {

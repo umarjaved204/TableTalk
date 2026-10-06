@@ -17,7 +17,9 @@
 //   4a, one table row per round of results:  Premier League 2,000 / 2,018 ·
 //       Bundesliga 2,007 / 2,061 (much more over a real season);
 //   4b, race lines drawn once per chart (<use>) and runs of blank heatmap
-//       cells merged: Premier League 1,903 / 1,921 · Bundesliga 1,880 / 1,934.
+//       cells merged: Premier League 1,903 / 1,921 · Bundesliga 1,880 / 1,934;
+//   4c, two more fonts preloaded in <head> (so they arrive in time for
+//       font-display: optional): +2 on every page, budgets 1,923 and 1,936.
 //
 // Team pages (Step 3b): 208 (a league without numbers) to 710 (Brentford: the
 // trend charts, 3 next and 2 recent matches). The budget is for the largest,
@@ -33,9 +35,9 @@ import { expect, test } from "./test.ts";
 const BUDGETS: [string, number][] = [
   // Home
   ["/", 400],
-  // League pages: no growth at all (the counts after Step 4b)
-  ["/premier-league/", 1921],
-  ["/bundesliga/", 1934],
+  // League pages: no growth at all (the counts after Step 4c)
+  ["/premier-league/", 1923],
+  ["/bundesliga/", 1936],
   // Matches
   ["/premier-league/matches/", 1540],
   // Team page

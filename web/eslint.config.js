@@ -54,6 +54,7 @@ export default defineConfig(
         serialize: "readonly",
         findTeam: "readonly",
         favouriteCss: "readonly",
+        staleCss: "readonly",
       },
     },
   },

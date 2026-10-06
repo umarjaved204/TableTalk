@@ -64,6 +64,15 @@
     sheet = null;
   }
 
+  // Out-of-date numbers, decided now, before the first paint (staleCss).
+  try {
+    var staleSheet = new CSSStyleSheet();
+    staleSheet.replaceSync(staleCss(DATA.updated, Date.now()));
+    document.adoptedStyleSheets = document.adoptedStyleSheets.concat([staleSheet]);
+  } catch {
+    // Without constructed stylesheets the warning simply isn't shown.
+  }
+
   function set(name, value) {
     if (value) root.setAttribute(name, value);
     else root.removeAttribute(name);

@@ -1,8 +1,7 @@
 ---
 // "Updated 29 Sep, 18:56 · Results up to 20 Sep". Built in UTC; the browser
-// rewrites the time in the visitor's zone and, if the numbers are older than
-// 30 hours, replaces the first line with a warning (same line, so nothing
-// below it moves).
+// rewrites the time in the visitor's zone. If the numbers are older than 30
+// hours, the first line is a warning from the first paint (see the CSS).
 import { formatDateTime, formatShortDate } from "../format/time.ts";
 
 interface Props {
@@ -58,8 +57,25 @@ const { generatedAt, dataThrough, runStatus, compact = false } = Astro.props;
     min-height: 1.55em;
   }
 
-  .stamp[data-stale="true"] [data-stale-message],
+  /* Out of date (older than 30 hours): decided before the first paint by the
+     early script, which sets these custom properties on this element
+     (staleCss in src/scripts/favourite-core.js). The line becomes a warning
+     and "(2 days ago): these numbers may be out of date" is added after it,
+     so it is in place from the first frame and nothing moves later. */
+  [data-stale-message] {
+    padding: 0 var(--stale-pad, 0);
+    border-radius: var(--radius-1);
+    background: var(--stale-bg, transparent);
+    color: var(--stale-fg, inherit);
+    font-weight: var(--stale-weight, inherit);
+  }
+
+  [data-stale-message]::after {
+    content: var(--stale-note, none);
+  }
+
   .warn {
+    flex-basis: 100%;
     padding: 0 var(--space-2);
     border-radius: var(--radius-1);
     background: var(--warn-bg);
@@ -67,11 +83,8 @@ const { generatedAt, dataThrough, runStatus, compact = false } = Astro.props;
     font-weight: 600;
   }
 
-  .warn {
-    flex-basis: 100%;
-  }
-
-  .compact:not([data-stale="true"]) [data-stale-message] {
-    display: none;
+  /* Home page cards: the "Updated" line only when it is a warning. */
+  .compact [data-stale-message] {
+    display: var(--stale-show, none);
   }
 </style>

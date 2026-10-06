@@ -162,10 +162,17 @@ test.describe("home page", () => {
   test("stale: more than 30 hours after the update, the page says so", async ({ page }) => {
     await page.clock.setFixedTime(new Date("2026-10-01T06:00:00Z")); // 36 hours after
     await openAs(page, "/", LIGHT, 1440);
-    await expect(page.locator(".facts")).toContainText(
-      "Last updated 36 hours ago: these numbers may be out of date.",
+    // The warning is CSS set before the first paint (staleCss): the line's
+    // ::after text, and the line shown on the home cards.
+    const note = (selector: string) =>
+      page.locator(selector).evaluate((el) => getComputedStyle(el, "::after").content);
+    expect(await note(".facts [data-stale-message]")).toBe(
+      '" (36 hours ago): these numbers may be out of date"',
     );
-    await expect(page.locator('[data-league-card="premier_league"]')).toContainText("36 hours ago");
+    const card = page.locator('[data-league-card="premier_league"] [data-stale-message]');
+    await expect(card).toBeVisible();
+    await expect(card).toContainText("Updated");
+    expect(await note('[data-league-card="premier_league"] [data-stale-message]')).toContain("36 hours ago");
   });
 
   test("not stale at FIXTURE_NOW", async ({ page }) => {

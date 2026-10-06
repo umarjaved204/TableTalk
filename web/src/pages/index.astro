@@ -199,12 +199,21 @@ const cardData = scriptJson(
     }
   }
 
-  .facts[data-stale="true"] [data-stale-message] {
-    padding: 0 var(--space-2);
+  /* Out of date (older than 30 hours): decided before the first paint by the
+     early script, which sets these custom properties on this element
+     (staleCss in src/scripts/favourite-core.js). The line becomes a warning
+     and "(2 days ago): these numbers may be out of date" is added after it,
+     so it is in place from the first frame and nothing moves later. */
+  [data-stale-message] {
+    padding: 0 var(--stale-pad, 0);
     border-radius: var(--radius-1);
-    background: var(--warn-bg);
-    color: var(--warn-text);
-    font-weight: 600;
+    background: var(--stale-bg, transparent);
+    color: var(--stale-fg, inherit);
+    font-weight: var(--stale-weight, inherit);
+  }
+
+  [data-stale-message]::after {
+    content: var(--stale-note, none);
   }
 
   /* Five league cards, never one left alone on a row:

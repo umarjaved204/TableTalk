@@ -15,7 +15,11 @@ import {
   resolveFavourite,
   serialize,
   withoutTeamParam,
+  STALE_HOURS,
+  ageText,
+  staleCss,
 } from "../../src/scripts/favourite-core.js";
+import { STALE_AFTER_HOURS, formatAge } from "../../src/format/time.ts";
 
 const index = makeIndex({
   leagues: [
@@ -250,5 +254,34 @@ describe("the favourite's CSS rule", () => {
     expect(favouriteCss('x"]{}*{color:red', null, ids)).toBe("");
     expect(favouriteCss(null, "not_a_league", ids)).toBe("");
     expect(favouriteCss(null, null, ids)).toBe("");
+  });
+});
+
+describe("out-of-date numbers, flagged before the first paint (staleCss)", () => {
+  const made = "2026-09-28T04:40:00Z";
+  const at = (hours: number) => Date.parse(made) + hours * 3_600_000;
+
+  it("nothing until the numbers are more than 30 hours old", () => {
+    expect(staleCss([made], at(30))).toBe("");
+    expect(staleCss([made], at(30.1))).toContain(`[data-generated="${made}"]`);
+  });
+
+  it("the rule shows the warning and says how old the numbers are", () => {
+    const css = staleCss([made, "2026-09-29T17:56:40Z"], at(52));
+    expect(css).toBe(
+      `[data-generated="${made}"]{--stale-show:block;--stale-bg:var(--warn-bg);--stale-fg:var(--warn-text);` +
+        `--stale-weight:600;--stale-pad:var(--space-2);--stale-note:" (2 days ago): these numbers may be out of date"}`,
+    );
+  });
+
+  it("ignores anything that isn't an ISO time (it goes into a CSS selector)", () => {
+    expect(staleCss(['x"]{} *{display:none', 42, null], at(100))).toBe("");
+    expect(staleCss(undefined, at(100))).toBe("");
+  });
+
+  it("says the same as the site's own formatAge, with the same 30-hour limit", () => {
+    expect(STALE_HOURS).toBe(STALE_AFTER_HOURS);
+    for (const hours of [30.5, 31, 47.4, 47.6, 48, 60, 100, 500])
+      expect(ageText(hours)).toBe(formatAge(hours));
   });
 });

@@ -19,7 +19,7 @@
 @font-face {
   font-family: "Barlow Condensed";
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   font-weight: 600;
   src: url("../../node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-600-normal.woff2")
     format("woff2");
@@ -31,7 +31,7 @@
 @font-face {
   font-family: "Barlow Condensed";
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   font-weight: 600;
   src: url("../../node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-ext-600-normal.woff2")
     format("woff2");
@@ -43,7 +43,7 @@
 @font-face {
   font-family: "Barlow Condensed";
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   font-weight: 700;
   src: url("../../node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2")
     format("woff2");
@@ -55,7 +55,7 @@
 @font-face {
   font-family: "Barlow Condensed";
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   font-weight: 700;
   src: url("../../node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-ext-700-normal.woff2")
     format("woff2");
@@ -68,7 +68,7 @@
 @font-face {
   font-family: "Source Sans 3 Variable";
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   font-weight: 200 900;
   src: url("../../node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2")
     format("woff2-variations");
@@ -80,7 +80,7 @@
 @font-face {
   font-family: "Source Sans 3 Variable";
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   font-weight: 200 900;
   src: url("../../node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-latin-ext-wght-normal.woff2")
     format("woff2-variations");
@@ -89,9 +89,17 @@
     U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
-/* Fallbacks shown while the web fonts download (font-display: swap): Arial,
-   scaled to the web fonts' measured width and line height, so the swap
-   barely moves the text (less layout shift). Measured in Chromium by
+/* font-display: optional (above): the browser waits about 100 ms for a web
+   font. If it hasn't arrived, the fallback below is used for the rest of
+   that page view and the font is used from the next page (it is cached by
+   then). So a font never swaps in after the page has appeared, and nothing
+   moves: with "swap", a late font re-flowed the header and the table columns
+   sideways, and on a slow phone re-wrapped the track record page (a shift of
+   0.17 with the fonts 1.5 s late). The three fonts used at the top of every
+   page are preloaded (Base.astro), so on most connections they arrive in time.
+
+   The fallbacks: Arial, scaled to the web fonts' measured width and line
+   height, so a page shown in the fallback looks almost the same. Measured in Chromium by
    scripts/font-fallback-metrics.mjs; re-run it if the fonts change. Arial is
    installed on Windows, macOS and iOS; elsewhere (Android) the next font in
    the stack is used, unadjusted. */

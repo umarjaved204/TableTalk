@@ -2,7 +2,11 @@
 // Every page: <head> (title, description, Open Graph, theme script, font
 // preload), skip link, header, main content, footer.
 import "../styles/global.css";
+// The three fonts used at the top of every page, preloaded so they usually
+// arrive within font-display: optional's ~100 ms (src/styles/fonts.css).
 import displayFont from "@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2?url";
+import displayFontSemibold from "@fontsource/barlow-condensed/files/barlow-condensed-latin-600-normal.woff2?url";
+import textFont from "@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2?url";
 import FavouriteSlot from "../components/FavouriteSlot.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import SiteHeader from "../components/SiteHeader.astro";
@@ -47,6 +51,8 @@ const url = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : null;
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preload" href={displayFont} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={displayFontSemibold} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={textFont} as="font" type="font/woff2" crossorigin />
   </head>
   <body>
     <!-- First thing in <body>: after Astro's CSP <meta> in <head> (so the policy

@@ -223,3 +223,49 @@ export function favouriteCss(team, league, leagueIds) {
   }
   return rules.join("\n");
 }
+
+// ---------------------------------------------------------------------------
+// Out-of-date numbers. Not about favourites, but it runs in the same early
+// script for the same reason: to be decided before the page paints, so the
+// warning is there from the first frame instead of appearing later and
+// pushing the page down (a layout shift).
+// ---------------------------------------------------------------------------
+
+/** Numbers older than this are flagged (the same as STALE_AFTER_HOURS in src/format/time.ts). */
+export var STALE_HOURS = 30;
+var ISO_RE = /^\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:?\d{2})$/;
+
+/** "31 hours ago", "2 days ago" (as formatAge in src/format/time.ts). */
+export function ageText(hours) {
+  var rtf = new Intl.RelativeTimeFormat("en-GB", { numeric: "auto" });
+  return hours < 48 ? rtf.format(-Math.round(hours), "hour") : rtf.format(-Math.floor(hours / 24), "day");
+}
+
+/**
+ * One CSS rule per update time (UTC) older than STALE_HOURS at `now` (ms),
+ * for every element carrying it as data-generated (UpdatedStamp, the home
+ * page's "Last update"). The rule only sets custom properties; the
+ * components' CSS uses them to style the line as a warning and to add
+ * " (2 days ago): these numbers may be out of date" after it.
+ */
+export function staleCss(updated, now) {
+  return (updated || [])
+    .filter(function (iso) {
+      return typeof iso === "string" && ISO_RE.test(iso);
+    })
+    .map(function (iso) {
+      var hours = (now - Date.parse(iso)) / 3600000;
+      if (!(hours > STALE_HOURS)) return "";
+      return (
+        '[data-generated="' +
+        iso +
+        '"]{--stale-show:block;--stale-bg:var(--warn-bg);--stale-fg:var(--warn-text);' +
+        "--stale-weight:600;--stale-pad:var(--space-2);" +
+        '--stale-note:" (' +
+        ageText(hours) +
+        '): these numbers may be out of date"}'
+      );
+    })
+    .filter(Boolean)
+    .join("\n");
+}
