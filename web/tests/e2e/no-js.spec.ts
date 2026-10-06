@@ -2,6 +2,7 @@
 // table's Short/Full switch and chance picker) are shown only when the theme
 // script has marked the page with data-js. Without JavaScript they must stay
 // hidden, and every section must be shown in full, with the numbers.
+import { stars } from "./helpers.ts";
 import { expect, test } from "./test.ts";
 
 test.use({ javaScriptEnabled: false });
@@ -36,7 +37,7 @@ for (const path of ["/", "/?team=arsenal", "/premier-league/", "/premier-league/
     await expect(page.locator(".your-team-slot")).toBeHidden();
     await expect(page.locator(".offer-slot")).toBeHidden();
     await expect(page.locator(".fav-filter")).toBeHidden();
-    await expect(page.locator(".fav-star:visible")).toHaveCount(0);
+    expect(await stars(page.locator("body"))).toBe(0);
     expect(await page.evaluate(() => document.documentElement.hasAttribute("data-fav"))).toBe(false);
     // The rest of the page is all there.
     await expect(page.locator("main h1")).toBeVisible();

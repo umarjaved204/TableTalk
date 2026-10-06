@@ -17,7 +17,7 @@ const CHANCES = [0, 1, 2, 3]; // title, top four or five, relegation, play-off p
     <p class="eyebrow">Your team</p>
     <h2 id="your-team-heading">
       <span class="star-icon" aria-hidden="true"></span>
-      <span data-fav-field="n"></span>
+      <a class="name" data-fav-attrs="href:th" data-fav-field="n"></a>
     </h2>
     <p class="context" data-fav-field="x"></p>
   </div>
@@ -110,6 +110,18 @@ const CHANCES = [0, 1, 2, 3]; // title, top four or five, relegation, play-off p
     font-size: var(--step-3);
     text-transform: none;
     letter-spacing: 0;
+  }
+
+  /* The name links to the team's page: the heading's colour, a light underline. */
+  .name {
+    color: inherit;
+    text-decoration-color: var(--border-strong);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.15em;
+  }
+
+  .name:hover {
+    text-decoration-color: currentcolor;
   }
 
   .context {

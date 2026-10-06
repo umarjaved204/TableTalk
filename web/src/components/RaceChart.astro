@@ -19,6 +19,7 @@
 // The race teams' faint lines are drawn once (a <g> reused with <use>), not
 // once per pre-built panel.
 import type { Series } from "../data/race.ts";
+import { teamHref } from "../data/team-page.ts";
 import { teamSlug } from "../data/teams.ts";
 import { FILL_SCRIPT } from "../scripts/theme-script.ts";
 import FavName from "./FavName.astro";
@@ -122,8 +123,10 @@ const rows = runDates.map((date, i) => ({ date, dataThrough: dataThrough[i] ?? n
       <template data-for={panel.slug}>
         <p class="panel-head" data-team={panel.slug}>
           <span class="team">
-            <span class="fav-star" aria-hidden="true"></span>
-            {panel.team} <span class="your">(your team)</span>
+            <a class="fav-name" href={teamHref(panel.team)}>
+              {panel.team}
+            </a>{" "}
+            <span class="your">(your team)</span>
           </span>
           <span class="value">
             {show(panel.latest)} <span class="was">(was {show(panel.first)})</span>

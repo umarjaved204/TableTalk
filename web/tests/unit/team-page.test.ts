@@ -12,11 +12,13 @@ import {
   mostLikely,
   rosterFor,
   teamDescription,
+  teamHrefs,
   teamTrend,
   teamView,
   zoneBands,
 } from "../../src/data/team-page.ts";
 import { TeamSlugError } from "../../src/data/teams.ts";
+import { cardFields, yourTeamCards } from "../../src/data/your-team.ts";
 import { writeIllustratedHistory } from "../fixtures/illustrated.ts";
 import { REAL, copyOfReal, useDataDir } from "./helpers.ts";
 
@@ -81,6 +83,21 @@ describe("which team pages exist", () => {
     expect(() =>
       buildTeamPages([{ league: info("la_liga"), data: missing, history: [run(["Matches"])] }]),
     ).toThrow(/page under each league/);
+  });
+});
+
+describe("links to team pages", () => {
+  it("a team's name leads to its page; a team without a page has no address", () => {
+    const pl = { league: info("premier_league"), data: ready("premier_league"), history: [] };
+    const hrefs = teamHrefs(buildTeamPages([pl]));
+    expect(hrefs.get("Brighton & Hove Albion")).toBe("/premier-league/brighton-and-hove-albion/");
+    expect(hrefs.get("Barcelona")).toBeUndefined();
+  });
+
+  it("the Your team card links its name to the team's page", () => {
+    const pl = ready("premier_league");
+    const card = yourTeamCards(pl)[0]!;
+    expect(cardFields(card, pl.league)["th"]).toBe(`/premier-league/${card.slug}/`);
   });
 });
 

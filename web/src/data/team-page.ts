@@ -79,10 +79,27 @@ export function buildTeamPages(
   return pages;
 }
 
+let pagesCache: TeamPageEntry[] | null = null;
+let hrefCache: Map<string, string> | null = null;
+
+/** Every team page in this build (worked out once). */
 export function teamPages(): TeamPageEntry[] {
-  return buildTeamPages(
+  pagesCache ??= buildTeamPages(
     LEAGUES.map((league) => ({ league, data: cachedLeague(league), history: cachedHistory(league.id) })),
   );
+  return pagesCache;
+}
+
+/** The address of a team's page, by name, from a list of pages. */
+export function teamHrefs(pages: readonly TeamPageEntry[]): Map<string, string> {
+  return new Map(pages.map((p) => [p.name, `/${p.league.slug}/${p.slug}/`]));
+}
+
+/** Where a team name links to: its page, or undefined if it has none in this
+ *  build (a name is only a link when the page exists). */
+export function teamHref(name: string): string | undefined {
+  hrefCache ??= teamHrefs(teamPages());
+  return hrefCache.get(name);
 }
 
 // ---------------------------------------------------------------------------

@@ -81,7 +81,7 @@ export function yourTeamCards(league: ReadyLeague): YourTeamCard[] {
  * the early script fills them in for the favourite. One copy of the card's
  * markup per team made the home page about 300 KB (22 KB compressed), over
  * the agreed 15 KB budget, so the agreed fallback is used: data, not markup.
- *   n name · x context line · lh/lt league page link and text ·
+ *   n name · th team page link · x context line · lh/lt league page link and text ·
  *   c0..c3: s label, p positions, v chance ·
  *   next match: mh/ma teams, mk kick-off (ISO, for <time>), mt kick-off as text,
  *   ph/pd/pa percentages, b* the probability bar's segment positions.
@@ -92,6 +92,7 @@ export function cardFields(
 ): Record<string, string | number> {
   const fields: Record<string, string | number> = {
     n: card.name,
+    th: `/${league.slug}/${card.slug}/`,
     x: `${league.name} · ${formatOrdinal(card.position)} · ${card.points} pts from ${card.played}`,
     lh: `/${league.slug}/`,
     lt: `${league.name} table`,

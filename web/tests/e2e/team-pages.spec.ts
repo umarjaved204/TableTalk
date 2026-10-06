@@ -119,3 +119,65 @@ test("a team that isn't covered has no page (404)", async ({ page }) => {
   const response = await page.goto("/premier-league/not-a-team/");
   expect(response?.status()).toBe(404);
 });
+
+test.describe("team names link to their pages", () => {
+  const favourite = (team: string) => (page: import("@playwright/test").Page) =>
+    page.addInitScript((slug) => {
+      localStorage.setItem("tabletalk-favourite", JSON.stringify({ v: 1, team: slug }));
+    }, team);
+
+  test("from the league table, heatmap, race panels and match cards", async ({ page }) => {
+    await page.goto("/premier-league/", { waitUntil: "networkidle" });
+    for (const where of ["#table tbody", "#positions tbody", ".race-chart", "#matches"]) {
+      const links = page.locator(`${where} a.fav-name`);
+      expect(await links.count(), where).toBeGreaterThan(0);
+      for (const href of await links.evaluateAll((els) => els.map((e) => e.getAttribute("href")))) {
+        expect(href, where).toMatch(/^\/premier-league\/[a-z0-9-]+\/$/);
+      }
+    }
+    await page.locator("#table tbody a.fav-name", { hasText: "Brentford" }).click();
+    await expect(page).toHaveURL(/\/premier-league\/brentford\/$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Brentford", exact: true })).toBeVisible();
+  });
+
+  test("the favourite's own race panel links to its page, starred", async ({ page }) => {
+    await favourite("mainz-05")(page);
+    await page.goto("/bundesliga/", { waitUntil: "networkidle" });
+    const link = page.locator("[data-fav-target] a.fav-name").first();
+    await expect(link).toHaveAttribute("href", "/bundesliga/mainz-05/");
+    const star = await link.evaluate((a) => getComputedStyle(a, "::before").display);
+    expect(star).toBe("inline-block");
+  });
+
+  test("a starred name in the table: star drawn on the link, label read out", async ({ page }) => {
+    await favourite("brentford")(page);
+    await page.goto("/premier-league/", { waitUntil: "networkidle" });
+    const link = page.locator("#table tbody a.fav-name", { hasText: "Brentford" });
+    await expect(link).toHaveAccessibleName("Brentford (your team)");
+    expect(await link.evaluate((a) => getComputedStyle(a, "::before").display)).toBe("inline-block");
+    const other = page.locator("#table tbody a.fav-name", { hasText: "Arsenal" });
+    await expect(other).toHaveAccessibleName("Arsenal");
+    expect(await other.evaluate((a) => getComputedStyle(a, "::before").display)).toBe("none");
+  });
+
+  test("the Your team card and the dialog's bookmark link lead to the team's page", async ({ page }) => {
+    await favourite("brentford")(page);
+    await page.goto("/", { waitUntil: "networkidle" });
+    await expect(page.locator("#your-team-heading a")).toHaveAttribute("href", "/premier-league/brentford/");
+    await page.getByRole("button", { name: "Your team" }).click();
+    await expect(page.getByRole("link", { name: "Bookmark your team's page" })).toHaveAttribute(
+      "href",
+      "/premier-league/brentford/",
+    );
+  });
+
+  test("a team page's match cards link to the opponents' pages", async ({ page }) => {
+    await page.goto("/premier-league/brentford/", { waitUntil: "networkidle" });
+    await expect(page.locator("[data-match] a.fav-name", { hasText: "Liverpool" }).first()).toHaveAttribute(
+      "href",
+      "/premier-league/liverpool/",
+    );
+    // The page's own heading is not a link to itself.
+    await expect(page.locator("h1 a")).toHaveCount(0);
+  });
+});

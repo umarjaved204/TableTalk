@@ -15,6 +15,7 @@ import { loadLeague } from "../../data/league.ts";
 import { LEAGUES, type LeagueInfo } from "../../data/leagues.ts";
 import { loadRecords, upcomingViews } from "../../data/matches.ts";
 import { buildRace, chartPoints, loadLeagueHistory } from "../../data/race.ts";
+import { teamPages } from "../../data/team-page.ts";
 import Base from "../../layouts/Base.astro";
 
 export function getStaticPaths() {
@@ -35,6 +36,12 @@ const nextMatches =
   data.state === "ready"
     ? upcomingViews(data, records.status === "ok" ? records.records : new Map()).slice(0, NEXT_MATCHES)
     : [];
+const teams =
+  data.state === "ready"
+    ? []
+    : teamPages()
+        .filter((page) => page.league.id === league.id)
+        .sort((a, b) => a.name.localeCompare(b.name, "en-GB"));
 const race =
   data.state === "ready" ? buildRace(chartPoints(loadLeagueHistory(league.id).points, data.season)) : null;
 
@@ -59,6 +66,20 @@ const description =
       <>
         <h1>{league.name}</h1>
         <LeagueUnavailable data={data} />
+        {/* The team pages still exist (from the newest history run): link
+            them, so they can be reached without the address bar. */}
+        {teams.length > 0 && (
+          <nav class="team-list" aria-labelledby="teams-heading">
+            <h2 id="teams-heading">Teams</h2>
+            <ul>
+              {teams.map((team) => (
+                <li>
+                  <a href={`/${league.slug}/${team.slug}/`}>{team.name}</a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
       </>
     )}
     {data.state === "ready" && (
@@ -118,6 +139,30 @@ const description =
     display: grid;
     gap: var(--space-5);
     padding-block: var(--space-6) 0;
+  }
+
+  .team-list {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .team-list h2 {
+    font-size: var(--step-1);
+  }
+
+  .team-list ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+    gap: 0 var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .team-list a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
   }
 
   .sections {

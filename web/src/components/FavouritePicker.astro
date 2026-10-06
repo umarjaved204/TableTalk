@@ -14,8 +14,6 @@
 //   - an app added to the home screen keeps its own settings.
 import { FAV_STORAGE_KEY } from "../scripts/theme-script.ts";
 
-/** Team pages arrive in Step 3; until then the "bookmark your team's page" line is not shown. */
-const TEAM_PAGES = false;
 /** QR codes need the site's full address (SITE_URL), so they are made only when it is set. */
 const QR = Boolean(Astro.site);
 ---
@@ -60,51 +58,46 @@ const QR = Boolean(Astro.site);
     </p>
 
     <div class="keep" data-when-chosen>
-      {TEAM_PAGES && (
-        <p data-team-page-tip>
-          Some browsers forget this after a while.{" "}
-          <a href="/" data-team-page-link>
-            Bookmark your team's page
-          </a>{" "}
-          to keep it.
-        </p>
-      )}
+      <!-- The link is set to the favourite's page by src/scripts/favourites.ts. -->
+      <p data-team-page-tip>
+        Some browsers forget this after a while.{" "}
+        <a href="/" data-team-page-link>
+          Bookmark your team's page
+        </a>{" "}
+        to keep it.
+      </p>
       <details>
         <summary>Use on another device</summary>
-        <div class="details-body">
-          <p>Open this link on your other phone or computer. It asks before changing anything there.</p>
-          <p class="link-row">
-            <code data-personal-link></code>
-            <button type="button" class="button" data-fav-action="copy-link">
-              Copy link
-            </button>
+        <p>Open this link on your other phone or computer. It asks before changing anything there.</p>
+        <p class="link-row">
+          <code data-personal-link></code>
+          <button type="button" class="button" data-fav-action="copy-link">
+            Copy link
+          </button>
+        </p>
+        <p class="copy-status" role="status" data-copy-status></p>
+        {QR && (
+          <p class="qr-row">
+            <img class="qr" data-qr-image alt="" width="148" height="148" />
+            <span>Or scan this with your phone's camera.</span>
           </p>
-          <p class="copy-status" role="status" data-copy-status></p>
-          {QR && (
-            <p class="qr-row">
-              <img class="qr" data-qr-image alt="" width="148" height="148" />
-              <span>Or scan this with your phone's camera.</span>
-            </p>
-          )}
-          <p class="muted">
-            Tip: bookmark the link. If your browser syncs bookmarks, your other devices get it too.
-          </p>
-        </div>
+        )}
+        <p class="muted">
+          Tip: bookmark the link. If your browser syncs bookmarks, your other devices get it too.
+        </p>
       </details>
     </div>
 
     <details>
       <summary>Add TableTalk to your home screen</summary>
-      <div class="details-body">
-        <p>
-          On iPhone or iPad: tap Share, then Add to Home Screen. On Android: open the browser menu, then Add
-          to Home screen or Install.
-        </p>
-        <p class="muted">
-          An app added to the home screen keeps its own settings, separate from your browser, so pick your
-          team again the first time you open it. After that it keeps your choice.
-        </p>
-      </div>
+      <p>
+        On iPhone or iPad: tap Share, then Add to Home Screen. On Android: open the browser menu, then Add to
+        Home screen or Install.
+      </p>
+      <p class="muted">
+        An app added to the home screen keeps its own settings, separate from your browser, so pick your team
+        again the first time you open it. After that it keeps your choice.
+      </p>
     </details>
 
     <p class="note">
@@ -245,9 +238,13 @@ const QR = Boolean(Astro.site);
     cursor: pointer;
   }
 
-  .details-body {
-    display: grid;
-    gap: var(--space-3);
+  /* An open <details>' contents, spaced as a grid would (no wrapper element:
+     the dialog is on every page, and every element counts in the budgets). */
+  details > :not(summary) + :not(summary) {
+    margin-top: var(--space-3);
+  }
+
+  details[open] {
     padding-bottom: var(--space-2);
   }
 

@@ -11,6 +11,8 @@
 // Every button is a real <button> with data-fav-action, handled by one
 // listener on the document, so buttons inside copied-in blocks work too.
 
+import { LEAGUES } from "../data/leagues.ts";
+
 interface Current {
   state: "none" | "dismissed" | "newer" | "chosen" | "paused" | "gone";
   team?: string;
@@ -90,6 +92,9 @@ function refreshDialog(): void {
   if (link) link.textContent = personalLink(current.team);
   const qr = dialog.querySelector<HTMLImageElement>("[data-qr-image]");
   if (qr) qr.src = `/qr/${current.team}.svg`;
+  const page = dialog.querySelector<HTMLAnchorElement>("[data-team-page-link]");
+  const league = LEAGUES.find((l) => l.id === current.league);
+  if (page && league) page.href = `/${league.slug}/${current.team}/`;
 }
 
 function openDialog(): void {

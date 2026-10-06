@@ -4,7 +4,7 @@
 // accessibility (axe) in light and dark, and graceful fallbacks.
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { DARK, LIGHT, hasSidewaysScroll } from "./helpers.ts";
+import { DARK, LIGHT, hasSidewaysScroll, stars } from "./helpers.ts";
 import { expect, test } from "./test.ts";
 
 const KEY = "tabletalk-favourite";
@@ -143,12 +143,12 @@ test.describe("where the favourite shows", () => {
     await seed(page, { [KEY]: saved("arsenal"), "tabletalk-theme": LIGHT });
     await open(page, "/premier-league/");
     const row = page.locator('[data-league-table] tr[data-team="arsenal"]');
-    await expect(row.locator(".fav-star")).toBeVisible();
+    expect(await stars(row)).toBe(1);
     await expect(page.getByRole("rowheader", { name: "Arsenal (your team)" }).first()).toBeVisible();
     // Only the favourite: no other row's label is exposed.
     expect(await page.getByRole("rowheader", { name: /your team/ }).count()).toBe(2); // table + heatmap
     const other = page.locator('[data-league-table] tr[data-team="chelsea"]');
-    await expect(other.locator(".fav-star")).toBeHidden();
+    expect(await stars(other)).toBe(0);
     const [tinted, plain] = await Promise.all(
       [row, other].map((r) =>
         r
@@ -166,9 +166,9 @@ test.describe("where the favourite shows", () => {
     await seed(page, { [KEY]: saved("arsenal") });
     await open(page, "/premier-league/");
     const card = page.locator('[data-match][data-teams~="arsenal"]').first();
-    await expect(card.locator(".fav-star:visible")).toHaveCount(1);
+    expect(await stars(card)).toBe(1);
     const other = page.locator('[data-match]:not([data-teams~="arsenal"])').first();
-    await expect(other.locator(".fav-star:visible")).toHaveCount(0);
+    expect(await stars(other)).toBe(0);
   });
 
   test("the race chart always includes the favourite, with its own column in the numbers", async ({
@@ -195,7 +195,7 @@ test.describe("where the favourite shows", () => {
     await expect(page.locator("#race-title-heading ~ ul .panel.extra:visible")).toHaveCount(0);
     await expect(page.locator("#race-points-heading ~ ul .panel.extra:visible")).toHaveCount(0);
     await expect(page.locator("#race-relegation-heading ~ ul .panel.extra:visible")).toHaveCount(1);
-    await expect(page.locator('.race-chart li[data-team="bayern-munich"] .fav-star').first()).toBeVisible();
+    expect(await stars(page.locator('.race-chart li[data-team="bayern-munich"]').first())).toBe(1);
   });
 
   test("the home page puts the favourite's league first and keeps the card grid tidy", async ({ page }) => {
@@ -293,7 +293,7 @@ test.describe("personal links", () => {
     await expect(offer).toBeHidden();
     await expect(page.locator("[data-fav-status]")).toHaveText("Saved. Chelsea is your team on this device.");
     expect(JSON.parse((await stored(page))!).team).toBe("chelsea");
-    await expect(page.locator('[data-league-table] tr[data-team="chelsea"] .fav-star')).toBeVisible();
+    await expect.poll(() => stars(page.locator('[data-league-table] tr[data-team="chelsea"]'))).toBe(1);
   });
 
   test("replacing a different favourite asks first; 'Keep' changes nothing", async ({ page }) => {
@@ -452,7 +452,7 @@ test.describe("the Your team dialog", () => {
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
     await expect(opener).toBeFocused();
-    await expect(page.locator('[data-league-table] tr[data-team="chelsea"] .fav-star')).toBeVisible();
+    await expect.poll(() => stars(page.locator('[data-league-table] tr[data-team="chelsea"]'))).toBe(1);
   });
 
   test("shows the personal link; Copy puts it on the clipboard", async ({ page, context }) => {

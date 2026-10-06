@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { LEAGUES } from "../../src/data/leagues.ts";
 import { STORAGE_KEY, THEMES } from "../../src/themes.ts";
 
@@ -55,6 +55,19 @@ export async function openAs(page: Page, path: string, theme: string, width: num
   );
   await page.goto(path, { waitUntil: "networkidle" });
   return errors;
+}
+
+/** How many favourite stars show inside `scope`. A linked team name draws its
+ *  star as the link's ::before (FavName.astro); other stars are a .fav-star span. */
+export async function stars(scope: Locator): Promise<number> {
+  return scope
+    .locator(".fav-name, .fav-star")
+    .evaluateAll(
+      (els) =>
+        els.filter(
+          (el) => getComputedStyle(el, el.matches(".fav-name") ? "::before" : null).display !== "none",
+        ).length,
+    );
 }
 
 export async function hasSidewaysScroll(page: Page): Promise<boolean> {

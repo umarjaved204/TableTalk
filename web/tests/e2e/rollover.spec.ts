@@ -7,6 +7,7 @@
 //   - the picker lists this season's teams only.
 // Team pages (and stub pages for last season's teams) are added in Step 3.
 import { expect, test } from "@playwright/test";
+import { stars } from "./helpers.ts";
 
 const KEY = "tabletalk-favourite";
 
@@ -28,7 +29,7 @@ test("a favourite that was relegated: 'isn't in the leagues we cover this season
   await expect(message).toContainText("It was in the Premier League when you picked it.");
   // Nothing is starred anywhere, and the stored choice is untouched.
   await page.goto("/premier-league/", { waitUntil: "networkidle" });
-  await expect(page.locator(".fav-star:visible")).toHaveCount(0);
+  expect(await stars(page.locator("body"))).toBe(0);
   expect(JSON.parse((await page.evaluate((key) => localStorage.getItem(key), KEY))!).team).toBe("hull-city");
   // Picking another team replaces it.
   await page.goto("/", { waitUntil: "networkidle" });
@@ -49,9 +50,7 @@ test("a promoted team works like any other: card, star, league first", async ({ 
   await page.goto("/", { waitUntil: "networkidle" });
   await expect(page.getByRole("article", { name: "Fortuna Düsseldorf" })).toContainText("Bundesliga");
   await page.goto("/bundesliga/", { waitUntil: "networkidle" });
-  await expect(
-    page.locator('[data-league-table] tr[data-team="fortuna-dusseldorf"] .fav-star'),
-  ).toBeVisible();
+  expect(await stars(page.locator('[data-league-table] tr[data-team="fortuna-dusseldorf"]'))).toBe(1);
   await expect(page.getByText("Too early to show a trend.")).toBeVisible();
 });
 

@@ -4,18 +4,33 @@
 // hidden unless an ancestor element carries data-team="<this team's slug>"
 // and that team is the favourite (src/styles/favourites.css). The caller puts
 // data-team on the row or card, so the row's tint and the star switch on together.
+//
+// The name links to the team's page when it has one (teamHref), unless
+// link={false} (the team page's own heading). The linked version draws the
+// star with the link's ::before instead of a <span>, so linking a name adds
+// no element: the league page's element budget doesn't grow.
+import { teamHref } from "../data/team-page.ts";
+
 interface Props {
   name: string;
+  link?: boolean;
 }
-const { name } = Astro.props;
+const { name, link = true } = Astro.props;
+const href = link ? teamHref(name) : undefined;
 ---
 
 {
   /* One expression, not separate lines of markup: a line break between the
      parts would put a stray space inside what screen readers say. */
-  [
-    <span class="fav-star" aria-hidden="true" />,
-    name,
-    <span class="fav-label visually-hidden"> (your team)</span>,
-  ]
+  href ? (
+    <a class="fav-name" href={href}>
+      {[name, <span class="fav-label visually-hidden"> (your team)</span>]}
+    </a>
+  ) : (
+    [
+      <span class="fav-star" aria-hidden="true" />,
+      name,
+      <span class="fav-label visually-hidden"> (your team)</span>,
+    ]
+  )
 }
