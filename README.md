@@ -6,6 +6,7 @@ Written by the nightly GitHub Actions run (`python -m tabletalk update`), never 
 - `history/` - every run's files, never changed afterwards
 - `track_record/locks.jsonl` - predictions locked before kick-off (append-only, hash-chained)
 - `track_record/summary.json` - locked predictions scored against results
+- `state/` - working files for the next run (not part of the data contract; do not build on them)
 
 What every field means: `contracts/README.md` on the `main` branch.
 Each commit on this branch is one nightly run. The branch is protected against

@@ -1,0 +1,32 @@
+{
+ "date": "2026-10-13",
+ "generated_at": "2026-10-13T10:19:48Z",
+ "last_try": false,
+ "leagues": {
+  "bundesliga": {
+   "missing": [],
+   "results_complete": true,
+   "updated": true
+  },
+  "la_liga": {
+   "missing": [],
+   "results_complete": true,
+   "updated": true
+  },
+  "ligue_1": {
+   "missing": [],
+   "results_complete": true,
+   "updated": true
+  },
+  "premier_league": {
+   "missing": [],
+   "results_complete": true,
+   "updated": true
+  },
+  "serie_a": {
+   "missing": [],
+   "results_complete": true,
+   "updated": true
+  }
+ }
+}
