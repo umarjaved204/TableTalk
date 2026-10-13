@@ -162,15 +162,16 @@ def cmd_update(args: argparse.Namespace) -> int:
     """The daily cycle for every league: fetch, check, refit, simulate, write."""
     from pathlib import Path
 
-    from .pipeline.update import DEFAULT_OUTPUT_DIR, run_update, updated_today
+    from .pipeline.update import DEFAULT_OUTPUT_DIR, done_today, run_update
 
     out_dir = Path(args.out) if args.out else DEFAULT_OUTPUT_DIR
-    if args.skip_if_updated_today and updated_today(out_dir):
-        print("today's run already updated every league; nothing to do")
+    if args.skip_if_updated_today and done_today(out_dir, args.competitions or None):
+        print("today's run already updated every league with complete results; nothing to do")
         return 0
     outcomes = run_update(
         args.competitions or None, out_dir=out_dir, refresh=not args.no_refresh,
         n_simulations=args.n_simulations, stale_after=pd.Timedelta(days=args.stale_after_days),
+        last_try=args.last_try,
     )
     print((out_dir / "latest" / "run_report.md").read_text(encoding="utf-8"))
     print(f"outputs in {out_dir}")
@@ -353,7 +354,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     update.add_argument(
         "--skip-if-updated-today", action="store_true",
-        help="do nothing if today's run already updated every league (the scheduled backup run)",
+        help="do nothing if today's run already updated every league and no results were missing "
+             "(the later scheduled tries)",
+    )
+    update.add_argument(
+        "--last-try", action="store_true",
+        help="the day's last scheduled try: results still missing fail the run, so a person is told",
     )
     update.set_defaults(func=cmd_update)
 

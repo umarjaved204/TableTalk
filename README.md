@@ -107,6 +107,17 @@ gradient derived in the code comments.
 
 ---
 
+## Getting the code
+
+```
+git clone --single-branch --branch main https://github.com/umarjaved204/TableTalk.git
+```
+
+`--single-branch --branch main` downloads only the code. A plain `git clone`
+also downloads the `data` branch, where the nightly run adds a full copy of
+every prediction each day (see [the nightly schedule](#the-nightly-schedule-github-actions)),
+so it grows by tens of megabytes a season.
+
 ## Repository layout
 
 ```
@@ -1252,6 +1263,8 @@ outputs/latest/run_report.md         the same, for a person
 outputs/history/<time>/...           every run, kept unchanged
 outputs/track_record/locks.jsonl     locked predictions (see below)
 outputs/track_record/summary.json    the live track record
+outputs/state/run_state.json         working file: is today done? (not part of the contract)
+outputs/state/results_seen.json      working file: when each result first appeared, per source
 ```
 
 The format is the **data contract**: [contracts/README.md](contracts/README.md)
@@ -1278,6 +1291,11 @@ the league's previous files are untouched.
   not postponed. It is judged from the fixture list, so an international
   break never triggers it. Usually the source is slow; if it lasts, check the
   match was really played and compare the sources.
+- *"Results not in yet"* (not a failure, except on the day's last try). A match
+  that kicked off at least 3 hours before the run has no final score in the
+  data the run used, so that day's predictions do not include it. The run
+  still publishes; the next scheduled try runs the update again. See
+  [when a day is done](#the-nightly-schedule-github-actions).
 - *Lock log hash chain broken*: someone or something edited
   `track_record/locks.jsonl`. Restore it from its published copy; never "fix"
   a line by hand.
@@ -1289,11 +1307,47 @@ Then run `python -m tabletalk update` again.
 [.github/workflows/daily-update.yml](.github/workflows/daily-update.yml) tries
 to run the update four times a day: at **01:37, 03:37, 05:37 and 07:37 UTC**.
 The first try GitHub actually starts does the update. The others check whether
-today's run (by the UTC date) already updated every league, and if so stop
-within seconds. If that run failed for a league or flagged a problem, it does
-not count, and the next try runs the whole update again. You can also start it
-by hand (Actions tab, "Daily update", "Run workflow"); a manual run skips too,
-unless **force** is ticked.
+the day (by the UTC date) is already **done**, and if so stop within seconds.
+You can also start it by hand (Actions tab, "Daily update", "Run workflow"); a
+manual run skips too, unless **force** is ticked.
+
+**When a day is done.** Every league updated, *and* its results were complete:
+no match that kicked off at least **3 hours** before the run (about two hours
+of football plus an hour for a late start; a match with no time set counts
+from the end of its day) is missing its final score in the data the run
+actually used. A match the source calls finished but whose score is not in
+that data still counts as missing; a postponed, suspended or cancelled match
+does not. If a league failed or results were missing, the run still publishes
+what it has, lists the missing matches in the run report and the snapshot's
+`notices`, and the next try runs the whole update again. This came out of the
+trial: on 12 Oct 2026 football-data.org still had no result for Sunday's
+Premier League and Bundesliga matches at 07:57 UTC, so Monday's predictions
+were made without them, and the later tries skipped.
+
+- **Re-running all five leagues** (simpler than re-running only some, and no
+  change to the data contract) means a league whose results were already
+  complete gets the same numbers again, with a newer `predicted_at`. The seed
+  depends only on the date and the league, so the same data gives exactly the
+  same predictions. Each publishing try adds its own `history/` folder.
+- **The last try** (07:37, set once as `LAST_TRY_SCHEDULE` in the workflow)
+  passes `--last-try`. If results are still missing then, it publishes, warns
+  in the run report and fails the job, so you get an email. Two known cases:
+  GitHub can start tries out of order, so the 07:37 try may run before the
+  05:37 one and send a false alarm (the 05:37 try then still runs, because the
+  day is not done, and can complete it); and if GitHub drops the 07:37 try,
+  there is no email that day (the run report says what is missing, and the
+  2-day "results may be late" check fails the run if the gap lasts).
+- **Where "done" is kept:** `state/run_state.json` on the `data` branch, a
+  working file outside the data contract. It fails safe: missing, unreadable,
+  from another day, or not mentioning a league all mean "not done", and the
+  update runs again.
+- **Two more checks in the run report.** *Results first seen:* for each new
+  result, which source had it and the first of our runs to see it
+  (`state/results_seen.json`), summarised as hours after kick-off. It is an
+  upper bound on the source's delay, since our runs only look a few times a
+  day; results already there when the log began are a baseline with no delay.
+  *Timing:* a warning when the day's first update publishes less than 60
+  minutes before the day's first kick-off. Neither fails the run.
 
 **Why four tries, so early.** A prediction is locked from the last run that
 finished before kick-off, and the earliest kick-off in the five leagues is
@@ -1342,8 +1396,9 @@ add a commit on top, still work, so the bot is not blocked.
 - *How you are told:* GitHub emails whoever last changed the `cron` lines in
   the workflow file. The run's summary page shows the run report.
 - *What counts as a failure:* any league failing its checks, "results may be
-  late", or a locking problem. Whatever passed is still published first, and a
-  failed league keeps its previous files.
+  late", results still missing on the day's last try, or a locking problem.
+  Whatever passed is still published first, and a failed league keeps its
+  previous files.
 - *What to do:* fix the cause as described above, then start the workflow by
   hand with **force** ticked. Never switch off the `data` branch's protection
   to rewrite it: its history is the evidence of timing.
@@ -1386,6 +1441,17 @@ ever added to.
 - **Postponed?** The lock is kept and marked **void**. Once the match has a new
   date, it gets a new lock before the new kick-off. Both stay in the log; only
   the second is scored. Suspended and cancelled matches are voided the same way.
+  Every postponed, suspended or cancelled match is listed in the run report and
+  in the snapshot's `notices`, and voided locks in the run report.
+- **Assumption: a cancelled match is still simulated** as a match to be played,
+  because cancelled matches are almost always replayed. If one is scrapped or
+  awarded instead, it goes into `configs/awarded_results.yaml` like any other
+  awarded result.
+- **Several tries in one day?** Each publishing try refreshes the waiting
+  predictions of matches that have not kicked off yet, so the lock is still the
+  newest prediction made before kick-off. A match that kicked off between two
+  tries keeps the earlier try's prediction, even if the source is slow to say
+  it has started.
 - **Checked against the real kick-off.** Whether a lock came first is checked
   against the kick-off time reported once the match has started, not the one we
   saw when predicting. A lock that turns out to be from after kick-off is marked

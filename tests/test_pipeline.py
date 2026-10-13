@@ -397,17 +397,17 @@ def test_a_flagged_league_still_writes_but_fails_the_run():
 
 
 def test_backup_run_skips_only_after_a_complete_run_today(tmp_path):
-    from tabletalk.pipeline.update import updated_today
+    from tabletalk.pipeline.update import done_today
 
     morning = pd.Timestamp("2026-10-10T04:40:00Z")
     backup = pd.Timestamp("2026-10-10T07:40:00Z")
-    assert not updated_today(tmp_path, backup)  # nothing published yet
+    assert not done_today(tmp_path, ["aa"], backup)  # nothing published yet
 
     write_outputs([LeagueOutcome("aa", "A", snapshot=_snapshot("aa", "2026-10-10T04:40:00Z"))],
                   out_dir=tmp_path, generated_at=morning)
-    assert updated_today(tmp_path, backup)
-    assert not updated_today(tmp_path, pd.Timestamp("2026-10-11T07:40:00Z"))  # that was yesterday
+    assert done_today(tmp_path, ["aa"], backup)
+    assert not done_today(tmp_path, ["aa"], pd.Timestamp("2026-10-11T07:40:00Z"))  # that was yesterday
     assert (tmp_path / "README.md").exists()  # the data branch explains itself
 
     write_outputs([LeagueOutcome("aa", "A", error="boom")], out_dir=tmp_path, generated_at=morning)
-    assert not updated_today(tmp_path, backup)  # a failed league means the backup tries again
+    assert not done_today(tmp_path, ["aa"], backup)  # a failed league means the backup tries again

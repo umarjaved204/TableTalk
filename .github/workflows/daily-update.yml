@@ -13,15 +13,24 @@
 # scheduled time. So there are four tries a day, two hours apart, from 01:37
 # UTC (off the hour, GitHub's busiest moment). Every scheduled try uses
 # --skip-if-updated-today: the first one GitHub actually starts does the
-# update; the others see that today's run updated every league and stop in
-# seconds. If that run failed or flagged a league, the next try runs again.
-# 01:37 is about three hours after the last evening matches end (~22:45 UTC),
-# so the previous night's results should be in.
+# update; the others stop in seconds if the day is done. Done means every
+# league updated AND no match that kicked off 3+ hours before the run is
+# missing its final score (state/run_state.json on the data branch). If not,
+# the next try runs the whole update again (unchanged leagues get the same
+# numbers with a newer predicted_at).
+#
+# The last try (LAST_TRY_SCHEDULE below) passes --last-try: if results are
+# still missing then, it publishes, warns and fails the job so you are told.
+# Two known cases: GitHub can start tries out of order (the 07:37 try running
+# before the 05:37 one can send a false-alarm email, and the 05:37 try then
+# still runs and can complete the day); and a dropped 07:37 try means no email
+# that day (the run report and the 2-day "results may be late" check still
+# catch a lasting gap).
 #
 # Failures: the job fails (and GitHub emails whoever last changed the `cron`
-# lines) when a league fails its checks, results look late, or locking fails.
-# Whatever did pass is still published first; a failed league keeps its
-# previous files.
+# lines) when a league fails its checks, results look late, results are still
+# missing on the last try, or locking fails. Whatever did pass is still
+# published first; a failed league keeps its previous files.
 #
 # Needs one repository secret: FOOTBALL_DATA_API_KEY.
 
@@ -36,18 +45,25 @@ on:
     - cron: "37 1 * * *"
     - cron: "37 3 * * *"
     - cron: "37 5 * * *"
-    - cron: "37 7 * * *"
+    - cron: "37 7 * * *"   # the last try: must equal LAST_TRY_SCHEDULE below
   workflow_dispatch:
     inputs:
       force:
-        description: "Run even if today's run already updated every league"
+        description: "Run even if today's run already updated every league with complete results"
         type: boolean
         default: false
 
 permissions:
   contents: write   # to push to the `data` branch
 
-# Never two runs at once: both would push to `data`.
+# The one place the last try is defined (a test checks it is the latest cron
+# line above). Manual runs are never the last try.
+env:
+  LAST_TRY_SCHEDULE: "37 7 * * *"
+
+# Never two runs at once: both would append to the lock log and push to
+# `data`. Tries that overlap queue instead (GitHub keeps the newest waiting
+# one; every try follows the same skip rule, so losing a waiting one is safe).
 concurrency:
   group: daily-update
   cancel-in-progress: false
@@ -112,17 +128,21 @@ jobs:
         env:
           FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
         run: |
-          # Every scheduled try skips if today's run already updated every
-          # league; a manual run does too, unless "force" is ticked.
+          # Every scheduled try skips if the day is done (every league updated,
+          # no results missing); a manual run does too, unless "force" is ticked.
           skip=""
+          last=""
           if [ "${{ github.event_name }}" = "schedule" ]; then
             skip="--skip-if-updated-today"
+            if [ "${{ github.event.schedule }}" = "$LAST_TRY_SCHEDULE" ]; then
+              last="--last-try"
+            fi
           fi
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force }}" != "true" ]; then
             skip="--skip-if-updated-today"
           fi
           set +e
-          python -m tabletalk update --out outputs $skip
+          python -m tabletalk update --out outputs $skip $last
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 
       # Publish whatever passed, even if something else failed: a failed

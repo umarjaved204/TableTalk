@@ -21,7 +21,16 @@ track_record/report.md            the same, written for a person
 ```
 
 `track_record/pending.json` and `meta.json` are working files for the
-pipeline, not part of the contract.
+pipeline, not part of the contract. So are `state/run_state.json` (whether
+today's run is done: every league updated and no results missing) and
+`state/results_seen.json` (when each result first appeared, per source). Do
+not build on any of them: their format can change without a version bump.
+
+Several runs can publish on the same day (a later try runs again while
+results are missing), so `history/` can hold more than one folder per day.
+Each snapshot's `notices` may say "Results not in yet: ..." (its predictions
+do not include those matches) and list postponed, suspended or cancelled
+matches.
 
 `<competition>` is a config id: `premier_league`, `bundesliga`, `la_liga`,
 `serie_a`, `ligue_1`. The history folder name is the run's start time in UTC.
@@ -158,4 +167,14 @@ previous files stay as they were and `index.json` says `kept_previous`.
 History: 1.0.0 (2026-09-29) snapshots and index; 1.1.0 (2026-09-29) adds the
 lock log and the track record. 2026-09-29: wording clarified (the `data`
 branch's history is strong evidence of timing, not proof); files unchanged,
-still 1.1.0.
+still 1.1.0. 2026-10-13: wording added on working files under `state/`,
+several runs a day, and the new kinds of `notices` (strings, as before); files
+unchanged, still 1.1.0.
+
+**Requested for a future version** (low priority, not scheduled):
+`results_complete` (true/false) and `missing_results` (match ids) on each
+`index.json` entry, so the website can say "some results are not in yet"
+without parsing `notices`. Today that information is only in the working file
+`state/run_state.json`, which the website must not read. Adding it would be a
+MINOR change (1.x.0); `index.json` rejects unknown fields, so the schema and the
+website change together.
