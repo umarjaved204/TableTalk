@@ -8,23 +8,24 @@ Each entry says what, why, the version change, and what the site does in the
 meantime. Numbers (R1, R2, ...) are stable ids; the list below is in
 **priority order**.
 
-| Priority | Id  | What                                                         | Type             | Meanwhile                                                                            |
-| -------- | --- | ------------------------------------------------------------ | ---------------- | ------------------------------------------------------------------------------------ |
-| 1        | R11 | Readers must ignore unknown fields (wording)                 | PATCH            | The site validates against relaxed schema copies                                     |
-| 2        | R8  | Pipeline fingerprint next to `code_commit`                   | MINOR            | Not needed until `web/` merges into `main`. **Must be done before that.**            |
-| 3        | R14 | Permanent team ids, slugs and short names (includes R3)      | MINOR            | Slugs made from team names at build time (`src/data/teams.ts`), plus a rename map    |
-| 4        | R2  | Compact history series + run index                           | MINOR            | The build reads the `history/` folders                                               |
-| 5        | R4  | Zone short labels and which end of the table                 | MINOR            | Temporary `ZONE_DISPLAY` map in `src/data/leagues.ts` (build fails on a new zone id) |
-| 6        | R1  | Mark mathematically certain outcomes (**investigate first**) | MINOR            | Never show 0% or 100%                                                                |
-| 7        | R5  | Recent results in each snapshot                              | MINOR            | "Recent" shows locked matches only                                                   |
-| 8        | R6  | Identify awarded matches in the track record                 | MINOR            | Show the count only                                                                  |
-| 9        | R7  | `contract_version` on each new lock-log line                 | MINOR            | Read the log under `summary.json`'s version                                          |
-| 10       | R12 | A JSON Schema for lock-log lines                             | PATCH (new file) | Hand-written types in `src/data/track-record.ts`                                     |
-| 11       | R10 | Backtest summary file for the methodology page               | MINOR            | Copied into `src/data/backtests.ts` with the README commit; a test checks them       |
-| 12       | R9  | Whether a kick-off time is confirmed (investigate)           | MINOR            | A general "kick-off times can still change" note                                     |
-| 13       | R13 | Can `upcoming_matches` include a match already kicked off?   | PATCH (wording)  | The site handles both: such a match shows as "kicked off", not upcoming              |
-| 14       | R15 | Teams that left each league since last season                | MINOR            | Neutral wording: "isn't in the leagues we cover this season"                         |
-| –        | R3  | Short team names: **folded into R14**                        | –                | Full names, wrapping onto two lines                                                  |
+| Priority | Id  | What                                                             | Type             | Meanwhile                                                                            |
+| -------- | --- | ---------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------ |
+| 1        | R11 | Readers must ignore unknown fields (wording)                     | PATCH            | The site validates against relaxed schema copies                                     |
+| 2        | R8  | Pipeline fingerprint next to `code_commit`                       | MINOR            | Not needed until `web/` merges into `main`. **Must be done before that.**            |
+| 3        | R14 | Permanent team ids, slugs and short names (includes R3)          | MINOR            | Slugs made from team names at build time (`src/data/teams.ts`), plus a rename map    |
+| 4        | R2  | Compact history series + run index                               | MINOR            | The build reads the `history/` folders                                               |
+| 5        | R4  | Zone short labels and which end of the table                     | MINOR            | Temporary `ZONE_DISPLAY` map in `src/data/leagues.ts` (build fails on a new zone id) |
+| 6        | R1  | Mark mathematically certain outcomes (**investigate first**)     | MINOR            | Never show 0% or 100%                                                                |
+| 7        | R5  | Recent results in each snapshot                                  | MINOR            | "Recent" shows locked matches only                                                   |
+| 8        | R6  | Identify awarded matches in the track record                     | MINOR            | Show the count only                                                                  |
+| 9        | R7  | `contract_version` on each new lock-log line                     | MINOR            | Read the log under `summary.json`'s version                                          |
+| 10       | R12 | A JSON Schema for lock-log lines                                 | PATCH (new file) | Hand-written types in `src/data/track-record.ts`                                     |
+| 11       | R10 | Backtest summary file for the methodology page                   | MINOR            | Copied into `src/data/backtests.ts` with the README commit; a test checks them       |
+| 12       | R9  | Whether a kick-off time is confirmed (investigate)               | MINOR            | A general "kick-off times can still change" note                                     |
+| 13       | R13 | Can `upcoming_matches` include a match already kicked off?       | PATCH (wording)  | The site handles both: such a match shows as "kicked off", not upcoming              |
+| 14       | R15 | Teams that left each league since last season                    | MINOR            | Neutral wording: "isn't in the leagues we cover this season"                         |
+| 15       | R16 | Whether each league's results are complete (`latest/index.json`) | MINOR            | Nothing said: "Results up to" is shown as it is                                      |
+| –        | R3  | Short team names: **folded into R14**                            | –                | Full names, wrapping onto two lines                                                  |
 
 R12 was added in Step 2 (the lock log is the only published file without a
 schema). It sits next to R7 because both are about the lock log. R13 was added
@@ -32,6 +33,7 @@ in Step 3, at the end so the existing order is unchanged. R14 and R15 were
 added with favourite teams (website stage 2): R14 third, because team URLs and
 personal links are promises once the site is public; R3 (short names) is part
 of R14's team record, so it is folded in and keeps its id as a pointer; R15 at
+the end. R16 was added after the pipeline trial (15 Oct 2026), low priority, at
 the end.
 
 ---
@@ -255,3 +257,25 @@ from the history folders, for the stub pages (`stubPages()` in
 `src/data/team-page.ts`): per league, the teams in the last run of the
 newest earlier season that have no page this season. R15 would replace that
 guess with the pipeline's own list.
+
+## R16. Whether each league's results are complete (MINOR, low priority)
+
+**What.** Per competition in `latest/index.json`:
+
+- `results_complete`: `true` when every match that should have finished by
+  the run has its result; `false` when some are still missing.
+- `missing_results`: the match ids of the finished matches with no result yet
+  (empty when `results_complete` is `true`).
+
+**Why.** A run can happen before the source has every result of a matchday.
+The numbers are then correct for the results they have, but a visitor
+comparing "Results up to 12 Oct" with a match they watched can't tell that
+one result is missing. With R16 the site could say "Some results are not in
+yet; they will be in a later update" on that league's page and home card.
+
+**Context.** The pipeline already tracks this, but only in a working file,
+`state/run_state.json`, which is not part of the contract and not published.
+R16 would publish the per-league answer, not the working file.
+
+**Meanwhile.** The site says nothing about it; "Results up to" is shown as
+it is.
