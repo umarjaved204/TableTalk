@@ -53,7 +53,8 @@ export class UnknownZoneError extends Error {
 }
 
 export function zoneDisplay(zoneId: string, leagueId: string): ZoneDisplay {
-  const display = ZONE_DISPLAY[zoneId];
+  // Own keys only: a zone id from the data must not find Object's built-ins ("constructor").
+  const display = Object.hasOwn(ZONE_DISPLAY, zoneId) ? ZONE_DISPLAY[zoneId] : undefined;
   if (!display) {
     throw new UnknownZoneError(
       `${leagueId}: zone "${zoneId}" is not in ZONE_DISPLAY (src/data/leagues.ts). Add a short label, end and marker for it.`,

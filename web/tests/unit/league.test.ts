@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Snapshot } from "../../src/data/contract.gen.ts";
 import { isBoundaryBelow, loadLeague, markedZoneAt } from "../../src/data/league.ts";
-import { LEAGUES, UnknownZoneError, ZONE_DISPLAY } from "../../src/data/leagues.ts";
+import { LEAGUES, UnknownZoneError, ZONE_DISPLAY, zoneDisplay } from "../../src/data/leagues.ts";
 import { DataError } from "../../src/data/load.ts";
 import type { ReadyLeague, Zone } from "../../src/data/models.ts";
 import { REAL, copyOfReal, editJson, useDataDir } from "./helpers.ts";
@@ -31,6 +31,12 @@ describe("temporary zone map (until contract request R4)", () => {
     useDataDir(dir);
     expect(() => loadLeague(PL)).toThrow(UnknownZoneError);
     rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("a zone id named like an Object built-in is unknown, not a match", () => {
+    for (const id of ["constructor", "toString", "__proto__"]) {
+      expect(() => zoneDisplay(id, "premier_league")).toThrow(UnknownZoneError);
+    }
   });
 });
 

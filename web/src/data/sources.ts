@@ -37,12 +37,24 @@ export interface SourceUse {
 
 const ROLE_ORDER = Object.keys(ROLE_TEXT);
 
+// The loader and role come from the data, so only the maps' own keys count:
+// a plain lookup would also find Object's built-ins ("constructor", "toString").
+/** The display name and link for a loader id, or undefined if it isn't listed. */
+export function sourceDisplay(loader: string): SourceDisplay | undefined {
+  return Object.hasOwn(SOURCE_DISPLAY, loader) ? SOURCE_DISPLAY[loader] : undefined;
+}
+
+/** A role in words; an unknown role is shown as it is. */
+export function roleText(role: string): string {
+  return (Object.hasOwn(ROLE_TEXT, role) ? ROLE_TEXT[role] : undefined) ?? role;
+}
+
 /** One entry per loader used by any league, with what it was used for and where. */
 export function sourcesUsed(leagues: ReadyLeague[]): SourceUse[] {
   const byLoader = new Map<string, { roles: Set<string>; leagues: Set<string> }>();
   for (const league of leagues) {
     for (const source of league.sources) {
-      if (!SOURCE_DISPLAY[source.loader]) {
+      if (!sourceDisplay(source.loader)) {
         throw new DataError(
           `${league.league.id}: source "${source.loader}" is not in SOURCE_DISPLAY (src/data/sources.ts). Add its name and link.`,
         );
@@ -56,7 +68,7 @@ export function sourcesUsed(leagues: ReadyLeague[]): SourceUse[] {
   return [...byLoader].map(([loader, entry]) => ({
     loader,
     // Every loader was checked against SOURCE_DISPLAY above.
-    ...(SOURCE_DISPLAY[loader] ?? { name: loader, url: "" }),
+    ...(sourceDisplay(loader) ?? { name: loader, url: "" }),
     roles: [...entry.roles].sort((a, b) => ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b)),
     leagues: leagues.map((l) => l.league.name).filter((n) => entry.leagues.has(n)),
   }));
