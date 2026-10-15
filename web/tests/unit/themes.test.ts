@@ -11,6 +11,7 @@ import type { HeadIndex } from "../../src/data/teams.ts";
 import {
   FAV_STORAGE_KEY,
   FILL_SCRIPT,
+  UNSAFE_IN_SCRIPT,
   asciiJson,
   buildThemeScript,
   cspHash,
@@ -212,9 +213,30 @@ describe("inline early script (theme and favourite team)", () => {
   });
 
   it("a team name can't end the <script> element", () => {
-    expect(script).not.toContain("</script>");
+    // esbuild writes "</script" as "<\/script" itself.
+    expect(script).not.toMatch(UNSAFE_IN_SCRIPT);
     expect(asciiJson("</script>")).not.toContain("<");
     expect(asciiJson("</script>")).toContain("u003c");
+  });
+
+  it.each(["Arsenal<!--<script>", "Arsenal</script><!--<i>", "Arsenal<SCRIPT>", "Arsenal<!--"])(
+    "stops the build for a hostile team name: %s",
+    (name) => {
+      const hostile: HeadIndex = {
+        ...teams,
+        leagues: [["premier_league", "Premier League", [["arsenal", name]]]],
+      };
+      // The minify step undoes asciiJson's "<" escape, so the final check is what catches it.
+      expect(joinSources(sources, hostile)).not.toContain(name);
+      expect(() => buildThemeScript(sources, hostile)).toThrow(/would break the inline <script>/);
+    },
+  );
+
+  it("the check matches in any case", () => {
+    for (const text of ["<!--", "<script", "<SCRIPT", "</Script", "</script"]) {
+      expect(text).toMatch(UNSAFE_IN_SCRIPT);
+    }
+    expect("<\\/script").not.toMatch(UNSAFE_IN_SCRIPT);
   });
 
   it("keeps the favourite helpers inside a function, out of the page's global scope", () => {

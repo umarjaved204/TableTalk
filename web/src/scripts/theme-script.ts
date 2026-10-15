@@ -54,10 +54,15 @@ export function stripExports(source: string): string {
 }
 
 /**
- * JSON with "<" and every non-ASCII character written as a \uXXXX escape:
- * "<" so a team name could never end the <script> element early, and
+ * JSON with "<" and every non-ASCII character written as a \uXXXX escape,
  * non-ASCII ("Atlético") so the script's bytes, and so its hash, can't
  * depend on how the page is decoded.
+ *
+ * The "<" escape does NOT survive into the page: esbuild's minify writes
+ * "<" back as a plain "<". esbuild itself writes "</script" as
+ * "<\/script", but leaves "<!--" and "<script" as they are, and those two
+ * change how the HTML parser reads the rest of an inline script. So
+ * buildThemeScript checks the final text instead (UNSAFE_IN_SCRIPT).
  */
 export function asciiJson(value: unknown): string {
   return JSON.stringify(value).replace(
@@ -99,11 +104,21 @@ export function joinSources(sources: ScriptSources, teams: HeadIndex): string {
 }
 
 /**
+ * Text that must never appear in an inline script: "</script" ends the
+ * element, and "<!--" or "<script" can make the HTML parser run past the
+ * real "</script>" and swallow the rest of the page. The CSP hash would then
+ * no longer match, so the early script would be blocked on every page
+ * (themes and favourites stop working). Checked after minifying.
+ */
+export const UNSAFE_IN_SCRIPT = /<!--|<script|<\/script/i;
+
+/**
  * The script as it goes into every page: minified by esbuild (comments,
  * spaces and long local names removed: about half the size), and plain ASCII
  * (esbuild writes any other character as an escape), so its bytes, and so
  * its CSP hash, can't depend on how the page is decoded. The readable source
- * stays in src/scripts/.
+ * stays in src/scripts/. Stops the build if a team name (or anything else)
+ * puts UNSAFE_IN_SCRIPT text into it.
  */
 export function buildThemeScript(sources: ScriptSources, teams: HeadIndex): string {
   const script = transformSync(joinSources(sources, teams), {
@@ -114,6 +129,12 @@ export function buildThemeScript(sources: ScriptSources, teams: HeadIndex): stri
   }).code.trim();
   const wide = /[^\n\x20-\x7e]/.exec(script);
   if (wide) throw new Error(`early script: unexpected character U+${wide[0].charCodeAt(0).toString(16)}`);
+  const unsafe = UNSAFE_IN_SCRIPT.exec(script);
+  if (unsafe) {
+    throw new Error(
+      `early script: contains "${unsafe[0]}", which would break the inline <script> on every page (a team name in the data?)`,
+    );
+  }
   return script;
 }
 
