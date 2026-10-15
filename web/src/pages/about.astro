@@ -5,7 +5,7 @@ import { loadLeague } from "../data/league.ts";
 import { LEAGUES } from "../data/leagues.ts";
 import type { ReadyLeague } from "../data/models.ts";
 import { dataSource } from "../data/source.ts";
-import { ROLE_TEXT, sourcesUsed } from "../data/sources.ts";
+import { roleText, sourcesUsed } from "../data/sources.ts";
 import Base from "../layouts/Base.astro";
 import { FAV_STORAGE_KEY } from "../scripts/theme-script.ts";
 import { STORAGE_KEY } from "../themes.ts";
@@ -17,7 +17,7 @@ const built = dataSource();
 
 /** "results and the fixture list" from a list of roles. */
 function uses(roles: string[]): string {
-  const words = roles.map((r) => ROLE_TEXT[r] ?? r);
+  const words = roles.map(roleText);
   return words.length <= 1 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
 }
 ---
@@ -154,6 +154,16 @@ function uses(roles: string[]): string {
           </>
         )}
         .
+      </p>
+    </section>
+
+    <section aria-labelledby="fonts-heading">
+      <h2 id="fonts-heading">Fonts</h2>
+      <p>
+        Barlow Condensed (The Barlow Project Authors) and Source Sans 3 (Adobe), served from this site. Both
+        are licensed under the <a href="https://openfontlicense.org/">SIL Open Font License 1.1</a>; the
+        licence texts ship with the fonts: <a href="/fonts/barlow-condensed-OFL.txt">Barlow Condensed</a>,{" "}
+        <a href="/fonts/source-sans-3-OFL.txt">Source Sans 3</a>.
       </p>
     </section>
   </div>

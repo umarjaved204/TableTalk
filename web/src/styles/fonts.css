@@ -13,7 +13,9 @@
      latin-ext  Latin Extended-A/B and more (ł, ğ, ş, š, ć, ő)
    tests/unit/fonts.test.ts checks that every team name in the data is covered.
 
-   Files are taken from node_modules (licence: SIL Open Font License 1.1). */
+   Files are taken from node_modules (licence: SIL Open Font License 1.1).
+   The licence texts ship in public/fonts/ and are credited on the About
+   page; tests/unit/fonts.test.ts checks they match the packages' own. */
 
 /* Barlow Condensed: headings, numbers in the scoreboard (600 and 700 only). */
 @font-face {

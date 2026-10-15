@@ -59,3 +59,16 @@ describe("font subsets cover what the site prints", () => {
     for (const family of FAMILIES) expect(uncovered(names.join(""), family), family).toEqual([]);
   });
 });
+
+describe("font licences (SIL Open Font License 1.1)", () => {
+  // The OFL asks for the licence to go with the fonts, so the packages'
+  // LICENSE files ship unchanged in public/fonts/ (linked from the About page).
+  it.each([
+    ["barlow-condensed-OFL.txt", "@fontsource/barlow-condensed"],
+    ["source-sans-3-OFL.txt", "@fontsource-variable/source-sans-3"],
+  ])("public/fonts/%s is the package's own LICENSE (%s)", (file, pkg) => {
+    const shipped = readFileSync(resolve("public/fonts", file), "utf8");
+    expect(shipped).toBe(readFileSync(resolve("node_modules", pkg, "LICENSE"), "utf8"));
+    expect(shipped).toContain("SIL Open Font License, Version 1.1");
+  });
+});
