@@ -44,6 +44,11 @@ export default defineConfig({
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'none'",
+        // Trusted Types: the browser refuses strings in script-running DOM
+        // sinks (innerHTML, eval, script.src). The site's scripts use none of
+        // them, so this only closes the door for the future. The browser
+        // tests fail on any CSP violation in the console.
+        "require-trusted-types-for 'script'",
       ],
       scriptDirective: { hashes: [cspHash(themeScript), cspHash(FILL_SCRIPT)] },
     },
