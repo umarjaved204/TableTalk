@@ -60,7 +60,8 @@ for (const list of document.querySelectorAll<HTMLElement>("[data-match-list]")) 
 
 // 3. Upcoming matches that have kicked off since the page was built. The
 //    nightly update hasn't locked them yet, so say what will happen. The
-//    words come from the same file the build uses.
+//    words come from the same file the build uses. A postponed or cancelled
+//    card has no data-predicted-at (MatchCard.astro), so it is skipped.
 for (const card of document.querySelectorAll<HTMLElement>(
   '[data-match][data-status="upcoming"][data-kickoff]',
 )) {

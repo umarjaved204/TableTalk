@@ -23,8 +23,17 @@ postponed earlier), a matching `summary.json`, and five earlier history runs
 for the race chart. The history runs blend the real 29 Sep numbers with
 "every team equal", so the lines move towards today's real values. None of
 this is a real prediction or result. No real lock existed when Step 3 was
-built (the first kick-off after the pipeline went live is 9 Oct 2026), so a
-real locked match still has to be checked against its `predicted_at` later.
+built (the first kick-off after the pipeline went live is 9 Oct 2026).
+
+`fixtures/locks-641d93f/` holds **real** locks from the pipeline trial, copied
+byte for byte from `track_record/locks.jsonl` at data commit `641d93f`, with
+their rows from `summary.json` (`scored.json`): Arsenal v Leeds (the normal
+case), Liverpool v Manchester City (recorded two days after it was predicted),
+Como v Roma (the earliest kick-off) and Rayo Vallecano v Athletic Bilbao
+(voided: cancelled). `unit/real-locks.test.ts` reads them with the site's own
+reader and checks each label shows `predicted_at` in several time zones, never
+`recorded_at` or the kick-off, and that the cancelled match is never shown as
+locked or kicked off.
 
 ## The browser tests' own site
 

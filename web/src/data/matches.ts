@@ -9,6 +9,7 @@
 //
 // Both lists are limited to a window around the snapshot's time, so a page
 // stays a sensible length all season (see UPCOMING_DAYS and RECENT_DAYS).
+import { isOffSchedule } from "../format/match-status.ts";
 import { replayLockLog, type MatchRecord } from "./match-records.ts";
 import type { MatchView, ReadyLeague, UpcomingMatch } from "./models.ts";
 import { loadLockLog, loadSummary } from "./track-record.ts";
@@ -59,7 +60,9 @@ export function upcomingViews(
 export function upcomingView(match: UpcomingMatch, predictedAt: string, record?: MatchRecord): MatchView {
   // The snapshot can be made after a match's listed kick-off (a late run, or a
   // match still in progress). Its prediction is then not the one that counts.
-  const pastKickoff = match.kickoffUtc !== null && predictedAt >= match.kickoffUtc;
+  // A postponed or cancelled match keeps its old kick-off but never kicked off.
+  const pastKickoff =
+    match.kickoffUtc !== null && predictedAt >= match.kickoffUtc && !isOffSchedule(match.status);
   const earlierVoided = record ? allVoided(record) : [];
   return {
     key: match.id ?? `${match.home}-${match.away}-${match.date ?? ""}`,

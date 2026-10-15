@@ -116,6 +116,16 @@ describe("a snapshot made after a match's listed kick-off", () => {
     });
     expect(upcomingView(match, "2026-10-10T04:40:00Z").status.kind).toBe("upcoming");
   });
+
+  it.each(["CANCELLED", "POSTPONED"])("but never a %s match: it keeps its fixture status", (status) => {
+    useDataDir(REAL);
+    const match = { ...ready().upcoming[0]!, status };
+    expect(upcomingView(match, "2026-10-15T06:24:39Z").status).toEqual({
+      kind: "upcoming",
+      predictedAt: "2026-10-15T06:24:39Z",
+      fixtureStatus: status,
+    });
+  });
 });
 
 describe("loading the track record", () => {

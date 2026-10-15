@@ -1,0 +1,53 @@
+[
+  {
+    "lock_id": "fdorg:560593#1",
+    "competition": "premier_league",
+    "home_team": "Arsenal",
+    "away_team": "Leeds United",
+    "kickoff_utc": "2026-10-10T11:30:00Z",
+    "predicted_at": "2026-10-10T07:44:14Z",
+    "probabilities": {
+      "home": 0.655417,
+      "draw": 0.223397,
+      "away": 0.121186
+    },
+    "home_goals": 2,
+    "away_goals": 1,
+    "log_loss": 0.422484,
+    "code_commit": "3796e2c9658091d7ecbbb29203ddc1be892dc883"
+  },
+  {
+    "lock_id": "fdorg:558585#1",
+    "competition": "serie_a",
+    "home_team": "Como",
+    "away_team": "Roma",
+    "kickoff_utc": "2026-10-11T10:30:00Z",
+    "predicted_at": "2026-10-11T07:48:33Z",
+    "probabilities": {
+      "home": 0.356571,
+      "draw": 0.276391,
+      "away": 0.367038
+    },
+    "home_goals": 0,
+    "away_goals": 0,
+    "log_loss": 1.285939,
+    "code_commit": "3796e2c9658091d7ecbbb29203ddc1be892dc883"
+  },
+  {
+    "lock_id": "fdorg:560598#1",
+    "competition": "premier_league",
+    "home_team": "Liverpool",
+    "away_team": "Manchester City",
+    "kickoff_utc": "2026-10-11T15:30:00Z",
+    "predicted_at": "2026-10-11T07:48:33Z",
+    "probabilities": {
+      "home": 0.316233,
+      "draw": 0.257799,
+      "away": 0.425968
+    },
+    "home_goals": 0,
+    "away_goals": 3,
+    "log_loss": 0.853391,
+    "code_commit": "3796e2c9658091d7ecbbb29203ddc1be892dc883"
+  }
+]

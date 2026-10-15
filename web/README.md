@@ -329,8 +329,12 @@ minus any the log says have started; **Recent** is the log's matches for the
 league. Matches played before recording started, or never locked, are in no
 published file (contract request R5), so Recent shows locked matches only and
 says so. In the browser, `local-times.ts` marks an upcoming match **kicked off**
-once the visitor's clock passes its kick-off. All the words are in
-`src/format/match-status.ts`, used by both the build and the browser.
+once the visitor's clock passes its kick-off. A match the fixture source lists
+as postponed or cancelled is never marked kicked off, even though it keeps its
+old kick-off time: its line says nothing locks until it is rescheduled (the
+real case: Rayo Vallecano v Athletic Bilbao, cancelled on 10 Oct 2026). All the
+words are in `src/format/match-status.ts`, used by both the build and the
+browser.
 
 ## How the race has moved
 

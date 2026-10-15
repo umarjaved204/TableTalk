@@ -6,10 +6,11 @@
 //
 // An upcoming card carries its kick-off and prediction time as data
 // attributes, so local-times.ts can mark it "Kicked off" once the visitor's
-// clock passes the kick-off (the page may be up to a day old).
+// clock passes the kick-off (the page may be up to a day old). A postponed or
+// cancelled match gets no prediction time, so it is never marked.
 import type { MatchView } from "../data/models.ts";
 import { formatGoals } from "../format/number.ts";
-import { earlierVoidedNote, statusLabel } from "../format/match-status.ts";
+import { earlierVoidedNote, isOffSchedule, statusLabel } from "../format/match-status.ts";
 import { formatChance, matchPercents } from "../format/probability.ts";
 import { formatClock } from "../format/time.ts";
 import LabelParts from "./LabelParts.astro";
@@ -45,7 +46,9 @@ const outcomes = percents
   data-status={status.kind}
   data-kickoff={match.kickoffUtc ?? undefined}
   data-date={match.date ?? undefined}
-  data-predicted-at={status.kind === "upcoming" ? status.predictedAt : undefined}
+  data-predicted-at={
+    status.kind === "upcoming" && !isOffSchedule(status.fixtureStatus) ? status.predictedAt : undefined
+  }
   aria-label={`${match.home} v ${match.away}`}
   data-teams={`${teamSlug(match.home)} ${teamSlug(match.away)}`}
 >

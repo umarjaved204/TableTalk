@@ -23,8 +23,13 @@ const VOID_REASONS: Record<string, string> = {
   "removed from the fixture list": "Removed from the fixture list",
 };
 
+/** A map's own entry for a key from the data (never Object's built-ins, such as "constructor"). */
+function own(map: Record<string, string>, key: string): string | undefined {
+  return Object.hasOwn(map, key) ? map[key] : undefined;
+}
+
 export function voidReason(reason: string): string {
-  return VOID_REASONS[reason] ?? reason.charAt(0).toUpperCase() + reason.slice(1);
+  return own(VOID_REASONS, reason) ?? reason.charAt(0).toUpperCase() + reason.slice(1);
 }
 
 /** The fixture source's status for a match still to play, in words. */
@@ -36,6 +41,17 @@ const FIXTURE_STATUS: Record<string, string> = {
   PAUSED: "In play",
 };
 
+/**
+ * Fixture statuses for a match that is off the schedule: it won't kick off
+ * at its listed time, so it is never shown as "kicked off" (at build time or
+ * in the browser), even once that time has passed, and nothing locks until
+ * it is rescheduled. (A cancelled match can stay in `upcoming_matches` with
+ * its old kick-off: Rayo Vallecano v Athletic Bilbao, 10 Oct 2026.)
+ */
+export function isOffSchedule(fixtureStatus: string | null): boolean {
+  return fixtureStatus === "POSTPONED" || fixtureStatus === "CANCELLED";
+}
+
 export const KICKED_OFF_BEFORE =
   "Kicked off · the prediction shown was made before kick-off and will be recorded as locked in the next nightly update";
 export const KICKED_OFF_AFTER =
@@ -45,8 +61,14 @@ export function statusLabel(status: MatchStatus): StatusLabel {
   switch (status.kind) {
     case "upcoming":
       return {
-        badge: (status.fixtureStatus && FIXTURE_STATUS[status.fixtureStatus]) || "Upcoming",
-        parts: ["Prediction as of ", { time: status.predictedAt }, " · locks at kick-off"],
+        badge: (status.fixtureStatus && own(FIXTURE_STATUS, status.fixtureStatus)) || "Upcoming",
+        parts: [
+          "Prediction as of ",
+          { time: status.predictedAt },
+          isOffSchedule(status.fixtureStatus)
+            ? " · nothing locks until the match is rescheduled"
+            : " · locks at kick-off",
+        ],
       };
     case "kicked_off":
       return {

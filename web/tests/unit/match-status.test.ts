@@ -60,6 +60,21 @@ describe("the words for each match status", () => {
     );
   });
 
+  it("a cancelled upcoming match says nothing locks until it is rescheduled", () => {
+    expect(text({ kind: "upcoming", predictedAt: "P", fixtureStatus: "CANCELLED" })).toBe(
+      "Cancelled | Prediction as of <P> · nothing locks until the match is rescheduled",
+    );
+  });
+
+  it("a reason or fixture status named like an Object built-in is shown as plain words", () => {
+    expect(statusLabel({ kind: "voided", predictedAt: "P", reason: "constructor" }).badge).toBe(
+      "Constructor",
+    );
+    expect(statusLabel({ kind: "upcoming", predictedAt: "P", fixtureStatus: "constructor" }).badge).toBe(
+      "Upcoming",
+    );
+  });
+
   it("the note for an earlier voided prediction", () => {
     const note = earlierVoidedNote({ predictedAt: "P", reason: "postponed" });
     expect(labelText(note, (utc) => `<${utc}>`)).toBe(
