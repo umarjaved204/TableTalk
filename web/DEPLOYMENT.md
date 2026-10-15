@@ -149,18 +149,35 @@ A `<meta>` tag can't set response headers, and GitHub Pages can't send
 custom ones. Cloudflare can add them on the way out with a **response header
 Transform Rule** (free plan: 10 rules; one rule can set several headers).
 
-| Header                       | Value                                                                              | Why                                                                                                                                                                                                                                                                    |
-| ---------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Content-Security-Policy`    | `frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'none'`   | `frame-ancestors` only works as a header: it stops other sites framing this one. The script rules stay in the `<meta>` tag (both policies apply), because the early script's hash changes with the team list and the code, and a fixed header can't follow each build. |
-| `Strict-Transport-Security`  | `max-age=86400` at first, then `max-age=31536000` once HTTPS is known to be stable | Browsers then refuse plain HTTP for the domain. Set in SSL/TLS > Edge Certificates > HSTS (free). No `includeSubDomains` or `preload` unless every subdomain is HTTPS for good: preload is hard to undo.                                                               |
-| `X-Content-Type-Options`     | `nosniff`                                                                          | Browsers use the declared file type instead of guessing.                                                                                                                                                                                                               |
-| `Referrer-Policy`            | `strict-origin-when-cross-origin`                                                  | Links to other sites (GitHub, football-data.org) send only the domain, never the page address. It is also the browsers' default; stating it keeps it if defaults change.                                                                                               |
-| `Permissions-Policy`         | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()` | The site uses none of these, so nothing on it can ever ask for them.                                                                                                                                                                                                   |
-| `X-Frame-Options`            | `DENY`                                                                             | The same protection as `frame-ancestors`, for older browsers.                                                                                                                                                                                                          |
-| `Cross-Origin-Opener-Policy` | `same-origin`                                                                      | A page this site opens (or that opens it) can't reach into its window.                                                                                                                                                                                                 |
+| Header                         | Value                                                                              | Why                                                                                                                                                                                                                                                                    |
+| ------------------------------ | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Content-Security-Policy`      | `frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'none'`   | `frame-ancestors` only works as a header: it stops other sites framing this one. The script rules stay in the `<meta>` tag (both policies apply), because the early script's hash changes with the team list and the code, and a fixed header can't follow each build. |
+| `Strict-Transport-Security`    | `max-age=86400` at first, then `max-age=31536000` once HTTPS is known to be stable | Browsers then refuse plain HTTP for the domain. Set in SSL/TLS > Edge Certificates > HSTS (free). No `includeSubDomains` or `preload` unless every subdomain is HTTPS for good: preload is hard to undo.                                                               |
+| `X-Content-Type-Options`       | `nosniff`                                                                          | Browsers use the declared file type instead of guessing.                                                                                                                                                                                                               |
+| `Referrer-Policy`              | `strict-origin-when-cross-origin`                                                  | Links to other sites (GitHub, football-data.org) send only the domain, never the page address. It is also the browsers' default; stating it keeps it if defaults change.                                                                                               |
+| `Permissions-Policy`           | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()` | The site uses none of these, so nothing on it can ever ask for them.                                                                                                                                                                                                   |
+| `X-Frame-Options`              | `DENY`                                                                             | The same protection as `frame-ancestors`, for older browsers.                                                                                                                                                                                                          |
+| `Cross-Origin-Opener-Policy`   | `same-origin`                                                                      | A page this site opens (or that opens it) can't reach into its window.                                                                                                                                                                                                 |
+| `Cross-Origin-Resource-Policy` | `same-origin`                                                                      | Other sites can't load this site's files (fonts, scripts, images, QR codes) into their own pages. Nothing here is meant to be embedded elsewhere.                                                                                                                      |
 
-After setting them, check with `curl -sI https://<domain>/` and a header
-scanner, and run the browser tests against the live address once.
+**Go-live gate (must pass before the site is announced).** Run:
+
+```sh
+curl -sI https://<domain>/
+```
+
+and check that the response:
+
+1. shows **every** header in the table above, with the value planned
+   (`Strict-Transport-Security` may still be on its first `max-age=86400`);
+2. has **no `Set-Cookie`** header (the footer promises no cookies);
+3. and that the page itself contains **no `cloudflareinsights`** (Cloudflare's
+   injected Web Analytics beacon): `curl -s https://<domain>/` must not
+   mention it.
+
+If any check fails, the site isn't live yet: fix the rule or the Cloudflare
+setting and run the gate again. Then check with a header scanner, and run
+the browser tests against the live address once.
 
 ### 3. Google Search Console
 
