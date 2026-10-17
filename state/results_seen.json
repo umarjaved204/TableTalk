@@ -3873,6 +3873,17 @@
    "kickoff_utc": "2026-08-23T16:30:00Z",
    "season": "2026-27"
   },
+  "serie_a|2026-27|Frosinone|Sassuolo": {
+   "away_team": "Sassuolo",
+   "baseline": [],
+   "competition": "serie_a",
+   "first_seen": {
+    "football_data_org": "2026-10-17T08:00:11Z"
+   },
+   "home_team": "Frosinone",
+   "kickoff_utc": "2026-10-16T18:45:00Z",
+   "season": "2026-27"
+  },
   "serie_a|2026-27|Frosinone|Venezia": {
    "away_team": "Venezia",
    "baseline": [
