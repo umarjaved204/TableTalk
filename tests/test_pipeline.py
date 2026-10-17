@@ -383,6 +383,37 @@ def test_a_match_with_only_a_date_counts_from_the_end_of_that_day():
     assert len(problems) == 1 and "1 match(es)" in problems[0]
 
 
+def _scores(*homes) -> pd.DataFrame:
+    return pd.DataFrame({"home_team": list(homes), "away_team": ["Opponent"] * len(homes)})
+
+
+def test_a_result_the_run_already_has_is_not_late_when_the_fixture_source_flips_back_to_timed():
+    """football-data.org listed 11 Oct matches as TIMED again on 17 Oct, days after giving their scores."""
+    fixtures = _fixture_rows(
+        ("Flipped FC", "TIMED", "2026-10-10T14:00:00Z", "2026-10-10"),
+        ("Late FC", "TIMED", "2026-10-10T14:00:00Z", "2026-10-10"),
+    )
+    problems = checks.check_staleness(fixtures, NOW, max_age=TWO_DAYS, played=_scores("Flipped FC"))
+    assert len(problems) == 1 and "1 match(es)" in problems[0]
+    assert "Late FC v Opponent" in problems[0] and "Flipped FC" not in problems[0]
+
+    notes = checks.status_behind_results(fixtures, _scores("Flipped FC"), NOW, max_age=TWO_DAYS)
+    assert len(notes) == 1 and "Flipped FC v Opponent (10 Oct, TIMED)" in notes[0] and "Late FC" not in notes[0]
+
+
+def test_the_normal_gap_between_sources_is_not_reported_as_the_fixture_source_behind():
+    fixtures = _fixture_rows(("A", "TIMED", "2026-10-13T19:00:00Z", "2026-10-13"))  # within two days
+    assert checks.status_behind_results(fixtures, _scores("A"), NOW, max_age=TWO_DAYS) == []
+
+
+def test_the_fixture_source_is_not_behind_when_it_agrees():
+    fixtures = _fixture_rows(
+        ("A", "FINISHED", "2026-10-10T14:00:00Z", "2026-10-10"),
+        ("B", "POSTPONED", "2026-10-10T14:00:00Z", "2026-10-10"),
+    )
+    assert checks.status_behind_results(fixtures, _scores("A", "B"), NOW, max_age=TWO_DAYS) == []
+
+
 def test_a_flagged_league_still_writes_but_fails_the_run():
     from tabletalk.pipeline.update import RunResult
 

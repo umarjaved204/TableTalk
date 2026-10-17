@@ -1290,7 +1290,14 @@ the league's previous files are untouched.
   off more than 2 days ago (`--stale-after-days`) still has no result and was
   not postponed. It is judged from the fixture list, so an international
   break never triggers it. Usually the source is slow; if it lasts, check the
-  match was really played and compare the sources.
+  match was really played and compare the sources. A match whose final score
+  is already in the run's results data is never "late", whatever the fixture
+  source says.
+- *"Fixture source behind"* (a notice, not a failure). The fixture source
+  (football-data.org) lists a match from more than 2 days ago as not
+  finished, but the run's results data has its final score, so it is
+  counted. football-data.org has been seen to flip finished matches back to
+  TIMED for a while (October 2026). Nothing to do unless it lasts for days.
 - *"Results not in yet"* (not a failure, except on the day's last try). A match
   that kicked off at least 3 hours before the run has no final score in the
   data the run used, so that day's predictions do not include it. The run

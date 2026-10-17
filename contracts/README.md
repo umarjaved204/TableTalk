@@ -29,7 +29,8 @@ not build on any of them: their format can change without a version bump.
 Several runs can publish on the same day (a later try runs again while
 results are missing), so `history/` can hold more than one folder per day.
 Each snapshot's `notices` may say "Results not in yet: ..." (its predictions
-do not include those matches) and list postponed, suspended or cancelled
+do not include those matches), "Fixture source behind: ..." (informational:
+those results are counted) and list postponed, suspended or cancelled
 matches.
 
 `<competition>` is a config id: `premier_league`, `bundesliga`, `la_liga`,

@@ -159,7 +159,14 @@ def run_league(
     now = now if now is not None else pd.Timestamp.now(tz="UTC")
     missing = checks.missing_results(api, played, now)
     stopped = checks.called_off(api)
-    notices = [f"Results may be late: {warning}" for warning in checks.check_staleness(api, now, max_age=stale_after)]
+    notices = [
+        f"Results may be late: {warning}"
+        for warning in checks.check_staleness(api, now, max_age=stale_after, played=played)
+    ]
+    notices.extend(
+        f"Fixture source behind: {note}"
+        for note in checks.status_behind_results(api, played, now, max_age=stale_after)
+    )
     if not missing.empty:
         notices.append(
             f"Results not in yet: {len(missing)} match(es) that kicked off at least "
