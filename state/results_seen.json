@@ -75,6 +75,17 @@
    "kickoff_utc": "2026-09-05T13:30:00Z",
    "season": "2026-27"
   },
+  "bundesliga|2026-27|Bayern Munich|RB Leipzig": {
+   "away_team": "RB Leipzig",
+   "baseline": [],
+   "competition": "bundesliga",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Bayern Munich",
+   "kickoff_utc": "2026-10-17T16:30:00Z",
+   "season": "2026-27"
+  },
   "bundesliga|2026-27|Bayern Munich|Union Berlin": {
    "away_team": "Union Berlin",
    "baseline": [
@@ -296,6 +307,17 @@
    "kickoff_utc": "2026-09-06T13:30:00Z",
    "season": "2026-27"
   },
+  "bundesliga|2026-27|Hamburger SV|VfB Stuttgart": {
+   "away_team": "VfB Stuttgart",
+   "baseline": [],
+   "competition": "bundesliga",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Hamburger SV",
+   "kickoff_utc": "2026-10-17T13:30:00Z",
+   "season": "2026-27"
+  },
   "bundesliga|2026-27|Mainz 05|Bayer Leverkusen": {
    "away_team": "Bayer Leverkusen",
    "baseline": [
@@ -506,6 +528,17 @@
    "kickoff_utc": "2026-09-13T15:30:00Z",
    "season": "2026-27"
   },
+  "bundesliga|2026-27|SV Elversberg|FC Augsburg": {
+   "away_team": "FC Augsburg",
+   "baseline": [],
+   "competition": "bundesliga",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "SV Elversberg",
+   "kickoff_utc": "2026-10-17T13:30:00Z",
+   "season": "2026-27"
+  },
   "bundesliga|2026-27|Schalke 04|Bayern Munich": {
    "away_team": "Bayern Munich",
    "baseline": [
@@ -519,6 +552,17 @@
    },
    "home_team": "Schalke 04",
    "kickoff_utc": "2026-09-05T16:30:00Z",
+   "season": "2026-27"
+  },
+  "bundesliga|2026-27|Schalke 04|Mainz 05": {
+   "away_team": "Mainz 05",
+   "baseline": [],
+   "competition": "bundesliga",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Schalke 04",
+   "kickoff_utc": "2026-10-17T13:30:00Z",
    "season": "2026-27"
   },
   "bundesliga|2026-27|Schalke 04|SV Elversberg": {
@@ -579,6 +623,17 @@
    },
    "home_team": "TSG Hoffenheim",
    "kickoff_utc": "2026-09-12T13:30:00Z",
+   "season": "2026-27"
+  },
+  "bundesliga|2026-27|Union Berlin|Borussia Dortmund": {
+   "away_team": "Borussia Dortmund",
+   "baseline": [],
+   "competition": "bundesliga",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Union Berlin",
+   "kickoff_utc": "2026-10-17T13:30:00Z",
    "season": "2026-27"
   },
   "bundesliga|2026-27|Union Berlin|Eintracht Frankfurt": {
@@ -669,6 +724,17 @@
    },
    "home_team": "Werder Bremen",
    "kickoff_utc": "2026-09-19T13:30:00Z",
+   "season": "2026-27"
+  },
+  "bundesliga|2026-27|Werder Bremen|Paderborn 07": {
+   "away_team": "Paderborn 07",
+   "baseline": [],
+   "competition": "bundesliga",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Werder Bremen",
+   "kickoff_utc": "2026-10-17T13:30:00Z",
    "season": "2026-27"
   },
   "bundesliga|2026-27|Werder Bremen|RB Leipzig": {
@@ -1132,6 +1198,17 @@
    "kickoff_utc": "2026-09-07T19:30:00Z",
    "season": "2026-27"
   },
+  "la_liga|2026-27|Espanyol|Atlético Madrid": {
+   "away_team": "Atlético Madrid",
+   "baseline": [],
+   "competition": "la_liga",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Espanyol",
+   "kickoff_utc": "2026-10-17T12:00:00Z",
+   "season": "2026-27"
+  },
   "la_liga|2026-27|Espanyol|Elche": {
    "away_team": "Elche",
    "baseline": [
@@ -1522,6 +1599,17 @@
    "kickoff_utc": "2026-09-05T16:30:00Z",
    "season": "2026-27"
   },
+  "la_liga|2026-27|Real Betis|Barcelona": {
+   "away_team": "Barcelona",
+   "baseline": [],
+   "competition": "la_liga",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Real Betis",
+   "kickoff_utc": "2026-10-17T16:30:00Z",
+   "season": "2026-27"
+  },
   "la_liga|2026-27|Real Betis|Getafe": {
    "away_team": "Getafe",
    "baseline": [
@@ -1762,6 +1850,17 @@
    "kickoff_utc": "2026-09-11T19:00:00Z",
    "season": "2026-27"
   },
+  "la_liga|2026-27|Valencia|Athletic Bilbao": {
+   "away_team": "Athletic Bilbao",
+   "baseline": [],
+   "competition": "la_liga",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Valencia",
+   "kickoff_utc": "2026-10-17T19:00:00Z",
+   "season": "2026-27"
+  },
   "la_liga|2026-27|Valencia|Barcelona": {
    "away_team": "Barcelona",
    "baseline": [
@@ -1835,6 +1934,17 @@
    },
    "home_team": "Villarreal",
    "kickoff_utc": "2026-09-05T19:00:00Z",
+   "season": "2026-27"
+  },
+  "la_liga|2026-27|Villarreal|Elche": {
+   "away_team": "Elche",
+   "baseline": [],
+   "competition": "la_liga",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Villarreal",
+   "kickoff_utc": "2026-10-17T14:15:00Z",
    "season": "2026-27"
   },
   "la_liga|2026-27|Villarreal|Levante": {
@@ -2146,6 +2256,17 @@
    },
    "home_team": "Lens",
    "kickoff_utc": "2026-10-09T18:45:00Z",
+   "season": "2026-27"
+  },
+  "ligue_1|2026-27|Lille|Brest": {
+   "away_team": "Brest",
+   "baseline": [],
+   "competition": "ligue_1",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Lille",
+   "kickoff_utc": "2026-10-17T18:45:00Z",
    "season": "2026-27"
   },
   "ligue_1|2026-27|Lille|Le Havre": {
@@ -2598,6 +2719,17 @@
    "kickoff_utc": "2026-09-12T15:15:00Z",
    "season": "2026-27"
   },
+  "ligue_1|2026-27|Strasbourg|Paris Saint-Germain": {
+   "away_team": "Paris Saint-Germain",
+   "baseline": [],
+   "competition": "ligue_1",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Strasbourg",
+   "kickoff_utc": "2026-10-17T15:15:00Z",
+   "season": "2026-27"
+  },
   "ligue_1|2026-27|Toulouse|Le Havre": {
    "away_team": "Le Havre",
    "baseline": [
@@ -2641,6 +2773,17 @@
    },
    "home_team": "Toulouse",
    "kickoff_utc": "2026-08-22T18:45:00Z",
+   "season": "2026-27"
+  },
+  "ligue_1|2026-27|Troyes|Lens": {
+   "away_team": "Lens",
+   "baseline": [],
+   "competition": "ligue_1",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Troyes",
+   "kickoff_utc": "2026-10-17T18:45:00Z",
    "season": "2026-27"
   },
   "ligue_1|2026-27|Troyes|Marseille": {
@@ -2836,6 +2979,17 @@
    },
    "home_team": "Brentford",
    "kickoff_utc": "2026-09-18T19:00:00Z",
+   "season": "2026-27"
+  },
+  "premier_league|2026-27|Brentford|Liverpool": {
+   "away_team": "Liverpool",
+   "baseline": [],
+   "competition": "premier_league",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Brentford",
+   "kickoff_utc": "2026-10-17T14:00:00Z",
    "season": "2026-27"
   },
   "premier_league|2026-27|Brentford|Sunderland": {
@@ -3048,6 +3202,17 @@
    "kickoff_utc": "2026-10-11T13:00:00Z",
    "season": "2026-27"
   },
+  "premier_league|2026-27|Everton|Chelsea": {
+   "away_team": "Chelsea",
+   "baseline": [],
+   "competition": "premier_league",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Everton",
+   "kickoff_utc": "2026-10-17T11:30:00Z",
+   "season": "2026-27"
+  },
   "premier_league|2026-27|Everton|Crystal Palace": {
    "away_team": "Crystal Palace",
    "baseline": [
@@ -3121,6 +3286,17 @@
    },
    "home_team": "Fulham",
    "kickoff_utc": "2026-09-05T14:00:00Z",
+   "season": "2026-27"
+  },
+  "premier_league|2026-27|Fulham|Hull City": {
+   "away_team": "Hull City",
+   "baseline": [],
+   "competition": "premier_league",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Fulham",
+   "kickoff_utc": "2026-10-17T14:00:00Z",
    "season": "2026-27"
   },
   "premier_league|2026-27|Fulham|Manchester United": {
@@ -3348,6 +3524,17 @@
    "kickoff_utc": "2026-09-05T14:00:00Z",
    "season": "2026-27"
   },
+  "premier_league|2026-27|Manchester City|Ipswich Town": {
+   "away_team": "Ipswich Town",
+   "baseline": [],
+   "competition": "premier_league",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Manchester City",
+   "kickoff_utc": "2026-10-17T14:00:00Z",
+   "season": "2026-27"
+  },
   "premier_league|2026-27|Manchester City|Sunderland": {
    "away_team": "Sunderland",
    "baseline": [
@@ -3406,6 +3593,17 @@
    },
    "home_team": "Manchester United",
    "kickoff_utc": "2026-10-10T16:30:00Z",
+   "season": "2026-27"
+  },
+  "premier_league|2026-27|Newcastle United|Aston Villa": {
+   "away_team": "Aston Villa",
+   "baseline": [],
+   "competition": "premier_league",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Newcastle United",
+   "kickoff_utc": "2026-10-17T16:30:00Z",
    "season": "2026-27"
   },
   "premier_league|2026-27|Newcastle United|Bournemouth": {
@@ -3676,6 +3874,17 @@
    },
    "home_team": "Atalanta",
    "kickoff_utc": "2026-10-12T16:30:00Z",
+   "season": "2026-27"
+  },
+  "serie_a|2026-27|Bologna|Inter Milan": {
+   "away_team": "Inter Milan",
+   "baseline": [],
+   "competition": "serie_a",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Bologna",
+   "kickoff_utc": "2026-10-17T16:00:00Z",
    "season": "2026-27"
   },
   "serie_a|2026-27|Bologna|Lazio": {
@@ -4304,6 +4513,17 @@
    "kickoff_utc": "2026-08-24T18:45:00Z",
    "season": "2026-27"
   },
+  "serie_a|2026-27|Roma|Genoa": {
+   "away_team": "Genoa",
+   "baseline": [],
+   "competition": "serie_a",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Roma",
+   "kickoff_utc": "2026-10-17T18:45:00Z",
+   "season": "2026-27"
+  },
   "serie_a|2026-27|Roma|Inter Milan": {
    "away_team": "Inter Milan",
    "baseline": [
@@ -4497,6 +4717,17 @@
    },
    "home_team": "Venezia",
    "kickoff_utc": "2026-08-23T16:30:00Z",
+   "season": "2026-27"
+  },
+  "serie_a|2026-27|Venezia|Napoli": {
+   "away_team": "Napoli",
+   "baseline": [],
+   "competition": "serie_a",
+   "first_seen": {
+    "football_data_org": "2026-10-18T06:34:35Z"
+   },
+   "home_team": "Venezia",
+   "kickoff_utc": "2026-10-17T13:00:00Z",
    "season": "2026-27"
   }
  }
