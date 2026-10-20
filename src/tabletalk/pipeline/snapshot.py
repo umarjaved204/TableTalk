@@ -70,7 +70,7 @@ def config_hash(paths: list[Path]) -> str:
 
 #: What can change the numbers: the package, the configs, the declared
 #: dependencies and the exact versions installed. Not the website, docs or tests.
-PIPELINE_PATHS = ("src/tabletalk", "configs", "pyproject.toml", "requirements.lock")
+PIPELINE_PATHS = ("src/tabletalk", "configs", "pyproject.toml", "requirements-lock.in", "requirements-lock.txt")
 
 
 def pipeline_hash_of(root: Path, paths: list[str]) -> str:

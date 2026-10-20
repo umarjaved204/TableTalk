@@ -32,7 +32,9 @@ pipeline, not part of the contract. So are `state/run_state.json` (whether
 today's run is done: every league updated and no results missing),
 `state/results_seen.json` (when each result first appeared, per source) and
 `state/known_results.json` (every final score a source has given, so a result
-stays counted while the sources stop listing it). Do not build on any of them:
+stays counted while the sources stop listing it) and `state/raw_manifest.sha256`
+(the sha256 of every past-season download, so the run can check its cache).
+Do not build on any of them:
 their format can change without a version bump.
 
 Several runs can publish on the same day (a later try runs again while
@@ -89,7 +91,7 @@ Probabilities are numbers from 0 to 1, rounded to 6 decimals.
 | `run.seed_rule` | How the seed is made from the date and the league |
 | `run.n_simulations` | How many seasons were simulated |
 | `run.code_commit` | The git commit of the code that made this file. `run.code_dirty` is true if the code had uncommitted changes |
-| `run.pipeline_hash` | A fingerprint (`sha256:...`) of everything that can change the numbers: the git-tracked files in `src/tabletalk/` and `configs/`, `pyproject.toml` and `requirements.lock` (the exact library versions). Two snapshots with the same value came from the same pipeline, even if `code_commit` differs (e.g. a commit that only changed the website). Null if it could not be worked out (from 1.2.0) |
+| `run.pipeline_hash` | A fingerprint (`sha256:...`) of everything that can change the numbers: the git-tracked files in `src/tabletalk/` and `configs/`, `pyproject.toml` and `requirements-lock.in` / `requirements-lock.txt` (the exact library versions). Two snapshots with the same value came from the same pipeline, even if `code_commit` differs (e.g. a commit that only changed the website). Null if it could not be worked out (from 1.2.0) |
 | `run.config_hash` | A fingerprint of the config files listed in `run.config_files`. Any change to them changes it |
 | `run.model` | Last result date the model was fitted on, the promoted-team method and teams, and how uncertainty is handled |
 | `sources` | Every data source used, with its role (`results`, `fixtures`, `context`, `check`) |

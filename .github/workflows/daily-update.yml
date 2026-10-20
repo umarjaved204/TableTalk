@@ -6,6 +6,18 @@
 # protected (ruleset `protect-data`: no force-pushes, no deletion), so its
 # public history is strong evidence of when every prediction was published.
 #
+# Two jobs, so the job with the secret cannot push and the job that can push
+# never sees the secret or runs the project's code (hardening F-04):
+#
+#   update   contents: read. Has FOOTBALL_DATA_API_KEY, installs the locked
+#            libraries, runs the model. Commits the new outputs locally and
+#            hands over just that one commit (a git bundle) and the data
+#            commit it started from.
+#   publish  contents: write. No API key, no Python, no pip. Runs
+#            scripts/check_publish.sh: one commit on top of that starting
+#            point, allowed paths only, history and the lock log append-only,
+#            the raw-download record add-only; then pushes.
+#
 # Timing: the earliest kick-off in the five leagues is 10:30 UTC (Serie A,
 # 12:30 in Italy in summer; 11:30 UTC in winter). GitHub starts scheduled runs
 # late when it is busy, with no promised limit, and can drop them: in the
@@ -27,12 +39,18 @@
 # that day (the run report and the 2-day "results may be late" check still
 # catch a lasting gap).
 #
-# Failures: the job fails (and GitHub emails whoever last changed the `cron`
+# Failures: the run fails (and GitHub emails whoever last changed the `cron`
 # lines) when a league fails its checks, results look late, results are still
-# missing on the last try, or locking fails. Whatever did pass is still
-# published first; a failed league keeps its previous files.
+# missing on the last try, locking fails, the raw-download record finds a
+# changed old file, or the publish checks refuse the commit. Whatever did pass
+# is still published first; a failed league keeps its previous files.
 #
-# Needs one repository secret: FOOTBALL_DATA_API_KEY.
+# Actions are pinned to full commit SHAs (the version is in the comment), so a
+# moved tag cannot change what runs (hardening F-05). Values from the event
+# reach shell scripts only through `env:`, never pasted into `run:` (F-15).
+#
+# Needs one repository secret: FOOTBALL_DATA_API_KEY. The `data` branch must
+# already exist.
 
 name: Daily update
 
@@ -53,8 +71,8 @@ on:
         type: boolean
         default: false
 
-permissions:
-  contents: write   # to push to the `data` branch
+# Nothing by default: each job asks for exactly what it needs.
+permissions: {}
 
 # The one place the last try is defined (a test checks it is the latest cron
 # line above). Manual runs are never the last try.
@@ -64,18 +82,21 @@ env:
 # Never two runs at once: both would append to the lock log and push to
 # `data`. Tries that overlap queue instead (GitHub keeps the newest waiting
 # one; every try follows the same skip rule, so losing a waiting one is safe).
+# At workflow level, so a run's update and publish jobs queue as one unit.
 concurrency:
   group: daily-update
   cancel-in-progress: false
 
 jobs:
   update:
-    # Pinned, not ubuntu-latest, so the runner image cannot change under us
-    # (ubuntu-latest moves to Ubuntu 26 on 19 Oct 2026, during the trial).
+    # Pinned, not ubuntu-latest, so the runner image cannot change under us.
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    # Actions are pinned to exact releases (all on Node 24), so their code
-    # cannot change during the trial either.
+    permissions:
+      contents: read
+    outputs:
+      has_bundle: ${{ steps.bundle.outputs.has_bundle }}
+      base_sha: ${{ steps.data.outputs.base_sha }}
     steps:
       # Which try this is and when it really started, for measuring delays.
       - name: Show which schedule started this run
@@ -87,85 +108,123 @@ jobs:
           echo "Schedule: ${SCHEDULE:-none (not a scheduled run)}"
           echo "Started: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
+      # No credentials are kept: this job never pushes.
       - name: Check out the code (main)
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v7.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: requirements.lock
+          cache-dependency-path: requirements-lock.txt
 
-      # Exact versions with their hashes (requirements.lock, made by pip-compile
-      # for Linux and Python 3.13), so a new or tampered release on PyPI cannot
-      # change what runs. Then the project itself, without resolving anything.
+      # Exact versions with their hashes (requirements-lock.txt, made by
+      # pip-compile for Linux and Python 3.13), so a new or tampered release on
+      # PyPI cannot change what runs. Then the project itself, resolving nothing.
       - name: Install
         run: |
-          pip install --require-hashes -r requirements.lock
+          pip install --require-hashes -r requirements-lock.txt
           pip install --no-deps -e .
 
       # Past seasons never change, so keep the raw downloads between runs. The
-      # current season is downloaded fresh every time regardless.
+      # current season is downloaded fresh every time regardless. The cache is
+      # checked against the record on the data branch before it is used.
       - name: Restore cached raw data
-        uses: actions/cache@v6.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: data/raw
           key: raw-${{ github.run_id }}
           restore-keys: raw-
 
       # The published files, including the lock store, live on the `data`
-      # branch. Check it out into outputs/ so this run continues from them.
+      # branch (public, so no credentials needed to read it). Check it out
+      # into outputs/ so this run continues from them.
       - name: Check out the published data (data branch -> outputs/)
+        id: data
         run: |
-          if git ls-remote --exit-code --heads origin data > /dev/null; then
-            git fetch --depth=1 origin data
-            git worktree add outputs FETCH_HEAD
-          else
-            echo "No data branch yet: this is the first run, starting a new one."
-            git worktree add --detach outputs
-            git -C outputs checkout --orphan data-new
-            git -C outputs rm -rf --quiet .
+          if ! git ls-remote --exit-code --heads origin data > /dev/null; then
+            echo "::error::No data branch: create it once by hand before the first run."
+            exit 1
           fi
+          git fetch --depth=1 origin data
+          git worktree add --detach outputs FETCH_HEAD
+          echo "base_sha=$(git -C outputs rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # Keep only cached files whose hash is in state/raw_manifest.sha256 (all
+      # of them deleted if there is no record yet); the update downloads the
+      # rest again (hardening F-17).
+      - name: Check the raw cache against the record
+        run: python -m tabletalk raw-cache prepare --out outputs
 
       - name: Run the update
         id: update
         env:
           FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          FORCE: ${{ inputs.force }}
         run: |
           # Every scheduled try skips if the day is done (every league updated,
           # no results missing); a manual run does too, unless "force" is ticked.
           skip=""
           last=""
-          if [ "${{ github.event_name }}" = "schedule" ]; then
+          if [ "$EVENT" = "schedule" ]; then
             skip="--skip-if-updated-today"
-            if [ "${{ github.event.schedule }}" = "$LAST_TRY_SCHEDULE" ]; then
+            if [ "$SCHEDULE" = "$LAST_TRY_SCHEDULE" ]; then
               last="--last-try"
             fi
           fi
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force }}" != "true" ]; then
+          if [ "$EVENT" = "workflow_dispatch" ] && [ "$FORCE" != "true" ]; then
             skip="--skip-if-updated-today"
           fi
           set +e
           python -m tabletalk update --out outputs $skip $last
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 
+      # Add new past-season downloads to the record; a recorded file that now
+      # differs fails the run (the record keeps the original).
+      - name: Record new raw downloads
+        id: raw
+        if: always() && steps.data.outcome == 'success'
+        run: |
+          set +e
+          python -m tabletalk raw-cache record --out outputs
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
       # Publish whatever passed, even if something else failed: a failed
       # league keeps its previous files, and the others should not wait for it.
-      - name: Publish to the data branch
-        if: always()
+      # The commit is made here but pushed by the publish job.
+      - name: Commit the new outputs (locally) and bundle them
+        id: bundle
+        if: always() && steps.data.outcome == 'success'
+        env:
+          BASE: ${{ steps.data.outputs.base_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           cd outputs
           git add -A
           if git diff --cached --quiet; then
             echo "Nothing new to publish."
+            echo "has_bundle=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-              commit --quiet -m "Nightly update $(date -u +%Y-%m-%dT%H:%MZ)" \
-                             -m "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          git push origin HEAD:refs/heads/data
+              commit --quiet -m "Nightly update $(date -u +%Y-%m-%dT%H:%MZ)" -m "Run: $RUN_URL"
+          git bundle create "$RUNNER_TEMP/data.bundle" HEAD "^$BASE"
+          echo "has_bundle=true" >> "$GITHUB_OUTPUT"
+
+      - name: Hand the commit to the publish job
+        if: always() && steps.bundle.outputs.has_bundle == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: data-bundle
+          path: ${{ runner.temp }}/data.bundle
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Show the run report
         if: always()
@@ -179,9 +238,45 @@ jobs:
 
       - name: Fail the job if the update failed or flagged anything
         if: always()
+        env:
+          CODE: ${{ steps.update.outputs.exit_code }}
+          RAW_CODE: ${{ steps.raw.outputs.exit_code }}
         run: |
-          code="${{ steps.update.outputs.exit_code }}"
-          if [ "$code" != "0" ]; then
-            echo "::error::The update exited with $code: see the run report above."
+          if [ "$CODE" != "0" ]; then
+            echo "::error::The update exited with $CODE: see the run report above."
             exit 1
           fi
+          if [ "$RAW_CODE" != "0" ]; then
+            echo "::error::The raw-download record found a problem (exit $RAW_CODE): see the step log."
+            exit 1
+          fi
+
+  publish:
+    needs: update
+    # Also after a failed update: whatever passed is published.
+    if: ${{ !cancelled() && needs.update.outputs.has_bundle == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write   # to push to the `data` branch
+    steps:
+      # Only the check script, and no stored credentials.
+      - name: Check out the publish checks
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/check_publish.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Fetch the update job's commit
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: data-bundle
+          path: ${{ runner.temp }}/bundle
+
+      - name: Check the commit and push it to the data branch
+        env:
+          BASE: ${{ needs.update.outputs.base_sha }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/check_publish.sh "$RUNNER_TEMP/bundle/data.bundle"

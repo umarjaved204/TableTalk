@@ -69,7 +69,7 @@ def test_pipeline_hash_covers_the_package_configs_and_locked_versions_only():
     except (OSError, subprocess.CalledProcessError):
         pytest.skip("git not available")
     listed = [path for path in listed if path]
-    assert "requirements.lock" in listed and "pyproject.toml" in listed
+    assert {"requirements-lock.in", "requirements-lock.txt", "pyproject.toml"} <= set(listed)
     assert any(path.startswith("configs/") for path in listed)
     assert not any(path.startswith(("web/", "tests/", "contracts/", "notebooks/", ".github/")) for path in listed)
     assert pipeline_hash() == pipeline_hash_of(PROJECT_ROOT, listed)

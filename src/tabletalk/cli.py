@@ -194,6 +194,34 @@ def cmd_track_record(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_raw_cache(args: argparse.Namespace) -> int:
+    """Check the raw-download cache against the record on the data branch, or add to the record."""
+    from pathlib import Path
+
+    from .pipeline import raw_manifest
+    from .pipeline.update import DEFAULT_OUTPUT_DIR
+
+    manifest = (Path(args.out) if args.out else DEFAULT_OUTPUT_DIR) / raw_manifest.MANIFEST
+    if args.action == "prepare":
+        prepared = raw_manifest.prepare(manifest)
+        if prepared.cold:
+            print(f"no record yet ({manifest}): cleared the cache ({len(prepared.deleted)} files), "
+                  "so everything is downloaded fresh and recorded after the update")
+        else:
+            print(f"raw cache: {prepared.kept} file(s) match the record; {len(prepared.deleted)} removed "
+                  "(not recorded, or different from the record) and downloaded again by the update")
+            for name in prepared.deleted:
+                print(f"  - {name}")
+        return 0
+    added, problems = raw_manifest.record(manifest)
+    print(f"raw record: {len(added)} past-season file(s) added")
+    for name in added:
+        print(f"  + {name}")
+    for problem in problems:
+        print(f"PROBLEM: {problem}")
+    return 1 if problems else 0
+
+
 def _report_config(config) -> None:
     print(f"=== {config.name} ({config.id}) ===")
     print(f"config:   {config.source_path}")
@@ -367,6 +395,15 @@ def build_parser() -> argparse.ArgumentParser:
     track.add_argument("--out", default=None, help="output directory (default: outputs/)")
     track.add_argument("--refresh", action="store_true", help="download the latest results and odds first")
     track.set_defaults(func=cmd_track_record)
+
+    raw = subparsers.add_parser(
+        "raw-cache", help="check the cached raw downloads against the record on the data branch (nightly run)"
+    )
+    raw.add_argument("action", choices=["prepare", "record"],
+                     help="prepare: before the update, delete cached files that do not match the record; "
+                          "record: after it, add new past-season files to the record")
+    raw.add_argument("--out", default=None, help="output directory holding state/ (default: outputs/)")
+    raw.set_defaults(func=cmd_raw_cache)
 
     return parser
 

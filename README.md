@@ -1266,6 +1266,7 @@ outputs/track_record/summary.json    the live track record
 outputs/state/run_state.json         working file: is today done? (not part of the contract)
 outputs/state/results_seen.json      working file: when each result first appeared, per source
 outputs/state/known_results.json     working file: every final score a source has given (see below)
+outputs/state/raw_manifest.sha256    working file: the record of past-season downloads (see below)
 ```
 
 The format is the **data contract**: [contracts/README.md](contracts/README.md)
@@ -1408,22 +1409,61 @@ https://cdn.jsdelivr.net/gh/umarjaved204/TableTalk@data/latest/index.json   (CDN
 
 **Set-up (once):** add the API key as a repository secret named
 `FOOTBALL_DATA_API_KEY` (Settings, Secrets and variables, Actions, New
-repository secret). The workflow's `permissions: contents: write` lets it push
-to `data`. Then protect `data`: Settings, Rules, Rulesets, a branch ruleset
-(here `protect-data`) targeting `data`, with only **Restrict deletions** and
-**Block force pushes** ticked and an empty bypass list. Normal pushes, which
-add a commit on top, still work, so the bot is not blocked.
+repository secret). Create the `data` branch once by hand (the workflow
+refuses to start without it). Then protect `data`: Settings, Rules, Rulesets,
+a branch ruleset (here `protect-data`) targeting `data`, with only **Restrict
+deletions** and **Block force pushes** ticked and an empty bypass list. Normal
+pushes, which add a commit on top, still work, so the bot is not blocked.
+
+**Two jobs: the one with the key cannot push.** The workflow has no
+permissions by default, and each job gets only what it needs:
+- *update* (`contents: read`) has the API key, installs the locked libraries
+  and runs the model. It commits the new outputs locally and hands over just
+  that one commit (a git bundle, kept 7 days as a run artifact) together with
+  the `data` commit it started from. Its checkout keeps no credentials.
+- *publish* (`contents: write`) never sees the key and runs no project code,
+  only [scripts/check_publish.sh](scripts/check_publish.sh) and git. It pushes
+  only if the commit sits directly on that starting point (and the branch has
+  not moved since), touches only `latest/`, `history/`, `track_record/`,
+  `state/` and `README.md`, deletes nothing, only adds to `history/`, keeps
+  the old lock log as an exact prefix of the new one, and keeps every line of
+  the raw-download record. It cannot tell an honest new lock line from a
+  made-up one: that would need the locks to be checked or signed at push time
+  (hardening item F-06, not built).
+
+Every action is pinned to a full commit SHA, with the version in a comment,
+and values from the event reach the shell only through `env:`.
+[.github/dependabot.yml](.github/dependabot.yml) opens a weekly pull request
+per ecosystem (actions, the Python lock, the website's npm packages); nothing
+changes until one is merged.
+
+**The raw-download cache is checked before it is trusted.** Past seasons'
+downloads are kept in a GitHub Actions cache between runs. Anything able to
+write to that cache could change an old result, so `state/raw_manifest.sha256`
+on the `data` branch records every past-season file's sha256 as first
+downloaded. Before each update (`python -m tabletalk raw-cache prepare`), a
+cached file is kept only if it matches its record; everything else is deleted
+and downloaded again (with no record yet, the whole cache goes, so the first
+record comes from a fresh download). After the update (`raw-cache record`),
+new past-season files are added. A recorded line is never changed (the
+publish checks refuse it): if a source rewrites an old season, the run fails
+with a "raw-download record" problem and a person decides.
 
 **Exact library versions.** The run installs from
-[requirements.lock](requirements.lock): every library at one exact version
-with its hashes, for Linux and Python 3.13 (what the runner uses), so a new or
-tampered release on PyPI cannot change the numbers or run code in the job.
-`requirements.txt` stays as the loose list for working on your own machine.
-To regenerate the lock after changing the dependencies in `pyproject.toml`,
-on Linux (e.g. WSL) with Python 3.13 and pip-tools:
+[requirements-lock.txt](requirements-lock.txt): every library at one exact
+version with its hashes, for Linux and Python 3.13 (what the runner uses), so
+a new or tampered release on PyPI cannot change the numbers or run code in the
+job. It is compiled by pip-tools from
+[requirements-lock.in](requirements-lock.in), which lists the same libraries
+as `dependencies` in `pyproject.toml` (a test fails if the two differ). The
+names follow what Dependabot needs to recognise a pip-tools lock (a `.in` file
+and a `.txt` lock), so its weekly pull requests can move the versions on; each
+one changes nothing until it is merged. `requirements.txt` stays as the loose
+list for working on your own machine. To regenerate the lock by hand, on Linux
+(e.g. WSL) with Python 3.13 and pip-tools:
 
 ```
-pip-compile --allow-unsafe --generate-hashes --newline=LF --output-file=requirements.lock --strip-extras pyproject.toml
+pip-compile --allow-unsafe --generate-hashes --newline=LF --output-file=requirements-lock.txt --strip-extras requirements-lock.in
 ```
 
 Without `--upgrade` it keeps the versions already in the lock and only adds
@@ -1433,9 +1473,12 @@ or removes what changed; `--upgrade-package <name>` moves one library on.
 - *How you are told:* GitHub emails whoever last changed the `cron` lines in
   the workflow file. The run's summary page shows the run report.
 - *What counts as a failure:* any league failing its checks, "results may be
-  late", results still missing on the day's last try, or a locking problem.
-  Whatever passed is still published first, and a failed league keeps its
-  previous files.
+  late", results still missing on the day's last try, a locking problem, a
+  changed old file in the raw-download record, or the publish checks refusing
+  the commit (the publish job's log says which check). Whatever passed is
+  still published first, and a failed league keeps its previous files. A
+  refused commit publishes nothing that run; the next try starts again from
+  the branch as it is.
 - *What to do:* fix the cause as described above, then start the workflow by
   hand with **force** ticked. Never switch off the `data` branch's protection
   to rewrite it: its history is the evidence of timing.

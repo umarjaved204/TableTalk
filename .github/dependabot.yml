@@ -1,0 +1,43 @@
+# Dependabot: once a week, a pull request per ecosystem with any newer versions.
+# Nothing changes until a pull request is merged, and the nightly run only ever
+# uses what is merged on main (actions pinned by commit SHA, Python libraries by
+# hash in requirements-lock.txt).
+version: 2
+updates:
+  # The actions in .github/workflows/ (pinned to full commit SHAs; Dependabot
+  # updates the SHA and the version comment together).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # requirements-lock.txt, compiled from requirements-lock.in by pip-tools
+  # (Dependabot re-runs the command in the file's header). pyproject.toml and
+  # requirements.txt hold the same libraries as lower bounds only.
+  - package-ecosystem: pip
+    directory: /
+    # Only the lock moves; the lower bounds (kept the same in pyproject.toml
+    # and requirements-lock.in, a test checks) stay as they are.
+    versioning-strategy: lockfile-only
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      python:
+        patterns: ["*"]
+
+  # The website. It lives on the `frontend` branch until web/ merges into main;
+  # then this target-branch line goes (merge checklist in the hardening plan).
+  - package-ecosystem: npm
+    directory: /web
+    target-branch: frontend
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      website:
+        patterns: ["*"]
