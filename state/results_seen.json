@@ -1362,6 +1362,17 @@
    "kickoff_utc": "2026-08-23T17:30:00Z",
    "season": "2026-27"
   },
+  "la_liga|2026-27|Getafe|Rayo Vallecano": {
+   "away_team": "Rayo Vallecano",
+   "baseline": [],
+   "competition": "la_liga",
+   "first_seen": {
+    "football_data_org": "2026-10-20T06:34:23Z"
+   },
+   "home_team": "Getafe",
+   "kickoff_utc": "2026-10-19T19:00:00Z",
+   "season": "2026-27"
+  },
   "la_liga|2026-27|Levante|Barcelona": {
    "away_team": "Barcelona",
    "baseline": [
@@ -3921,6 +3932,17 @@
    "kickoff_utc": "2026-09-19T11:30:00Z",
    "season": "2026-27"
   },
+  "premier_league|2026-27|Tottenham Hotspur|Coventry City": {
+   "away_team": "Coventry City",
+   "baseline": [],
+   "competition": "premier_league",
+   "first_seen": {
+    "football_data_org": "2026-10-20T06:34:23Z"
+   },
+   "home_team": "Tottenham Hotspur",
+   "kickoff_utc": "2026-10-19T19:00:00Z",
+   "season": "2026-27"
+  },
   "premier_league|2026-27|Tottenham Hotspur|Everton": {
    "away_team": "Everton",
    "baseline": [
@@ -4561,6 +4583,17 @@
    "kickoff_utc": "2026-08-31T16:30:00Z",
    "season": "2026-27"
   },
+  "serie_a|2026-27|Monza|Cagliari": {
+   "away_team": "Cagliari",
+   "baseline": [],
+   "competition": "serie_a",
+   "first_seen": {
+    "football_data_org": "2026-10-20T06:34:23Z"
+   },
+   "home_team": "Monza",
+   "kickoff_utc": "2026-10-19T16:30:00Z",
+   "season": "2026-27"
+  },
   "serie_a|2026-27|Monza|Sassuolo": {
    "away_team": "Sassuolo",
    "baseline": [
@@ -4679,6 +4712,17 @@
    },
    "home_team": "Parma",
    "kickoff_utc": "2026-09-06T13:00:00Z",
+   "season": "2026-27"
+  },
+  "serie_a|2026-27|Parma|Torino": {
+   "away_team": "Torino",
+   "baseline": [],
+   "competition": "serie_a",
+   "first_seen": {
+    "football_data_org": "2026-10-20T06:34:23Z"
+   },
+   "home_team": "Parma",
+   "kickoff_utc": "2026-10-19T18:45:00Z",
    "season": "2026-27"
   },
   "serie_a|2026-27|Roma|Atalanta": {

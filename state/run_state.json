@@ -1,6 +1,6 @@
 {
- "date": "2026-10-19",
- "generated_at": "2026-10-19T06:46:44Z",
+ "date": "2026-10-20",
+ "generated_at": "2026-10-20T06:34:23Z",
  "last_try": false,
  "leagues": {
   "bundesliga": {
@@ -24,8 +24,15 @@
    "updated": true
   },
   "serie_a": {
-   "missing": [],
-   "results_complete": true,
+   "missing": [
+    "fdorg:558573",
+    "fdorg:558575",
+    "fdorg:558571",
+    "fdorg:558572",
+    "fdorg:558574",
+    "fdorg:558577"
+   ],
+   "results_complete": false,
    "updated": true
   }
  }
