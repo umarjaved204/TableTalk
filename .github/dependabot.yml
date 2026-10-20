@@ -41,3 +41,11 @@ updates:
     groups:
       website:
         patterns: ["*"]
+    ignore:
+      # TypeScript 7 is not yet supported by @astrojs/check and
+      # typescript-eslint; move to it by hand once they support it.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # The types must match the Node version the site runs on (24, web/.nvmrc).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
