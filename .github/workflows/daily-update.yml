@@ -70,6 +70,18 @@ on:
         description: "Run even if today's run already updated every league with complete results"
         type: boolean
         default: false
+      # TEMPORARY (hardening step 5, the end-to-end test run): remove both
+      # inputs, DATA_BRANCH and the sabotage step once the test is done.
+      publish_branch:
+        description: "TEMPORARY: the branch to read from and publish to (data-staging for the test run)"
+        type: choice
+        options: [data, data-staging]
+        default: data
+      sabotage:
+        description: "TEMPORARY: damage the commit before handing it over, to check publish refuses it"
+        type: choice
+        options: [none, lock-line, raw-record]
+        default: none
 
 # Nothing by default: each job asks for exactly what it needs.
 permissions: {}
@@ -78,6 +90,8 @@ permissions: {}
 # line above). Manual runs are never the last try.
 env:
   LAST_TRY_SCHEDULE: "37 7 * * *"
+  # TEMPORARY: always `data` except in the step 5 test run.
+  DATA_BRANCH: ${{ inputs.publish_branch || 'data' }}
 
 # Never two runs at once: both would append to the lock log and push to
 # `data`. Tries that overlap queue instead (GitHub keeps the newest waiting
@@ -145,11 +159,12 @@ jobs:
       - name: Check out the published data (data branch -> outputs/)
         id: data
         run: |
-          if ! git ls-remote --exit-code --heads origin data > /dev/null; then
-            echo "::error::No data branch: create it once by hand before the first run."
+          if ! git ls-remote --exit-code --heads origin "$DATA_BRANCH" > /dev/null; then
+            echo "::error::No $DATA_BRANCH branch: create it once by hand before the first run."
             exit 1
           fi
-          git fetch --depth=1 origin data
+          echo "Reading from (and publishing to): $DATA_BRANCH"
+          git fetch --depth=1 origin "$DATA_BRANCH"
           git worktree add --detach outputs FETCH_HEAD
           echo "base_sha=$(git -C outputs rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
@@ -203,6 +218,7 @@ jobs:
         env:
           BASE: ${{ steps.data.outputs.base_sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SABOTAGE: ${{ inputs.sabotage }}
         run: |
           cd outputs
           git add -A
@@ -210,6 +226,15 @@ jobs:
             echo "Nothing new to publish."
             echo "has_bundle=false" >> "$GITHUB_OUTPUT"
             exit 0
+          fi
+          # TEMPORARY (step 5): damage the commit on purpose, only on data-staging.
+          if [ "$DATA_BRANCH" = "data-staging" ]; then
+            case "$SABOTAGE" in
+              lock-line) sed -i '1s/"lock_id":"/"lock_id":"EDITED-/' track_record/locks.jsonl ;;
+              raw-record) sed -i '1s/^./0/' state/raw_manifest.sha256 ;;
+            esac
+            git add -A
+            echo "Sabotage for the test run: ${SABOTAGE:-none}"
           fi
           git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
