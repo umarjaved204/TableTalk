@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -37,7 +38,9 @@ from ..evaluation.backtest import base_rates
 from ..evaluation.calibration import calibration_table
 from ..evaluation.market import implied_probabilities, load_market_odds
 from ..evaluation.metrics import outcomes_from_goals
+from .known_results import NOT_RESTORED
 from .locks import LockStore, scoreable_locks
+from .state import read_known_results
 from .snapshot import CONTRACT_VERSION
 
 #: Log-loss gaps seen in the backtest (report seasons, README), used only to say
@@ -100,14 +103,18 @@ def compare(scored: pd.DataFrame, column: str, against: str) -> Comparison:
     )
 
 
-def score(store: LockStore, *, refresh: bool = False) -> tuple[pd.DataFrame, dict]:
-    """Every scoreable lock that has a result, with each forecaster's log loss."""
+def score(store: LockStore, *, refresh: bool = False, known: dict[str, dict] | None = None) -> tuple[pd.DataFrame, dict]:
+    """Every scoreable lock that has a result, with each forecaster's log loss.
+
+    ``known``: the remembered results (``state.read_known_results``), used for
+    a match the fixture source no longer lists as finished.
+    """
     events = store.events()  # raises if the chain is broken
     locks, counts = scoreable_locks(events)
     frames = []
     for competition, group in locks.groupby("competition", sort=True):
         config = load_competition(competition)
-        results = _results(config, refresh=refresh)
+        results = _results(config, refresh=refresh, known=known)
         joined = group.merge(results, on="match_id", how="left")
         awaiting = joined["home_goals"].isna()
         counts["awaiting_result"] = counts.get("awaiting_result", 0) + int(awaiting.sum())
@@ -135,15 +142,20 @@ def score(store: LockStore, *, refresh: bool = False) -> tuple[pd.DataFrame, dic
     return scored, counts
 
 
-def _results(config, *, refresh: bool) -> pd.DataFrame:
-    """Final scores by the fixture source's match id."""
+def _results(config, *, refresh: bool, known: dict[str, dict] | None = None) -> pd.DataFrame:
+    """Final scores by the fixture source's match id, remembered ones filling the gaps.
+
+    A remembered result is used only while the fixture source has no score for
+    that match and does not list it as called off or awarded (as
+    ``known_results.restore`` does for the table).
+    """
     frames = [
         loader.load(refresh={config.current_season} if refresh else False)
         for loader in build_loaders(config, role="fixtures")
     ]
     fixtures = pd.concat(frames, ignore_index=True)
     played = fixtures.loc[fixtures["played"].fillna(False).astype(bool)]
-    return pd.DataFrame(
+    results = pd.DataFrame(
         {
             "match_id": played["source_id"].astype(str),
             "date": played["date"],
@@ -153,6 +165,26 @@ def _results(config, *, refresh: bool) -> pd.DataFrame:
             "result_status": played["status"].astype(str),
         }
     )
+    status = dict(zip(fixtures["source_id"].astype(str), fixtures["status"].astype(str)))
+    have = set(results["match_id"])
+    remembered = [
+        entry for entry in (known or {}).values()
+        if isinstance(entry, dict) and entry.get("competition") == config.id and entry.get("match_id")
+        and entry["match_id"] not in have and status.get(entry["match_id"]) not in NOT_RESTORED
+    ]
+    if not remembered:
+        return results
+    extra = pd.DataFrame(
+        {
+            "match_id": [entry["match_id"] for entry in remembered],
+            "date": pd.to_datetime([entry["date"] for entry in remembered]).astype(results["date"].dtype),
+            "kickoff": pd.to_datetime([entry["kickoff_utc"] for entry in remembered], utc=True),
+            "home_goals": [float(entry["home_goals"]) for entry in remembered],
+            "away_goals": [float(entry["away_goals"]) for entry in remembered],
+            "result_status": "FINISHED",
+        }
+    )
+    return pd.concat([results, extra], ignore_index=True)
 
 
 def _add_market(done: pd.DataFrame, config, *, refresh: bool) -> pd.DataFrame:
@@ -265,7 +297,7 @@ def write_track_record(store: LockStore, out_dir, *, generated_at: pd.Timestamp,
     from .snapshot import validate
     from .update import _write_json, _write_text
 
-    scored, counts = score(store, refresh=refresh)
+    scored, counts = score(store, refresh=refresh, known=read_known_results(Path(out_dir)))
     live_since = None
     if store.meta_path.exists():
         live_since = json.loads(store.meta_path.read_text(encoding="utf-8"))["live_since"]

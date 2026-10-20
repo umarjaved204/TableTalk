@@ -26,19 +26,38 @@ only look a few times a day, so the source may have had it earlier.
 When a league has no entries yet (the first run with this file), everything
 already played is recorded as a baseline and left out of the delay figures:
 we do not know when those results arrived.
+
+``known_results.json``: every final score a source has given
+--------------------------------------------------------------
+For every played match of the current season, the final score as the results
+sources last gave it, with the fixture source's match id. football-data.org
+has been seen to list finished matches as TIMED again for a while, with no
+score; while it does, and no other source has the score yet, the run takes it
+from here (``known_results.restore``), so a result never disappears from the
+table, the predictions or the track record once it has been published.
+
+A live source always wins: a score here that a source now gives differently is
+replaced (and the run warns). An entry is removed when the fixture source says
+the match was called off after all. Unlike the two files above this one
+matters to the numbers, but losing it is still safe: the run then works from
+what the sources give, as it did before the file existed.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import os
 import statistics
 from pathlib import Path
 
 import pandas as pd
 
+logger = logging.getLogger(__name__)
+
 RUN_STATE = Path("state") / "run_state.json"
 RESULTS_SEEN = Path("state") / "results_seen.json"
+KNOWN_RESULTS = Path("state") / "known_results.json"
 
 
 # ---------------------------------------------------------------------------
@@ -162,6 +181,64 @@ def describe_results_seen(new: list[dict]) -> list[str]:
                      f"range {min(hours):.1f}-{max(hours):.1f} h)")
         lines.append(text)
     return lines
+
+
+# ---------------------------------------------------------------------------
+# known_results.json
+# ---------------------------------------------------------------------------
+
+
+def read_known_results(out_dir: Path) -> dict[str, dict]:
+    """Every remembered result, keyed ``competition|season|home|away``. Empty if there is no usable file."""
+    path = out_dir / KNOWN_RESULTS
+    try:
+        log = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError):
+        logger.warning("%s cannot be read; working from the sources' results only", path)
+        return {}
+    matches = log.get("matches") if isinstance(log, dict) else None
+    return matches if isinstance(matches, dict) else {}
+
+
+def known_for(known: dict[str, dict], competition: str, season: str) -> dict[tuple[str, str], dict]:
+    """One league's remembered results for one season, keyed (home, away)."""
+    return {
+        (entry["home_team"], entry["away_team"]): entry
+        for entry in known.values()
+        if isinstance(entry, dict) and entry.get("competition") == competition and entry.get("season") == season
+    }
+
+
+def record_known_results(
+    out_dir: Path,
+    *,
+    competition: str,
+    season: str,
+    results: list[dict],
+    forget: set[tuple[str, str]],
+    recorded_at: pd.Timestamp,
+) -> None:
+    """Remember the scores the sources gave in this run, and drop the matches that were called off.
+
+    ``results``: one dict per played match, with ``home_team``, ``away_team``,
+    ``home_goals``, ``away_goals``, ``match_id``, ``date`` and ``kickoff_utc``.
+    A score that differs from the remembered one replaces it (the sources win).
+    """
+    known = read_known_results(out_dir)
+    stamp = recorded_at.tz_convert("UTC").strftime("%Y-%m-%dT%H:%M:%SZ")
+    for home, away in forget:
+        known.pop(f"{competition}|{season}|{home}|{away}", None)
+    for result in results:
+        key = f"{competition}|{season}|{result['home_team']}|{result['away_team']}"
+        entry = {"competition": competition, "season": season, **result}
+        before = known.get(key)
+        if before is not None and all(before.get(field) == entry[field] for field in entry):
+            continue
+        entry["recorded_at"] = stamp
+        known[key] = entry
+    _atomic_write(out_dir / KNOWN_RESULTS, json.dumps({"matches": known}, indent=1, sort_keys=True, ensure_ascii=False) + "\n")
 
 
 def _atomic_write(path: Path, text: str) -> None:

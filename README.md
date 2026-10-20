@@ -1265,6 +1265,7 @@ outputs/track_record/locks.jsonl     locked predictions (see below)
 outputs/track_record/summary.json    the live track record
 outputs/state/run_state.json         working file: is today done? (not part of the contract)
 outputs/state/results_seen.json      working file: when each result first appeared, per source
+outputs/state/known_results.json     working file: every final score a source has given (see below)
 ```
 
 The format is the **data contract**: [contracts/README.md](contracts/README.md)
@@ -1355,6 +1356,20 @@ were made without them, and the later tries skipped.
   day; results already there when the log began are a baseline with no delay.
   *Timing:* a warning when the day's first update publishes less than 60
   minutes before the day's first kick-off. Neither fails the run.
+- **A result never disappears once published.** football-data.org sometimes
+  lists finished matches as TIMED again, with no score, for hours or days
+  (11 Oct 2026 matches on 16-17 Oct; six Serie A matches on 20 Oct), while
+  football-data.co.uk is still 1-4 days behind. Those matches then looked
+  unplayed: the table dropped them, the simulation played them again and the
+  track record stopped scoring their locks (13 Serie A locks on 20 Oct, for
+  about two hours). So every final score is remembered in
+  `state/known_results.json` and put back while no source gives it; the
+  snapshot says so ("Results kept from earlier runs"). A source that has a
+  score always wins: a different score there replaces the remembered one, and
+  a match now listed as postponed, suspended, cancelled or awarded is no longer
+  counted. Both are a "Score changed" / "Result withdrawn" warning, which fails
+  the run so a person is told. Losing the file is safe: the run then works from
+  the sources alone, as before.
 
 **Why four tries, so early.** A prediction is locked from the last run that
 finished before kick-off, and the earliest kick-off in the five leagues is

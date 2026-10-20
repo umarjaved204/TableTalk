@@ -308,7 +308,7 @@ class _FakeDay:
         run = SimpleNamespace(
             notices=[], fixtures=fixtures, season="2026-27",
             missing=[update._match_record(row) for row in missing.itertuples(index=False)], called_off=[],
-            played_by_source={"football_data_org": set(self.played)},
+            played_by_source={"football_data_org": set(self.played)}, sources_results=[], forget=set(),
             kickoffs={(m[1], m[2]): m[3] for m in (HULL, ATALANTA, COVENTRY)},
             upcoming=upcoming, p_home=self.p_home, now=now,
         )
@@ -338,7 +338,8 @@ def day(monkeypatch):
     monkeypatch.setattr(update, "run_league", fake.run_league)
     monkeypatch.setattr(update, "build_snapshot", fake.build_snapshot)
     monkeypatch.setattr(update, "validate", lambda document, *args: [])
-    monkeypatch.setattr(update, "load_competition", lambda cid: SimpleNamespace(id=cid, name="Premier League"))
+    monkeypatch.setattr(update, "load_competition",
+                        lambda cid: SimpleNamespace(id=cid, name="Premier League", current_season="2026-27"))
     monkeypatch.setattr("tabletalk.pipeline.track_record.write_track_record", lambda *a, **k: {})
     return fake
 

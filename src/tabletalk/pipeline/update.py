@@ -49,7 +49,7 @@ from ..data.loaders import build_loaders
 from ..paths import PROJECT_ROOT
 from ..simulation import league_table
 from ..simulation.league import simulate_league
-from . import checks
+from . import checks, known_results
 from . import state as pipeline_state
 from .awarded import review_awarded
 from .locks import LockStore, update_locks
@@ -103,22 +103,29 @@ def run_league(
     n_simulations: int | None = None,
     now: pd.Timestamp | None = None,
     stale_after: pd.Timedelta = DEFAULT_STALE_AFTER,
+    known: dict[tuple[str, str], dict] | None = None,
 ) -> tuple[LeagueRun, str]:
     """Steps 1-6 for one league. Returns the run and any awarded-match drafts.
 
-    Raises on any failure; nothing is written here.
+    ``known``: this league's remembered results for the current season
+    (``state.known_for``); any no source has now are put back
+    (``known_results.restore``). Raises on any failure; nothing is written here.
     """
     season = config.current_season
     refresh_seasons = {season} if refresh else False
     matches = load_matches(config, refresh=refresh_seasons, save=False)
     context = load_context_matches(config, refresh=refresh_seasons)
 
+    api_frames = [loader.load() for loader in build_loaders(config, role="fixtures") if loader.name == "football_data_org"]
+    api = pd.concat(api_frames, ignore_index=True) if api_frames else matches.iloc[0:0]
+    sources_results = known_results.live_results(matches, api, season)
+    kept = known_results.restore(matches, api, known or {}, season)
+    matches = kept.matches
+
     problems = checks.check_fixtures(matches, config, season)
     if problems:
         raise SafetyCheckError(config.id, problems)
 
-    api_frames = [loader.load() for loader in build_loaders(config, role="fixtures") if loader.name == "football_data_org"]
-    api = pd.concat(api_frames, ignore_index=True) if api_frames else matches.iloc[0:0]
     review = review_awarded(config, matches, api)
 
     seed = run_seed(run_date, config.id)
@@ -163,10 +170,14 @@ def run_league(
         f"Results may be late: {warning}"
         for warning in checks.check_staleness(api, now, max_age=stale_after, played=played)
     ]
+    # Restored results are reported on their own below, not as "behind".
+    restored_pairs = {(entry["home_team"], entry["away_team"]) for entry in kept.restored}
+    from_sources = played.loc[[pair not in restored_pairs for pair in zip(played["home_team"], played["away_team"])]]
     notices.extend(
         f"Fixture source behind: {note}"
-        for note in checks.status_behind_results(api, played, now, max_age=stale_after)
+        for note in checks.status_behind_results(api, from_sources, now, max_age=stale_after)
     )
+    notices.extend(_known_results_notices(kept))
     if not missing.empty:
         notices.append(
             f"Results not in yet: {len(missing)} match(es) that kicked off at least "
@@ -205,11 +216,39 @@ def run_league(
     run.missing = [_match_record(row) for row in missing.itertuples(index=False)]
     run.called_off = [_match_record(row) for row in stopped.itertuples(index=False)]
     run.played_by_source = _played_by_source(config, season)
+    run.sources_results = sources_results
+    run.forget = {(entry["home_team"], entry["away_team"]) for entry, _why in kept.withdrawn}
     run.kickoffs = {
         (str(row.home_team), str(row.away_team)): _iso(row.kickoff_utc)
         for row in api.itertuples(index=False) if pd.notna(row.kickoff_utc)
     }
     return run, review.draft_entries(config.id)
+
+
+#: Notices that start like this are warnings: written, but the run fails so a person is told.
+WARNING_PREFIXES = ("Results may be late", "Score changed", "Result withdrawn")
+
+
+def _known_results_notices(kept: known_results.Restored) -> list[str]:
+    notices = []
+    if kept.restored:
+        notices.append(
+            f"Results kept from earlier runs: {len(kept.restored)} match(es) had a final score in an earlier "
+            "run that no source gives now (football-data.org has listed finished matches as TIMED again for "
+            "a while). The table, the predictions and the track record still count them: "
+            + "; ".join(known_results.describe(entry) for entry in kept.restored)
+        )
+    for entry, (home_goals, away_goals) in kept.changed:
+        notices.append(
+            f"Score changed: {known_results.describe(entry)} when first recorded; the sources now give "
+            f"{home_goals}-{away_goals}, which is used from this run on."
+        )
+    for entry, why in kept.withdrawn:
+        notices.append(
+            f"Result withdrawn: {known_results.describe(entry)} had a final score in an earlier run but is "
+            f"{why}, so it is not counted."
+        )
+    return notices
 
 
 def _played_by_source(config: CompetitionConfig, season: str) -> dict[str, set[tuple[str, str]]]:
@@ -321,6 +360,7 @@ def run_update(
     run_date = now.strftime("%Y-%m-%d")
     first_today = not pipeline_state.published_today(out_dir, now)
     outcomes = []
+    known = pipeline_state.read_known_results(out_dir)
     for competition in competitions or available_competitions():
         config = load_competition(competition)
         outcome = LeagueOutcome(competition=config.id, name=config.name)
@@ -329,14 +369,20 @@ def run_update(
             run, drafts = run_league(
                 config, run_date=run_date, refresh=refresh, n_simulations=n_simulations,
                 now=now, stale_after=stale_after,
+                known=pipeline_state.known_for(known, config.id, config.current_season),
             )
             snapshot = build_snapshot(run, generated_at=now)
             contract = validate(snapshot)
             if contract:
                 raise SafetyCheckError(config.id, [f"data contract: {problem}" for problem in contract])
+            # Before the league counts as written: the track record reads this file next.
+            pipeline_state.record_known_results(
+                out_dir, competition=config.id, season=run.season, results=run.sources_results,
+                forget=run.forget, recorded_at=now,
+            )
             outcome.snapshot, outcome.awarded_drafts, outcome.notices = snapshot, drafts, run.notices
             outcome.fixtures = run.fixtures
-            outcome.warnings = [notice for notice in run.notices if notice.startswith("Results may be late")]
+            outcome.warnings = [notice for notice in run.notices if notice.startswith(WARNING_PREFIXES)]
             outcome.missing, outcome.called_off = run.missing, run.called_off
             outcome.new_results = pipeline_state.record_results_seen(
                 out_dir, competition=config.id, season=run.season, played_by_source=run.played_by_source,

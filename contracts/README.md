@@ -22,16 +22,21 @@ track_record/report.md            the same, written for a person
 
 `track_record/pending.json` and `meta.json` are working files for the
 pipeline, not part of the contract. So are `state/run_state.json` (whether
-today's run is done: every league updated and no results missing) and
-`state/results_seen.json` (when each result first appeared, per source). Do
-not build on any of them: their format can change without a version bump.
+today's run is done: every league updated and no results missing),
+`state/results_seen.json` (when each result first appeared, per source) and
+`state/known_results.json` (every final score a source has given, so a result
+stays counted while the sources stop listing it). Do not build on any of them:
+their format can change without a version bump.
 
 Several runs can publish on the same day (a later try runs again while
 results are missing), so `history/` can hold more than one folder per day.
 Each snapshot's `notices` may say "Results not in yet: ..." (its predictions
 do not include those matches), "Fixture source behind: ..." (informational:
-those results are counted) and list postponed, suspended or cancelled
-matches.
+those results are counted), "Results kept from earlier runs: ..."
+(informational: a result no source gives right now is still counted, from an
+earlier run), "Score changed: ..." or "Result withdrawn: ..." (a result
+published earlier is now different, or no longer counted), and list postponed,
+suspended or cancelled matches.
 
 `<competition>` is a config id: `premier_league`, `bundesliga`, `la_liga`,
 `serie_a`, `ligue_1`. The history folder name is the run's start time in UTC.
@@ -170,7 +175,8 @@ lock log and the track record. 2026-09-29: wording clarified (the `data`
 branch's history is strong evidence of timing, not proof); files unchanged,
 still 1.1.0. 2026-10-13: wording added on working files under `state/`,
 several runs a day, and the new kinds of `notices` (strings, as before); files
-unchanged, still 1.1.0.
+unchanged, still 1.1.0. 2026-10-20: wording added on `state/known_results.json`
+and three more kinds of `notices`; files unchanged, still 1.1.0.
 
 **Requested for a future version** (low priority, not scheduled):
 `results_complete` (true/false) and `missing_results` (match ids) on each
