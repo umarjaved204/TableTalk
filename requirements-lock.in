@@ -1,0 +1,11 @@
+# The libraries the pipeline needs to run: the same list as `dependencies` in
+# pyproject.toml (tests/test_requirements_lock.py fails if they differ).
+# Compiled into requirements-lock.txt, the exact versions with hashes that the
+# nightly run installs. How to regenerate it: README, "Exact library versions".
+numpy>=1.26
+pandas>=2.1
+scipy>=1.11
+PyYAML>=6.0
+requests>=2.31
+matplotlib>=3.8
+jsonschema>=4.18
