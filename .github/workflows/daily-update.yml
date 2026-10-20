@@ -95,10 +95,15 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: pyproject.toml
+          cache-dependency-path: requirements.lock
 
+      # Exact versions with their hashes (requirements.lock, made by pip-compile
+      # for Linux and Python 3.13), so a new or tampered release on PyPI cannot
+      # change what runs. Then the project itself, without resolving anything.
       - name: Install
-        run: pip install -e .
+        run: |
+          pip install --require-hashes -r requirements.lock
+          pip install --no-deps -e .
 
       # Past seasons never change, so keep the raw downloads between runs. The
       # current season is downloaded fresh every time regardless.

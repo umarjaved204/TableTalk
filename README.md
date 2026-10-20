@@ -1414,6 +1414,21 @@ to `data`. Then protect `data`: Settings, Rules, Rulesets, a branch ruleset
 **Block force pushes** ticked and an empty bypass list. Normal pushes, which
 add a commit on top, still work, so the bot is not blocked.
 
+**Exact library versions.** The run installs from
+[requirements.lock](requirements.lock): every library at one exact version
+with its hashes, for Linux and Python 3.13 (what the runner uses), so a new or
+tampered release on PyPI cannot change the numbers or run code in the job.
+`requirements.txt` stays as the loose list for working on your own machine.
+To regenerate the lock after changing the dependencies in `pyproject.toml`,
+on Linux (e.g. WSL) with Python 3.13 and pip-tools:
+
+```
+pip-compile --allow-unsafe --generate-hashes --newline=LF --output-file=requirements.lock --strip-extras pyproject.toml
+```
+
+Without `--upgrade` it keeps the versions already in the lock and only adds
+or removes what changed; `--upgrade-package <name>` moves one library on.
+
 **When a run fails:**
 - *How you are told:* GitHub emails whoever last changed the `cron` lines in
   the workflow file. The run's summary page shows the run report.
