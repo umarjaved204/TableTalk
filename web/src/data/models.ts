@@ -104,6 +104,10 @@ export interface ReadyLeague {
   generatedAt: string;
   /** "updated" or "kept_previous" (last night's run failed, these are older numbers). */
   runStatus: "updated" | "kept_previous";
+  /** False when some matches that should have finished are not in these
+   *  numbers yet (a later update adds them); null when not known (the run did
+   *  not update this league, or the file is older than contract 1.2.0). */
+  resultsComplete: boolean | null;
   runError: string | null;
   dataThrough: string | null;
   provisional: boolean;

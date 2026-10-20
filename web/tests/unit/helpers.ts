@@ -6,14 +6,18 @@ import { join, resolve } from "node:path";
 /** Real files from the `data` branch at commit 16a5512 (29 Sep 2026 run). */
 export const REAL = resolve("tests/fixtures/data-16a5512");
 
+/** The first contract 1.2.0 files: the pipeline run offline on a copy of the
+ *  `data` branch at d6de3e4 (20 Oct 2026); see its SOURCE.json. */
+export const REPLAY_1_2 = resolve("tests/fixtures/data-1.2.0-replay");
+
 export function useDataDir(dir: string): void {
   process.env["TABLETALK_DATA_DIR"] = dir;
 }
 
 /** A throwaway copy of the real fixtures, for edge cases (edited files, missing files). */
-export function copyOfReal(): string {
+export function copyOfReal(source: string = REAL): string {
   const dir = mkdtempSync(join(tmpdir(), "tabletalk-"));
-  cpSync(REAL, dir, { recursive: true });
+  cpSync(source, dir, { recursive: true });
   return dir;
 }
 

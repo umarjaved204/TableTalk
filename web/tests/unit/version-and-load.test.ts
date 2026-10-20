@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { DataError, loadFile, relax } from "../../src/data/load.ts";
 import { checkVersion } from "../../src/data/version.ts";
-import { REAL, copyOfReal, editJson, useDataDir } from "./helpers.ts";
+import { REAL, REPLAY_1_2, copyOfReal, editJson, useDataDir } from "./helpers.ts";
 
 describe("checkVersion", () => {
   it.each(["1.0.0", "1.1.0", "1.9.3"])("accepts %s (same MAJOR)", (v) => {
@@ -54,8 +54,33 @@ describe("loadFile", () => {
     expect(loadFile("latest/nope.json", "snapshot")).toEqual({ status: "missing", path: "latest/nope.json" });
   });
 
+  it("loads and validates the first 1.2.0 files (pipeline_hash, results_complete)", () => {
+    useDataDir(REPLAY_1_2);
+    const index = loadFile<{ competitions: { results_complete: boolean }[] }>("latest/index.json", "index");
+    const snapshot = loadFile("latest/premier_league.json", "snapshot");
+    const summary = loadFile("track_record/summary.json", "track_record");
+    expect([index.status, snapshot.status, summary.status]).toEqual(["ok", "ok", "ok"]);
+    expect(index).toMatchObject({ version: "1.2.0" });
+  });
+
+  it("checks each file against its own version: a 1.1.0 file needs no 1.2.0 fields", () => {
+    useDataDir(REAL); // 1.1.0: no pipeline_hash, no results_complete
+    expect(loadFile("latest/premier_league.json", "snapshot")).toMatchObject({
+      status: "ok",
+      version: "1.1.0",
+    });
+    dir = copyOfReal(REPLAY_1_2);
+    editJson(dir, "latest/premier_league.json", (d) => {
+      delete (d["run"] as Record<string, unknown>)["pipeline_hash"];
+    });
+    useDataDir(dir);
+    // A file that says 1.2.0 but lacks a 1.2.0 field is broken.
+    expect(() => loadFile("latest/premier_league.json", "snapshot")).toThrow(/pipeline_hash/);
+  });
+
   it("accepts unknown fields from a newer MINOR version", () => {
-    dir = copyOfReal();
+    // A newer MINOR file has every 1.2.0 field (MINOR only adds), plus its own.
+    dir = copyOfReal(REPLAY_1_2);
     editJson(dir, "latest/premier_league.json", (d) => {
       d["contract_version"] = "1.4.0";
       d["a_field_added_later"] = { anything: true };

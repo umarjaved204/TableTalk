@@ -18,7 +18,12 @@ const { data, suffix } = Astro.props;
     {data.league.name}
     {suffix && <> {suffix}</>} <span class="season">{data.season}</span>
   </h1>
-  <UpdatedStamp generatedAt={data.generatedAt} dataThrough={data.dataThrough} runStatus={data.runStatus} />
+  <UpdatedStamp
+    generatedAt={data.generatedAt}
+    dataThrough={data.dataThrough}
+    runStatus={data.runStatus}
+    resultsComplete={data.resultsComplete}
+  />
   {data.provisional && (
     <Notice title="Provisional" tone="warn">
       <p>The table includes a result that is not confirmed yet.</p>

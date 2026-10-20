@@ -4,14 +4,17 @@
 // MAJOR version may not match our schema at all, and the right message for it
 // is "newer format", not "invalid".
 //
-// Validation uses a RELAXED copy of each contract schema: the published
-// schemas say `additionalProperties: false` (they describe exactly what the
-// pipeline writes), but a reader must accept fields added by a later MINOR
-// version. So `relax()` removes every `additionalProperties: false`.
+// Validation uses the schemas of the version the file was written with
+// (src/data/schemas.ts), RELAXED: the published schemas say
+// `additionalProperties: false` (they describe exactly what the pipeline
+// writes), but a reader must accept fields added by a later MINOR version
+// (contracts/README.md, "Readers must ignore fields they do not know"). So
+// `relax()` removes every `additionalProperties: false`.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
-import { CONTRACTS_DIR, dataDir } from "./paths.ts";
+import { dataDir } from "./paths.ts";
+import { schemaPath, schemaVersionFor } from "./schemas.ts";
 import { checkVersion } from "./version.ts";
 
 export type ContractFile = "index" | "snapshot" | "track_record";
@@ -46,14 +49,17 @@ export function relax(schema: unknown): unknown {
   return out;
 }
 
-const validators = new Map<ContractFile, ValidateFunction>();
+const validators = new Map<string, ValidateFunction>();
 
-function validatorFor(kind: ContractFile): ValidateFunction {
-  let validate = validators.get(kind);
+/** The relaxed validator for this kind of file, from the schema copy for `version`. */
+function validatorFor(kind: ContractFile, version: string): ValidateFunction {
+  const copy = schemaVersionFor(version);
+  const key = `${copy}/${kind}`;
+  let validate = validators.get(key);
   if (!validate) {
-    const schema = JSON.parse(readFileSync(join(CONTRACTS_DIR, SCHEMA_FILES[kind]), "utf8"));
+    const schema = JSON.parse(readFileSync(schemaPath(copy, SCHEMA_FILES[kind]), "utf8"));
     validate = new Ajv2020({ allErrors: true, strict: false }).compile(relax(schema) as object);
-    validators.set(kind, validate);
+    validators.set(key, validate);
   }
   return validate;
 }
@@ -76,7 +82,7 @@ export function loadFile<T>(relativePath: string, kind: ContractFile): FileResul
   const version = checkVersion(versionField);
   if (!version.ok) return { status: "unsupported", path: relativePath, found: version.found };
 
-  const validate = validatorFor(kind);
+  const validate = validatorFor(kind, version.version);
   if (!validate(parsed)) {
     const problems = (validate.errors ?? []).map((e) => `${e.instancePath || "/"} ${e.message}`).join("; ");
     throw new DataError(`${relativePath} does not match the ${kind} contract: ${problems}`);

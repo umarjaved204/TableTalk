@@ -108,6 +108,8 @@ export function buildLeague(
     country: snap.competition.country,
     generatedAt: snap.generated_at,
     runStatus: entry.status === "kept_previous" ? "kept_previous" : "updated",
+    // From contract 1.2.0 (R16); an older index has no such field.
+    resultsComplete: entry.results_complete ?? null,
     runError: entry.error,
     dataThrough: snap.data_through,
     provisional: snap.provisional,

@@ -8,11 +8,13 @@ interface Props {
   generatedAt: string;
   dataThrough: string | null;
   runStatus: "updated" | "kept_previous";
+  /** False: some results that should be in are missing from these numbers. */
+  resultsComplete?: boolean | null;
   /** Home page cards: hide the "Updated" line unless the numbers are stale
    *  (the page already says when the last update was). */
   compact?: boolean;
 }
-const { generatedAt, dataThrough, runStatus, compact = false } = Astro.props;
+const { generatedAt, dataThrough, runStatus, resultsComplete = null, compact = false } = Astro.props;
 ---
 
 <div class:list={["stamp", { compact }]} data-generated={generatedAt}>
@@ -25,6 +27,9 @@ const { generatedAt, dataThrough, runStatus, compact = false } = Astro.props;
   <p class="line">
     {dataThrough ? <>Results up to {formatShortDate(dataThrough)}</> : <>No results yet this season</>}
   </p>
+  {resultsComplete === false && (
+    <p class="note">Some results are not in yet. They will be in a later update.</p>
+  )}
   {runStatus === "kept_previous" && (
     <p class="warn">
       Last night's update failed for this league, so these are the most recent numbers we have.
@@ -72,6 +77,10 @@ const { generatedAt, dataThrough, runStatus, compact = false } = Astro.props;
 
   [data-stale-message]::after {
     content: var(--stale-note, none);
+  }
+
+  .note {
+    flex-basis: 100%;
   }
 
   .warn {

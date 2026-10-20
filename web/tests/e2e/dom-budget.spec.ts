@@ -20,6 +20,9 @@
 //       cells merged: Premier League 1,903 / 1,921 · Bundesliga 1,880 / 1,934;
 //   4c, two more fonts preloaded in <head> (so they arrive in time for
 //       font-display: optional): +2 on every page, budgets 1,923 and 1,936.
+//   Contract 1.2.0 (R16): the test data's Bundesliga has a result not in yet,
+//       so its page shows that note (one <p>): 1,937. Real pages only have it
+//       on mornings when a result is late.
 //
 // Home, Step 4d: the league cards became "title races at a glance" (three
 // teams per race, each with a mini bar), an approved feature: 382 -> 468
@@ -42,7 +45,7 @@ const BUDGETS: [string, number][] = [
   ["/", 490],
   // League pages: no growth at all (the counts after Step 4c)
   ["/premier-league/", 1923],
-  ["/bundesliga/", 1936],
+  ["/bundesliga/", 1937],
   // Matches
   ["/premier-league/matches/", 1540],
   // Team page

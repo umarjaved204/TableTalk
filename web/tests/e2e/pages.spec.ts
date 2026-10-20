@@ -181,6 +181,23 @@ test.describe("home page", () => {
     const ligue1 = page.locator('[data-league-card="ligue_1"]');
     await expect(ligue1).toContainText("Provisional");
     await expect(ligue1).toContainText("Last night's update failed for this league");
+    await expect(page.locator('[data-league-card="bundesliga"]')).toContainText(
+      "Some results are not in yet. They will be in a later update.",
+    );
+    await expect(page.locator('[data-league-card="premier_league"]')).not.toContainText(
+      "Some results are not in yet",
+    );
+  });
+
+  test("Bundesliga: some results not in yet, on the league page and its team pages", async ({ page }) => {
+    for (const path of ["/bundesliga/", "/bundesliga/matches/", "/bundesliga/mainz-05/"]) {
+      await openAs(page, path, LIGHT, 1440);
+      await expect(page.locator("main")).toContainText(
+        "Some results are not in yet. They will be in a later update.",
+      );
+    }
+    await openAs(page, "/premier-league/", LIGHT, 1440);
+    await expect(page.locator("main")).not.toContainText("Some results are not in yet");
   });
 
   test("stale: more than 30 hours after the update, the page says so", async ({ page }) => {

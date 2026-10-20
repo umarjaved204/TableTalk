@@ -11,6 +11,9 @@
 //       Serie A   numbers hidden (a newer MAJOR contract version)
 //       Ligue 1   kept_previous + provisional with a notice, and no history
 //                 (so its race section says "too early")
+//       Bundesliga  some results not in yet (contract 1.2.0 results_complete:
+//                 false); the index is a 1.2.0 index, the snapshots stay 1.1.0
+//                 (each file is checked against its own version)
 //   La Liga and Serie A keep their real file as one history run, so their
 //   team pages are built from it (a team page exists in every data state).
 //
@@ -85,6 +88,28 @@ edit("latest/index.json", (d) => {
     provisional: true,
     error: "Illustrated: the results source and the check source disagreed",
   });
+});
+
+// The index as contract 1.2.0 writes it: whether each league's results are
+// complete (R16). Bundesliga: one result not in yet; leagues the run did not
+// update have null.
+edit("latest/index.json", (d) => {
+  d["contract_version"] = "1.2.0";
+  for (const entry of d["competitions"] as Record<string, unknown>[]) {
+    const updated = entry["status"] === "updated";
+    entry["results_complete"] = updated ? entry["id"] !== "bundesliga" : null;
+    entry["missing_results"] =
+      entry["id"] === "bundesliga"
+        ? [
+            {
+              match_id: "fdorg:540001",
+              home_team: "Union Berlin",
+              away_team: "Bayern Munich",
+              kickoff_utc: "2026-09-28T15:30:00Z",
+            },
+          ]
+        : [];
+  }
 });
 
 console.log(`[e2e] test data written to ${out}`);

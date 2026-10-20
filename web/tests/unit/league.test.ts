@@ -6,7 +6,7 @@ import { isBoundaryBelow, loadLeague, markedZoneAt } from "../../src/data/league
 import { LEAGUES, UnknownZoneError, ZONE_DISPLAY, zoneDisplay } from "../../src/data/leagues.ts";
 import { DataError } from "../../src/data/load.ts";
 import type { ReadyLeague, Zone } from "../../src/data/models.ts";
-import { REAL, copyOfReal, editJson, useDataDir } from "./helpers.ts";
+import { REAL, REPLAY_1_2, copyOfReal, editJson, useDataDir } from "./helpers.ts";
 
 const PL = LEAGUES.find((l) => l.id === "premier_league")!;
 
@@ -109,6 +109,40 @@ describe("league states", () => {
     });
     useDataDir(dir);
     expect(loadLeague(PL)).toMatchObject({ state: "ready", runStatus: "kept_previous" });
+  });
+
+  it("results complete (contract 1.2.0, R16): true, false, or null when not known", () => {
+    useDataDir(REPLAY_1_2);
+    expect(ready()).toMatchObject({ resultsComplete: true, contractVersion: "1.2.0" });
+    useDataDir(REAL); // 1.1.0 has no such field
+    expect(ready().resultsComplete).toBeNull();
+
+    dir = copyOfReal(REPLAY_1_2);
+    editJson(dir, "latest/index.json", (d) => {
+      const entry = (d["competitions"] as Record<string, unknown>[]).find(
+        (c) => c["id"] === "premier_league",
+      )!;
+      Object.assign(entry, {
+        results_complete: false,
+        missing_results: [
+          {
+            match_id: "fdorg:1",
+            home_team: "Hull City",
+            away_team: "Everton",
+            kickoff_utc: "2026-10-18T13:00:00Z",
+          },
+        ],
+      });
+    });
+    useDataDir(dir);
+    expect(ready().resultsComplete).toBe(false);
+    editJson(dir, "latest/index.json", (d) => {
+      const entry = (d["competitions"] as Record<string, unknown>[]).find(
+        (c) => c["id"] === "premier_league",
+      )!;
+      Object.assign(entry, { status: "kept_previous", results_complete: null, missing_results: [] });
+    });
+    expect(ready()).toMatchObject({ runStatus: "kept_previous", resultsComplete: null });
   });
 
   it("a snapshot that breaks the contract -> unavailable (only that league; build carries on)", () => {
