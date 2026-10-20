@@ -228,6 +228,7 @@ def summarise(scored: pd.DataFrame, counts: dict, *, live_since: str | None, gen
             "probabilities": {"home": row.p_home, "draw": row.p_draw, "away": row.p_away},
             "home_goals": int(row.home_goals), "away_goals": int(row.away_goals),
             "log_loss": round(float(row.ll_model), 6), "code_commit": row.code_commit,
+            "pipeline_hash": None if pd.isna(row.pipeline_hash) else row.pipeline_hash,
         }
         for row in (scored.sort_values("kickoff") if len(scored) else scored).itertuples(index=False)
     ]

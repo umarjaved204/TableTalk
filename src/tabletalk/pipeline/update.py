@@ -533,6 +533,12 @@ def write_outputs(
                 "data_through": source["data_through"] if source else None,
                 "provisional": source["provisional"] if source else None,
                 "error": outcome.error,
+                # Only known for a league this run updated.
+                "results_complete": not outcome.missing if outcome.ok else None,
+                "missing_results": [
+                    {key: match[key] for key in ("match_id", "home_team", "away_team", "kickoff_utc")}
+                    for match in outcome.missing
+                ] if outcome.ok else [],
             }
         )
     index = {

@@ -47,6 +47,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from .snapshot import CONTRACT_VERSION
+
 #: Statuses meaning the match has kicked off (or been decided).
 STARTED = frozenset({"FINISHED", "AWARDED", "IN_PLAY", "PAUSED", "EXTRA_TIME", "PENALTY_SHOOTOUT", "SUSPENDED"})
 #: Statuses meaning the planned kick-off will not happen (for now).
@@ -117,7 +119,9 @@ class LockStore:
         previous = _line_hash(lines[-1]) if lines else GENESIS
         with self.log_path.open("a", encoding="utf-8", newline="\n") as handle:
             for event in events:
-                line = json.dumps({**event, "prev": previous}, ensure_ascii=False, separators=(",", ":"))
+                # The contract version of the line's format (from 1.2.0; older lines have none).
+                record = {**event, "contract_version": CONTRACT_VERSION, "prev": previous}
+                line = json.dumps(record, ensure_ascii=False, separators=(",", ":"))
                 handle.write(line + "\n")
                 previous = _line_hash(line)
             handle.flush()
@@ -255,6 +259,7 @@ def _refresh_pending(pending: dict, snapshot: dict, competition: str, predicted_
             "model": {
                 "code_commit": snapshot["run"]["code_commit"],
                 "code_dirty": snapshot["run"]["code_dirty"],
+                "pipeline_hash": snapshot["run"].get("pipeline_hash"),
                 "config_hash": snapshot["run"]["config_hash"],
             },
             "probabilities": match["probabilities"],
@@ -326,10 +331,12 @@ def scoreable_locks(events: list[dict]) -> tuple[pd.DataFrame, dict[str, int]]:
                 "p_home": lock["probabilities"]["home"], "p_draw": lock["probabilities"]["draw"],
                 "p_away": lock["probabilities"]["away"],
                 "code_commit": lock["model"]["code_commit"], "config_hash": lock["model"]["config_hash"],
+                # Locks made before contract 1.2.0 have no pipeline_hash.
+                "pipeline_hash": lock["model"].get("pipeline_hash"),
             }
         )
     columns = ["lock_id", "match_id", "competition", "season", "home_team", "away_team", "predicted_at",
-               "p_home", "p_draw", "p_away", "code_commit", "config_hash"]
+               "p_home", "p_draw", "p_away", "code_commit", "config_hash", "pipeline_hash"]
     return pd.DataFrame(rows, columns=columns), counts
 
 

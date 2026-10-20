@@ -1,4 +1,4 @@
-# TableTalk data contract, version 1.1.0
+# TableTalk data contract, version 1.2.0
 
 This folder describes the files `python -m tabletalk update` writes. The website
 is built against these files and this document, not against the Python code.
@@ -7,6 +7,13 @@ The machine-readable versions are [snapshot.schema.json](snapshot.schema.json)
 [track_record.schema.json](track_record.schema.json) (JSON Schema, draft 2020-12). Every
 file is checked against its schema before it is written. A file that fails the
 check is never published.
+
+**Readers must ignore fields they do not know.** A MINOR version adds fields,
+and a reader written for an earlier version has to keep working. The schemas'
+`additionalProperties: false` describes exactly what the pipeline writes (so
+the pipeline catches its own mistakes); it is not a promise that no field will
+ever be added. A reader that validates should use copies with additional
+properties allowed, or check only the fields it uses.
 
 ## Files
 
@@ -54,9 +61,14 @@ suspended or cancelled matches.
 | `.snapshot_generated_at` | When the snapshot in `latest/` was made. For `kept_previous` this is older than the run |
 | `.data_through`, `.provisional` | Copied from the snapshot |
 | `.error` | Why this league failed, or null |
+| `.results_complete` | `true` when every match that should have finished by this run (kicked off at least 3 hours before it, or with no time set, its day over) has its final score in the numbers; `false` when some are still missing (a later run that day tries again). Null when this run did not update the league (from 1.2.0) |
+| `.missing_results[]` | Those missing matches: `match_id` (or null if the fixture source gave none), `home_team`, `away_team`, `kickoff_utc` (or null). Empty when complete or not updated (from 1.2.0) |
 
 A website should show `snapshot_generated_at` and `data_through`, not just
-the run time, so a reader can see when a league's numbers are older.
+the run time, so a reader can see when a league's numbers are older. When
+`results_complete` is `false`, the numbers are right for the results they
+include, but "results up to" can hide a missing match: say that some results
+are not in yet.
 
 ## <competition>.json (a snapshot)
 
@@ -77,6 +89,7 @@ Probabilities are numbers from 0 to 1, rounded to 6 decimals.
 | `run.seed_rule` | How the seed is made from the date and the league |
 | `run.n_simulations` | How many seasons were simulated |
 | `run.code_commit` | The git commit of the code that made this file. `run.code_dirty` is true if the code had uncommitted changes |
+| `run.pipeline_hash` | A fingerprint (`sha256:...`) of everything that can change the numbers: the git-tracked files in `src/tabletalk/` and `configs/`, `pyproject.toml` and `requirements.lock` (the exact library versions). Two snapshots with the same value came from the same pipeline, even if `code_commit` differs (e.g. a commit that only changed the website). Null if it could not be worked out (from 1.2.0) |
 | `run.config_hash` | A fingerprint of the config files listed in `run.config_files`. Any change to them changes it |
 | `run.model` | Last result date the model was fitted on, the promoted-team method and teams, and how uncertainty is handled |
 | `sources` | Every data source used, with its role (`results`, `fixtures`, `context`, `check`) |
@@ -126,12 +139,16 @@ field says what a line records:
 
 | `event` | Meaning | Main fields |
 |---|---|---|
-| `lock` | The last prediction made before this match kicked off | `lock_id` (`<match_id>#<attempt>`), `match_id`, `competition`, `season`, teams, `listed_kickoff_utc` (the kick-off as listed when predicting), `predicted_at` (when the prediction was written), `data_as_of`, `snapshot` (the history file it came from), `model` (`code_commit`, `code_dirty`, `config_hash`), `probabilities`, `expected_goals`, `likely_scorelines`, `recorded_at` |
+| `lock` | The last prediction made before this match kicked off | `lock_id` (`<match_id>#<attempt>`), `match_id`, `competition`, `season`, teams, `listed_kickoff_utc` (the kick-off as listed when predicting), `predicted_at` (when the prediction was written), `data_as_of`, `snapshot` (the history file it came from), `model` (`code_commit`, `code_dirty`, `config_hash`, and from 1.2.0 `pipeline_hash`: null for a prediction made before 1.2.0), `probabilities`, `expected_goals`, `likely_scorelines`, `recorded_at` |
 | `void` | That lock will not be scored: `reason` is `postponed`, `suspended`, `cancelled` or `removed from the fixture list` | `lock_id`, `reason`, `recorded_at` |
 | `invalid` | That lock was not made before the actual kick-off, so it is never scored | `lock_id`, `reason`, `actual_kickoff_utc`, `recorded_at` |
 | `missed` | A match played after the pipeline went live that no run predicted in time | `match_id`, teams, `actual_kickoff_utc`, `recorded_at` |
 
 A match postponed and replayed has two locks (`#1` voided, `#2` scored).
+
+From 1.2.0 every new line also has `contract_version`: the version of that
+line's format. Lines written earlier have none and follow 1.1.0; they are
+never rewritten, because that would break the chain.
 
 ## track_record/summary.json
 
@@ -144,7 +161,7 @@ A match postponed and replayed has two locks (`#1` voided, `#2` scored).
 | `.comparisons[]` | Against `base rates` and against the `market`: average log loss of each, `diff` (model minus other; negative = model better), `ci95` (95% interval), the difference in each half of the matches in date order, `verdict`, and `matches_needed` (roughly how many matches it would take to detect a gap the size the backtest found) |
 | `.verdict` | One of: `no scored matches yet`, `too few matches to compare`, `no detectable difference` (interval includes zero), `model better` / `model worse` (interval excludes zero and both halves agree), `consistently better but modest` / `consistently worse but modest` (interval excludes zero but one half disagrees) |
 | `calibration[]` | For home, draw and away forecasts: probability bin, how many, average forecast, how often it happened, 95% interval |
-| `matches[]` | Every scored match: lock id, teams, kick-off, when predicted, probabilities, score, log loss, code commit |
+| `matches[]` | Every scored match: lock id, teams, kick-off, when predicted, probabilities, score, log loss, code commit, and `pipeline_hash` (from the lock; null for locks made before 1.2.0) |
 
 Only live locks are scored. Backtest results and any predictions made after
 the fact are never included.
@@ -178,10 +195,10 @@ several runs a day, and the new kinds of `notices` (strings, as before); files
 unchanged, still 1.1.0. 2026-10-20: wording added on `state/known_results.json`
 and three more kinds of `notices`; files unchanged, still 1.1.0.
 
-**Requested for a future version** (low priority, not scheduled):
-`results_complete` (true/false) and `missing_results` (match ids) on each
-`index.json` entry, so the website can say "some results are not in yet"
-without parsing `notices`. Today that information is only in the working file
-`state/run_state.json`, which the website must not read. Adding it would be a
-MINOR change (1.x.0); `index.json` rejects unknown fields, so the schema and the
-website change together.
+1.2.0 (2026-10-20): readers ignore unknown fields (wording); `pipeline_hash` in
+each snapshot's `run`, each new lock's `model` and each scored match in
+`summary.json`; `results_complete` and `missing_results` on each `index.json`
+entry; `contract_version` on each new lock-log line. Nothing removed or
+renamed. The first run with `pipeline_hash` has nothing earlier to compare
+with, so it is not a sign of a model change; compare `pipeline_hash` only
+between files that both have it.

@@ -90,7 +90,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": ["lock_id", "competition", "home_team", "away_team", "kickoff_utc", "predicted_at",
-                     "probabilities", "home_goals", "away_goals", "log_loss", "code_commit"],
+                     "probabilities", "home_goals", "away_goals", "log_loss", "code_commit", "pipeline_hash"],
         "properties": {
           "lock_id": {"type": "string"},
           "competition": {"type": "string"},
@@ -111,7 +111,8 @@
           "home_goals": {"type": "integer", "minimum": 0},
           "away_goals": {"type": "integer", "minimum": 0},
           "log_loss": {"type": "number", "minimum": 0},
-          "code_commit": {"type": ["string", "null"]}
+          "code_commit": {"type": ["string", "null"]},
+          "pipeline_hash": {"oneOf": [{"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, {"type": "null"}]}
         }
       }
     },

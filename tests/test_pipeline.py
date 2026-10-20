@@ -18,7 +18,7 @@ from tabletalk.data.awarded import AwardedResultError, load_awarded_results
 from tabletalk.data.reconcile import check_scores_agree
 from tabletalk.pipeline import checks
 from tabletalk.pipeline.awarded import review_awarded
-from tabletalk.pipeline.snapshot import config_hash, run_seed, validate
+from tabletalk.pipeline.snapshot import PIPELINE_PATHS, config_hash, pipeline_hash, pipeline_hash_of, run_seed, validate
 from tabletalk.pipeline.update import LeagueOutcome, write_outputs
 from tabletalk.simulation import league_table
 
@@ -41,6 +41,38 @@ def test_config_hash_ignores_line_endings_but_not_content(tmp_path):
     assert config_hash([unix]) == config_hash([windows])
     windows.write_bytes(b"points:\r\n  win: 2\r\n")
     assert config_hash([unix]) != config_hash([windows])
+
+
+def test_pipeline_hash_ignores_line_endings_and_order_but_not_content_or_names(tmp_path):
+    unix, windows = tmp_path / "unix", tmp_path / "windows"
+    for root, newline in ((unix, b"\n"), (windows, b"\r\n")):
+        (root / "src").mkdir(parents=True)
+        (root / "src" / "model.py").write_bytes(b"RHO = -0.1" + newline + b"HALF_LIFE = 365" + newline)
+        (root / "pyproject.toml").write_bytes(b"[project]" + newline)
+    files = ["src/model.py", "pyproject.toml"]
+    assert pipeline_hash_of(unix, files) == pipeline_hash_of(windows, list(reversed(files)))
+    (windows / "src" / "model.py").write_bytes(b"RHO = -0.1\r\nHALF_LIFE = 180\r\n")
+    assert pipeline_hash_of(unix, files) != pipeline_hash_of(windows, files)
+    (unix / "src" / "renamed.py").write_bytes((unix / "src" / "model.py").read_bytes())
+    assert pipeline_hash_of(unix, files) != pipeline_hash_of(unix, ["src/renamed.py", "pyproject.toml"])
+
+
+def test_pipeline_hash_covers_the_package_configs_and_locked_versions_only():
+    """Website, docs and tests never change it; the lock file (library versions) does."""
+    import subprocess
+
+    from tabletalk.paths import PROJECT_ROOT
+
+    try:
+        listed = subprocess.run(["git", "ls-files", "-z", "--", *PIPELINE_PATHS], cwd=PROJECT_ROOT,
+                                capture_output=True, check=True).stdout.decode("utf-8").split("\0")
+    except (OSError, subprocess.CalledProcessError):
+        pytest.skip("git not available")
+    listed = [path for path in listed if path]
+    assert "requirements.lock" in listed and "pyproject.toml" in listed
+    assert any(path.startswith("configs/") for path in listed)
+    assert not any(path.startswith(("web/", "tests/", "contracts/", "notebooks/", ".github/")) for path in listed)
+    assert pipeline_hash() == pipeline_hash_of(PROJECT_ROOT, listed)
 
 
 # ---------------------------------------------------------------------------
@@ -268,6 +300,29 @@ def test_the_run_index_follows_the_contract(tmp_path):
     index = json.loads((tmp_path / "latest" / "index.json").read_text(encoding="utf-8"))
     assert validate(index, "index.schema.json") == []
     assert index["competitions"][0]["status"] == "no_snapshot"
+    assert index["competitions"][0]["results_complete"] is None  # not updated: not known
+    assert index["competitions"][0]["missing_results"] == []
+
+
+def test_the_run_index_says_which_results_are_missing(tmp_path):
+    missing = {"match_id": "fdorg:1", "home_team": "Hull City", "away_team": "Everton", "date": "2026-10-11",
+               "kickoff_utc": "2026-10-11T13:00:00Z", "status": "TIMED"}
+    no_id = {**missing, "match_id": None, "home_team": "Leeds United", "kickoff_utc": None}
+    write_outputs(
+        [LeagueOutcome("aa", "A league", snapshot=_snapshot("aa", "2026-10-12T07:57:00Z"), missing=[missing, no_id]),
+         LeagueOutcome("bb", "B league", snapshot=_snapshot("bb", "2026-10-12T07:57:00Z"))],
+        out_dir=tmp_path, generated_at=pd.Timestamp("2026-10-12T07:57:00Z"),
+    )
+    index = json.loads((tmp_path / "latest" / "index.json").read_text(encoding="utf-8"))
+    assert validate(index, "index.schema.json") == []
+    entries = {entry["id"]: entry for entry in index["competitions"]}
+    assert entries["aa"]["results_complete"] is False
+    assert entries["aa"]["missing_results"] == [
+        {"match_id": "fdorg:1", "home_team": "Hull City", "away_team": "Everton", "kickoff_utc": "2026-10-11T13:00:00Z"},
+        {"match_id": None, "home_team": "Leeds United", "away_team": "Everton", "kickoff_utc": None},
+    ]
+    assert entries["bb"]["results_complete"] is True and entries["bb"]["missing_results"] == []
+    assert index["contract_version"] == "1.2.0"
 
 
 # ---------------------------------------------------------------------------
@@ -299,6 +354,7 @@ def test_real_run_writes_a_snapshot_that_follows_the_contract(real_run):
     assert validate(snapshot) == []
     assert len(snapshot["table"]) == 20 and len(snapshot["teams"]) == 20
     assert snapshot["run"]["seed"] == run_seed("2026-09-29", "premier_league")
+    assert snapshot["run"]["pipeline_hash"] == pipeline_hash()
     for match in snapshot["upcoming_matches"]:
         total = sum(match["probabilities"].values())
         assert abs(total - 1) < 1e-5

@@ -25,7 +25,8 @@ def _snapshot(*matches: dict) -> dict:
     return {
         "competition": {"season": "2026-27"},
         "generated_at": "2026-10-01T04:00:00Z",
-        "run": {"code_commit": "abc123", "code_dirty": False, "config_hash": "sha256:" + "0" * 64},
+        "run": {"code_commit": "abc123", "code_dirty": False, "pipeline_hash": "sha256:" + "1" * 64,
+                "config_hash": "sha256:" + "0" * 64},
         "upcoming_matches": list(matches),
     }
 
@@ -83,8 +84,37 @@ def test_the_last_prediction_before_kickoff_becomes_the_lock(store):
     lock = events[0]
     assert lock["probabilities"]["home"] == 0.45  # the latest one, not the first
     assert lock["predicted_at"] == "2026-10-10T04:00:00Z"
-    assert lock["model"] == {"code_commit": "abc123", "code_dirty": False, "config_hash": "sha256:" + "0" * 64}
+    assert lock["model"] == {"code_commit": "abc123", "code_dirty": False, "pipeline_hash": "sha256:" + "1" * 64,
+                             "config_hash": "sha256:" + "0" * 64}
+    # The version is stamped on the line as it is written to the log.
+    assert [event.get("contract_version") for event in store.events()] == ["1.2.0"]
     assert store.pending() == {}
+
+
+def test_a_log_written_before_1_2_0_takes_new_lines_and_still_verifies(store):
+    """Old lines have no contract_version or pipeline_hash and are never rewritten."""
+    import hashlib
+
+    old_lock = {"event": "lock", "lock_id": "fdorg:9#1", "match_id": "fdorg:9", "competition": "premier_league",
+                "season": "2026-27", "home_team": "Arsenal", "away_team": "Leeds United",
+                "predicted_at": "2026-10-03T07:05:00Z", "recorded_at": "2026-10-04T07:05:00Z",
+                "model": {"code_commit": "abc123", "code_dirty": False, "config_hash": "sha256:" + "0" * 64},
+                "probabilities": {"home": 0.6, "draw": 0.25, "away": 0.15}, "prev": "0" * 64}
+    old_line = json.dumps(old_lock, separators=(",", ":"))
+    store.directory.mkdir(parents=True)
+    store.log_path.write_text(old_line + "\n", encoding="utf-8")
+
+    store.append([{"event": "void", "lock_id": "fdorg:9#1", "recorded_at": "2026-10-20T08:50:00Z",
+                   "reason": "postponed"}])
+    lines = store.log_path.read_text(encoding="utf-8").splitlines()
+    assert lines[0] == old_line  # byte for byte
+    new = json.loads(lines[1])
+    assert new["contract_version"] == "1.2.0"
+    assert new["prev"] == hashlib.sha256(old_line.encode("utf-8")).hexdigest()
+    events = store.events()  # raises if the chain is broken
+    assert "contract_version" not in events[0]
+    scored, _ = scoreable_locks(events[:1])
+    assert scored["pipeline_hash"].tolist() == [None]
 
 
 def test_a_run_after_kickoff_does_not_replace_the_prediction(store):
@@ -236,6 +266,7 @@ def _scored(n: int) -> pd.DataFrame:
             "home_team": "Arsenal", "away_team": "Leeds United",
             "kickoff": pd.date_range("2026-10-10", periods=n, freq="D", tz="UTC"),
             "predicted_at": "2026-10-09T04:00:00Z", "code_commit": "abc123",
+            "pipeline_hash": [None] + ["sha256:" + "1" * 64] * (n - 1),  # the first lock predates 1.2.0
             "p_home": probs[:, 0], "p_draw": probs[:, 1], "p_away": probs[:, 2], "outcome": outcome,
             "home_goals": (outcome == 0).astype(int), "away_goals": (outcome == 2).astype(int),
         }
@@ -251,6 +282,7 @@ def test_track_record_summary_follows_the_contract():
     counts = {"locks": 12, "voided": 1, "invalid": 0, "missed": 0, "scored": 12, "awaiting_result": 0, "awarded_not_scored": 0}
     summary = summarise(_scored(12), counts, live_since="2026-10-01T04:00:00Z", generated_at=T("2026-10-25T04:00:00Z"))
     assert validate(summary, "track_record.schema.json") == []
+    assert [m["pipeline_hash"] for m in summary["matches"][:2]] == [None, "sha256:" + "1" * 64]
     market = summary["competitions"][0]["comparisons"][1]
     assert market["against"] == "market" and market["n"] == 0  # no closing odds yet
     text = render(summary)
