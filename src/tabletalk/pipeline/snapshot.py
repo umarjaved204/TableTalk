@@ -24,7 +24,7 @@ from ..data.deductions import DEDUCTIONS_FILE
 from ..data.playoffs import PLAYOFF_RESULTS_FILE
 from ..paths import PROJECT_ROOT, TEAM_ALIASES_FILE
 
-CONTRACT_VERSION = "1.1.0"
+CONTRACT_VERSION = "1.2.0"
 CONTRACTS_DIR = PROJECT_ROOT / "contracts"
 N_SCORELINES = 5
 DECIMALS = 6
@@ -66,6 +66,46 @@ def config_hash(paths: list[Path]) -> str:
         digest.update(path.read_bytes().replace(b"\r\n", b"\n") if path.exists() else b"<missing>")
         digest.update(b"\0")
     return "sha256:" + digest.hexdigest()
+
+
+#: What can change the numbers: the package, the configs, the declared
+#: dependencies and the exact versions installed. Not the website, docs or tests.
+PIPELINE_PATHS = ("src/tabletalk", "configs", "pyproject.toml", "requirements-lock.in", "requirements-lock.txt")
+
+
+def pipeline_hash_of(root: Path, paths: list[str]) -> str:
+    """sha256 over these files (relative to ``root``), in sorted order, each with its path.
+
+    Line endings are normalised first, as in ``config_hash``, so a Windows
+    checkout and the Linux runner give the same fingerprint.
+    """
+    digest = hashlib.sha256()
+    for path in sorted(paths):
+        digest.update(path.encode("utf-8") + b"\0")
+        digest.update((root / path).read_bytes().replace(b"\r\n", b"\n"))
+        digest.update(b"\0")
+    return "sha256:" + digest.hexdigest()
+
+
+@lru_cache(maxsize=1)
+def pipeline_hash() -> str | None:
+    """Fingerprint of the git-tracked files in ``PIPELINE_PATHS``, as they are on disk.
+
+    Two snapshots with the same ``pipeline_hash`` were made by the same
+    pipeline code and settings, even if ``code_commit`` differs (e.g. a commit
+    that only changed the website). Uncommitted edits to tracked files count
+    (``code_dirty`` says so too); untracked files do not. None when git is
+    not available.
+    """
+    try:
+        listed = subprocess.run(
+            ["git", "ls-files", "-z", "--", *PIPELINE_PATHS],
+            cwd=PROJECT_ROOT, capture_output=True, check=True,
+        ).stdout.decode("utf-8")
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    paths = [path for path in listed.split("\0") if path and (PROJECT_ROOT / path).is_file()]
+    return pipeline_hash_of(PROJECT_ROOT, paths) if paths else None
 
 
 @lru_cache(maxsize=1)
@@ -135,6 +175,7 @@ def build_snapshot(run: LeagueRun, *, generated_at: pd.Timestamp) -> dict:
             "n_simulations": int(run.n_simulations),
             "code_commit": commit,
             "code_dirty": dirty,
+            "pipeline_hash": pipeline_hash(),
             "config_hash": config_hash(files),
             "config_files": [str(path.relative_to(PROJECT_ROOT)).replace("\\", "/") for path in files],
             "model": {

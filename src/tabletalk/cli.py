@@ -162,15 +162,16 @@ def cmd_update(args: argparse.Namespace) -> int:
     """The daily cycle for every league: fetch, check, refit, simulate, write."""
     from pathlib import Path
 
-    from .pipeline.update import DEFAULT_OUTPUT_DIR, run_update, updated_today
+    from .pipeline.update import DEFAULT_OUTPUT_DIR, done_today, run_update
 
     out_dir = Path(args.out) if args.out else DEFAULT_OUTPUT_DIR
-    if args.skip_if_updated_today and updated_today(out_dir):
-        print("today's run already updated every league; nothing to do")
+    if args.skip_if_updated_today and done_today(out_dir, args.competitions or None):
+        print("today's run already updated every league with complete results; nothing to do")
         return 0
     outcomes = run_update(
         args.competitions or None, out_dir=out_dir, refresh=not args.no_refresh,
         n_simulations=args.n_simulations, stale_after=pd.Timedelta(days=args.stale_after_days),
+        last_try=args.last_try,
     )
     print((out_dir / "latest" / "run_report.md").read_text(encoding="utf-8"))
     print(f"outputs in {out_dir}")
@@ -191,6 +192,34 @@ def cmd_track_record(args: argparse.Namespace) -> int:
     print(render(summary))
     print(f"written to {store.directory}")
     return 0
+
+
+def cmd_raw_cache(args: argparse.Namespace) -> int:
+    """Check the raw-download cache against the record on the data branch, or add to the record."""
+    from pathlib import Path
+
+    from .pipeline import raw_manifest
+    from .pipeline.update import DEFAULT_OUTPUT_DIR
+
+    manifest = (Path(args.out) if args.out else DEFAULT_OUTPUT_DIR) / raw_manifest.MANIFEST
+    if args.action == "prepare":
+        prepared = raw_manifest.prepare(manifest)
+        if prepared.cold:
+            print(f"no record yet ({manifest}): cleared the cache ({len(prepared.deleted)} files), "
+                  "so everything is downloaded fresh and recorded after the update")
+        else:
+            print(f"raw cache: {prepared.kept} file(s) match the record; {len(prepared.deleted)} removed "
+                  "(not recorded, or different from the record) and downloaded again by the update")
+            for name in prepared.deleted:
+                print(f"  - {name}")
+        return 0
+    added, problems = raw_manifest.record(manifest)
+    print(f"raw record: {len(added)} past-season file(s) added")
+    for name in added:
+        print(f"  + {name}")
+    for problem in problems:
+        print(f"PROBLEM: {problem}")
+    return 1 if problems else 0
 
 
 def _report_config(config) -> None:
@@ -353,7 +382,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     update.add_argument(
         "--skip-if-updated-today", action="store_true",
-        help="do nothing if today's run already updated every league (the scheduled backup run)",
+        help="do nothing if today's run already updated every league and no results were missing "
+             "(the later scheduled tries)",
+    )
+    update.add_argument(
+        "--last-try", action="store_true",
+        help="the day's last scheduled try: results still missing fail the run, so a person is told",
     )
     update.set_defaults(func=cmd_update)
 
@@ -361,6 +395,15 @@ def build_parser() -> argparse.ArgumentParser:
     track.add_argument("--out", default=None, help="output directory (default: outputs/)")
     track.add_argument("--refresh", action="store_true", help="download the latest results and odds first")
     track.set_defaults(func=cmd_track_record)
+
+    raw = subparsers.add_parser(
+        "raw-cache", help="check the cached raw downloads against the record on the data branch (nightly run)"
+    )
+    raw.add_argument("action", choices=["prepare", "record"],
+                     help="prepare: before the update, delete cached files that do not match the record; "
+                          "record: after it, add new past-season files to the record")
+    raw.add_argument("--out", default=None, help="output directory holding state/ (default: outputs/)")
+    raw.set_defaults(func=cmd_raw_cache)
 
     return parser
 

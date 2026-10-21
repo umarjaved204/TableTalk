@@ -161,37 +161,121 @@ NO_RESULT_EXPECTED = frozenset({"POSTPONED", "CANCELLED", "SUSPENDED"})
 RESULT_STATUSES = frozenset({"FINISHED", "AWARDED"})
 
 
-def check_staleness(fixtures: pd.DataFrame, now: pd.Timestamp, *, max_age: pd.Timedelta) -> list[str]:
+def _overdue_without_status(fixtures: pd.DataFrame, now: pd.Timestamp, max_age: pd.Timedelta) -> pd.Series:
+    """Kicked off more than ``max_age`` ago, and the fixture source neither calls it finished nor called off."""
+    end_of_day = (pd.to_datetime(fixtures["date"]) + pd.Timedelta(days=1)).dt.tz_localize("UTC")
+    kickoff = pd.to_datetime(fixtures["kickoff_utc"], utc=True).fillna(end_of_day)
+    status = fixtures["status"].astype(str)
+    return (kickoff < now - max_age) & ~status.isin(RESULT_STATUSES) & ~status.isin(NO_RESULT_EXPECTED)
+
+
+def _has_score(fixtures: pd.DataFrame, played: pd.DataFrame | None) -> pd.Series:
+    """True for each fixture whose (home, away) pairing has a final score in ``played``."""
+    if played is None or played.empty:
+        return pd.Series(False, index=fixtures.index)
+    have_score = set(zip(played["home_team"].astype(str), played["away_team"].astype(str)))
+    pairs = pd.Series(list(zip(fixtures["home_team"].astype(str), fixtures["away_team"].astype(str))),
+                      index=fixtures.index)
+    return pairs.isin(have_score)
+
+
+def _examples(rows: pd.DataFrame) -> str:
+    return ", ".join(
+        f"{row.home_team} v {row.away_team} ({pd.Timestamp(row.date):%d %b}, {row.status})"
+        for row in rows.sort_values("kickoff_utc").head(5).itertuples(index=False)
+    )
+
+
+def check_staleness(
+    fixtures: pd.DataFrame, now: pd.Timestamp, *, max_age: pd.Timedelta, played: pd.DataFrame | None = None
+) -> list[str]:
     """Matches that should have a result by now but do not.
 
     Uses the fixture list, not "days since the last result": an international
     break has no matches, so no results are due, and nothing is flagged. A
     match is overdue when it kicked off more than ``max_age`` ago (by its
-    listed kick-off, or the end of its listed day when it has no time) and the
-    source neither has its result nor says it was called off.
+    listed kick-off, or the end of its listed day when it has no time), the
+    fixture source neither has its result nor says it was called off, and its
+    final score is not in ``played`` (the matches this run used, from any
+    results source). A match the run already has a score for is not late, even
+    if the fixture source lists it as not finished: football-data.org has been
+    seen to flip finished matches back to TIMED for a while. Those are reported
+    by ``status_behind_results`` instead.
 
     This is a warning, not a safety check: the numbers are still right for the
     results we have, just possibly out of date.
     """
     if fixtures is None or fixtures.empty or "status" not in fixtures.columns:
         return []
-    end_of_day = (pd.to_datetime(fixtures["date"]) + pd.Timedelta(days=1)).dt.tz_localize("UTC")
-    kickoff = pd.to_datetime(fixtures["kickoff_utc"], utc=True).fillna(end_of_day)
-    status = fixtures["status"].astype(str)
-    overdue = (
-        (kickoff < now - max_age)
-        & ~status.isin(RESULT_STATUSES)
-        & ~status.isin(NO_RESULT_EXPECTED)
-    )
+    overdue = _overdue_without_status(fixtures, now, max_age) & ~_has_score(fixtures, played)
     if not overdue.any():
         return []
-    late = fixtures.loc[overdue].sort_values("kickoff_utc")
-    examples = ", ".join(
-        f"{row.home_team} v {row.away_team} ({pd.Timestamp(row.date):%d %b}, {row.status})"
-        for row in late.head(5).itertuples(index=False)
-    )
     days = max_age / pd.Timedelta(days=1)
     return [
         f"results may be late: {int(overdue.sum())} match(es) kicked off more than {days:g} days ago "
-        f"and still have no result in the fixture source, e.g. {examples}"
+        f"and still have no result in the fixture source, e.g. {_examples(fixtures.loc[overdue])}"
     ]
+
+
+def status_behind_results(
+    fixtures: pd.DataFrame, played: pd.DataFrame, now: pd.Timestamp, *, max_age: pd.Timedelta
+) -> list[str]:
+    """Matches the fixture source lists as not finished, though this run has their final score.
+
+    Only past ``max_age`` (as ``check_staleness``), so the normal few hours'
+    gap between sources is not reported. Informational: the table and the
+    predictions count these results, so nothing is late.
+    """
+    if fixtures is None or fixtures.empty or "status" not in fixtures.columns:
+        return []
+    behind = _overdue_without_status(fixtures, now, max_age) & _has_score(fixtures, played)
+    if not behind.any():
+        return []
+    days = max_age / pd.Timedelta(days=1)
+    return [
+        f"{int(behind.sum())} match(es) that kicked off more than {days:g} days ago are listed as not "
+        f"finished by the fixture source, but this run's results data has their final scores, so they "
+        f"are counted: {_examples(fixtures.loc[behind])}"
+    ]
+
+
+#: A match is due a final result this long after kick-off: about two hours of
+#: football (half-time and stoppage time included) plus an hour for a late
+#: start. Before that it may simply still be on.
+RESULT_DUE_AFTER = pd.Timedelta(hours=3)
+
+
+def missing_results(
+    fixtures: pd.DataFrame, played: pd.DataFrame, now: pd.Timestamp, *, due_after: pd.Timedelta = RESULT_DUE_AFTER
+) -> pd.DataFrame:
+    """Matches that should have finished by now but have no final score in this run's data.
+
+    A match is due when its kick-off (or, with no time set, the end of its
+    listed day) is at least ``due_after`` before ``now``. A due match is
+    complete only if its final score is in ``played`` (the matches this run
+    actually used, from any results source), or the fixture source says it was
+    postponed, suspended or cancelled. A match the source calls FINISHED or
+    AWARDED with no score in the run's data still counts as missing: what
+    matters is what the predictions were made from.
+
+    ``played`` needs ``home_team`` and ``away_team`` (one season, so each
+    pairing is one match). Returns the missing rows of ``fixtures``, earliest first.
+    """
+    if fixtures is None or fixtures.empty or "status" not in fixtures.columns:
+        return fixtures.iloc[0:0] if fixtures is not None else pd.DataFrame()
+    end_of_day = (pd.to_datetime(fixtures["date"]) + pd.Timedelta(days=1)).dt.tz_localize("UTC")
+    kickoff = pd.to_datetime(fixtures["kickoff_utc"], utc=True).fillna(end_of_day)
+    missing = (
+        (kickoff <= now - due_after)
+        & ~fixtures["status"].astype(str).isin(NO_RESULT_EXPECTED)
+        & ~_has_score(fixtures, played)
+    )
+    return fixtures.loc[missing].assign(_due=kickoff[missing]).sort_values("_due", kind="stable").drop(columns="_due")
+
+
+def called_off(fixtures: pd.DataFrame) -> pd.DataFrame:
+    """Matches the fixture source currently lists as postponed, suspended or cancelled."""
+    if fixtures is None or fixtures.empty or "status" not in fixtures.columns:
+        return fixtures.iloc[0:0] if fixtures is not None else pd.DataFrame()
+    rows = fixtures.loc[fixtures["status"].astype(str).isin(NO_RESULT_EXPECTED)]
+    return rows.sort_values("date", kind="stable")

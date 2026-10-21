@@ -2,8 +2,9 @@
 //
 // TEMPORARY until contract request R10 (a published backtest summary file).
 // Copied by hand from the project README's table "Phase 2: the five leagues
-// side by side", at the commit below. tests/unit/backtests.test.ts reads
-// ../README.md and fails if these numbers no longer match it, so the copy
+// side by side", at the commit below (the Premier League log losses are in
+// docs/results.md since the README was split). tests/unit/backtests.test.ts
+// reads both and fails if these numbers no longer match them, so the copy
 // can't drift silently.
 
 /** The README commit these numbers were copied from. */
@@ -68,5 +69,5 @@ export const BACKTESTS: readonly LeagueBacktest[] = [
   },
 ];
 
-/** Premier League, report seasons: average log loss of each forecaster (README). */
+/** Premier League, report seasons: average log loss of each forecaster (docs/results.md). */
 export const PREMIER_LEAGUE_LOG_LOSS = { model: 0.965, baseRates: 1.064, market: 0.945 } as const;

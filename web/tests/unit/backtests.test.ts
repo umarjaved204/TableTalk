@@ -1,6 +1,8 @@
 // The methodology page's backtest numbers are copied by hand from the
-// project README (until contract request R10). This test reads the README
-// and fails if the copy no longer matches it.
+// project's docs (until contract request R10): the five-leagues table from the
+// README, the Premier League log losses from docs/results.md (where the README
+// split of 21 Oct 2026 moved them, word for word). This test reads both and
+// fails if the copy no longer matches them.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -9,6 +11,7 @@ import { BACKTESTS, PREMIER_LEAGUE_LOG_LOSS } from "../../src/data/backtests.ts"
 // Line endings normalised: Git on Windows checks the README out with CRLF
 // (core.autocrlf), which would leave a "\r" at the end of every line.
 const readme = readFileSync(resolve("..", "README.md"), "utf8").replaceAll("\r\n", "\n");
+const results = readFileSync(resolve("..", "docs", "results.md"), "utf8").replaceAll("\r\n", "\n");
 
 /** Only the "five leagues side by side" section: other tables reuse row names. */
 const HEADING = "## Phase 2: the five leagues side by side";
@@ -61,8 +64,8 @@ describe("backtest numbers match the README's five-leagues table", () => {
     expect(BACKTESTS.map(cell)).toEqual(row(label));
   });
 
-  it("Premier League log losses (model, base rates, market)", () => {
-    const line = (name: string) => readme.split("\n").find((l) => l.startsWith(`| ${name} |`));
+  it("Premier League log losses (model, base rates, market), from docs/results.md", () => {
+    const line = (name: string) => results.split("\n").find((l) => l.startsWith(`| ${name} |`));
     expect(line("model")).toContain(`| ${PREMIER_LEAGUE_LOG_LOSS.model} |`);
     expect(line("knows nothing (base rates)")).toContain(`| ${PREMIER_LEAGUE_LOG_LOSS.baseRates} |`);
     expect(line("market")).toContain(`**${PREMIER_LEAGUE_LOG_LOSS.market}**`);

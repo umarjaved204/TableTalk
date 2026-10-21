@@ -50,14 +50,15 @@
     "run": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["seed", "seed_rule", "n_simulations", "code_commit", "code_dirty", "config_hash",
-                   "config_files", "model"],
+      "required": ["seed", "seed_rule", "n_simulations", "code_commit", "code_dirty", "pipeline_hash",
+                   "config_hash", "config_files", "model"],
       "properties": {
         "seed": {"type": "integer", "minimum": 0},
         "seed_rule": {"type": "string"},
         "n_simulations": {"type": "integer", "minimum": 1},
         "code_commit": {"type": ["string", "null"]},
         "code_dirty": {"type": ["boolean", "null"]},
+        "pipeline_hash": {"oneOf": [{"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, {"type": "null"}]},
         "config_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
         "config_files": {"type": "array", "items": {"type": "string"}},
         "model": {
