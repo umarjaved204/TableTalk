@@ -30,11 +30,9 @@ updates:
       python:
         patterns: ["*"]
 
-  # The website. It lives on the `frontend` branch until web/ merges into main;
-  # then this target-branch line goes (merge checklist in the hardening plan).
+  # The website (web/), on main since the website merge.
   - package-ecosystem: npm
     directory: /web
-    target-branch: frontend
     schedule:
       interval: weekly
       day: monday
