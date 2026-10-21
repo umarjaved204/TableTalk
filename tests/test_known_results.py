@@ -101,6 +101,26 @@ def test_a_match_no_longer_in_the_fixture_list_is_not_put_back():
     assert [why for _entry, why in kept.withdrawn] == ["no longer in the fixture list"]
 
 
+def test_a_restored_result_counts_as_complete_for_the_done_rule():
+    """A due match whose score is restored is not missing, so later tries skip and no email is sent.
+
+    The same steps as run_league: restore, then the played rows go to
+    checks.missing_results (which decides results_complete in run_state.json).
+    """
+    from tabletalk.pipeline import checks
+
+    matches = _matches(("Venezia", "Napoli", None, None))
+    fixtures = _fixtures(("fdorg:1", "Venezia", "Napoli", "TIMED"))  # finished, but listed as TIMED again
+    fixtures["date"] = T("2026-10-17")
+    now = T("2026-10-20T06:34:00Z")  # three days after kick-off: due
+    played = lambda frame: frame.loc[frame["played"].fillna(False).astype(bool)]
+
+    assert list(checks.missing_results(fixtures, played(matches), now)["source_id"]) == ["fdorg:1"]  # without the memory
+    kept = known_results.restore(matches, fixtures, _known(("fdorg:1", "Venezia", "Napoli", 1, 3)), SEASON)
+    assert checks.missing_results(fixtures, played(kept.matches), now).empty
+    assert checks.check_staleness(fixtures, now, max_age=pd.Timedelta(days=2), played=played(kept.matches)) == []
+
+
 def test_live_results_carry_the_match_id_and_leave_out_awarded_matches():
     matches = _matches(("Roma", "Genoa", 2, 0), ("Lazio", "Monza", 3, 0), ("Venezia", "Napoli", None, None))
     fixtures = _fixtures(("fdorg:2", "Roma", "Genoa", "FINISHED"), ("fdorg:3", "Lazio", "Monza", "AWARDED"),
