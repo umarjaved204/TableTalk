@@ -1,0 +1,39 @@
+---
+// What a "chances over time" chart shows until the updates cover enough
+// different rounds of results (MIN_RESULT_DATES in src/data/race.ts). Used by
+// the league page's race section and by the team pages.
+import { MIN_RESULT_DATES } from "../data/race.ts";
+import { formatShortDate } from "../format/time.ts";
+
+interface Props {
+  /** How many different "results up to" dates the updates cover. */
+  resultDates: number;
+  /** The latest update's "results up to" date. */
+  latestResults: string | null | undefined;
+}
+const { resultDates, latestResults } = Astro.props;
+---
+
+<p class="early" data-race-too-early>
+  Too early to show a trend.{" "}
+  {resultDates <= 1 ? (
+    <>
+      So far every update has used the same results
+      {latestResults ? <> (up to {formatShortDate(latestResults)})</> : null}, and changes between updates
+      with the same results are only simulation noise.
+    </>
+  ) : (
+    <>
+      So far the updates cover results up to {resultDates} different dates
+      {latestResults ? <> (latest {formatShortDate(latestResults)})</> : null}.
+    </>
+  )}{" "}
+  The charts appear once they cover results up to {MIN_RESULT_DATES} different dates.
+</p>
+
+<style>
+  .early {
+    padding: var(--space-4);
+    color: var(--text-muted);
+  }
+</style>

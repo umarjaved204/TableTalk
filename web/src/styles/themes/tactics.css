@@ -1,0 +1,17 @@
+/* Tactics Board: chalkboard green with chalk white and a yellow chalk accent. */
+[data-theme="tactics"] {
+  color-scheme: dark;
+  --bg: #172a21;
+  --surface: #1c3328;
+  --surface-2: #213b2f;
+  --border: #34574a;
+  --border-strong: #8fb09e;
+  --text: #f3f0e6;
+  --text-muted: #c9d0c3;
+  --accent: #f0e28c;
+  --on-accent: #172a21;
+  --focus: #f0e28c;
+  --pitch-line: rgb(243 240 230 / 22%);
+  --warn-bg: #3d3514;
+  --warn-text: #fff0b3;
+}

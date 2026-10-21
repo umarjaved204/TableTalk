@@ -1,0 +1,247 @@
+---
+// A league page: table and chances, next matches, finishing positions, and
+// how the race has moved. On phones the first three sections are tabs; from
+// 900px they sit side by side. The race charts follow underneath.
+import LeagueHead from "../../components/LeagueHead.astro";
+import LeagueNav from "../../components/LeagueNav.astro";
+import LeagueSwitcher from "../../components/LeagueSwitcher.astro";
+import LeagueTable from "../../components/LeagueTable.astro";
+import LeagueUnavailable from "../../components/LeagueUnavailable.astro";
+import TabList from "../../components/TabList.astro";
+import MatchList from "../../components/MatchList.astro";
+import PositionsHeatmap from "../../components/PositionsHeatmap.astro";
+import RaceSection from "../../components/RaceSection.astro";
+import { loadLeague } from "../../data/league.ts";
+import { LEAGUES, type LeagueInfo } from "../../data/leagues.ts";
+import { loadRecords, upcomingViews } from "../../data/matches.ts";
+import { buildRace, chartPoints, loadLeagueHistory } from "../../data/race.ts";
+import { teamPages } from "../../data/team-page.ts";
+import Base from "../../layouts/Base.astro";
+
+export function getStaticPaths() {
+  return LEAGUES.map((league) => ({ params: { league: league.slug }, props: { league } }));
+}
+
+interface Props {
+  league: LeagueInfo;
+}
+const { league } = Astro.props;
+const data = loadLeague(league);
+
+/** How many upcoming matches the league page shows (the rest are on the matches page). */
+const NEXT_MATCHES = 10;
+
+const records = loadRecords();
+const nextMatches =
+  data.state === "ready"
+    ? upcomingViews(data, records.status === "ok" ? records.records : new Map()).slice(0, NEXT_MATCHES)
+    : [];
+const teams =
+  data.state === "ready"
+    ? []
+    : teamPages()
+        .filter((page) => page.league.id === league.id)
+        .sort((a, b) => a.name.localeCompare(b.name, "en-GB"));
+const race =
+  data.state === "ready" ? buildRace(chartPoints(loadLeagueHistory(league.id).points, data.season)) : null;
+
+if (data.state === "unsupported") {
+  console.warn(
+    `[tabletalk] ${league.id}: contract version ${data.found ?? "missing"} is not supported; numbers hidden.`,
+  );
+}
+
+const season = data.state === "ready" ? ` ${data.season}` : "";
+const title = `${league.name}${season} predictions`;
+const description =
+  data.state === "ready"
+    ? `${league.name}${season}: each team's chances of the title, the top places and relegation from ${new Intl.NumberFormat("en-GB").format(data.nSimulations)} simulated seasons, plus predictions for the next matches. Updated nightly.`
+    : `${league.name} season predictions from TableTalk.`;
+---
+
+<Base title={title} description={description}>
+  <LeagueSwitcher current={league.slug} />
+  <div class="container page">
+    {data.state !== "ready" && (
+      <>
+        <h1>{league.name}</h1>
+        <LeagueUnavailable data={data} />
+        {/* The team pages still exist (from the newest history run): link
+            them, so they can be reached without the address bar. */}
+        {teams.length > 0 && (
+          <nav class="team-list" aria-labelledby="teams-heading">
+            <h2 id="teams-heading">Teams</h2>
+            <ul>
+              {teams.map((team) => (
+                <li>
+                  <a href={`/${league.slug}/${team.slug}/`}>{team.name}</a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
+      </>
+    )}
+    {data.state === "ready" && (
+      <>
+        <LeagueHead data={data} />
+        <LeagueNav league={league} current="overview" />
+
+        <div class="sections" data-tabs>
+          <TabList
+            tabs={[
+              { id: "table", label: "Table" },
+              { id: "matches", label: "Next matches" },
+              { id: "positions", label: "Positions" },
+            ]}
+          />
+
+          <section id="table" class="panel panel-table" aria-labelledby="table-heading">
+            <h2 id="table-heading">Table and chances</h2>
+            <LeagueTable
+              leagueName={league.name}
+              rows={data.rows}
+              zones={data.zones}
+              nSimulations={data.nSimulations}
+            />
+          </section>
+
+          <section id="matches" class="panel panel-matches" aria-labelledby="matches-heading">
+            <h2 id="matches-heading">Next matches</h2>
+            {nextMatches.length > 0 ? (
+              <MatchList matches={nextMatches} />
+            ) : (
+              <p class="empty">No matches in the next four weeks.</p>
+            )}
+            <p class="more">
+              <a href={`/${league.slug}/matches/`}>All matches, and recent results</a>
+            </p>
+          </section>
+
+          <section id="positions" class="panel panel-positions" aria-labelledby="positions-heading">
+            <h2 id="positions-heading">Finishing positions</h2>
+            <PositionsHeatmap leagueName={league.name} rows={data.rows} nSimulations={data.nSimulations} />
+          </section>
+        </div>
+
+        {race && <RaceSection race={race} zones={data.zones} />}
+      </>
+    )}
+  </div>
+</Base>
+
+<script>
+  import "../../scripts/tabs.ts";
+</script>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--space-5);
+    padding-block: var(--space-6) 0;
+  }
+
+  .team-list {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .team-list h2 {
+    font-size: var(--step-1);
+  }
+
+  .team-list ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+    gap: 0 var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .team-list a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
+  }
+
+  .sections {
+    display: grid;
+    gap: var(--space-5);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .panel {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+  }
+
+  .panel[hidden] {
+    display: none;
+  }
+
+  /* Phones with JavaScript, before tabs.ts has run: show only the first
+     section, as the script will, so nothing jumps when it runs. */
+  @media (width < 900px) {
+    :global([data-js]) [data-tabs]:not([data-tabs-ready]) > .panel ~ .panel {
+      display: none;
+    }
+  }
+
+  .panel h2 {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--step-1);
+  }
+
+  .empty {
+    padding: var(--space-4);
+    color: var(--text-muted);
+  }
+
+  .more {
+    padding: var(--space-2) var(--space-4) var(--space-3);
+  }
+
+  .more a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
+  }
+
+  @media (width >= 900px) {
+    .sections {
+      grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
+
+      /* The match column spans both rows and is usually the tallest. Row 1 fits
+         the table; row 2 takes the rest, so no gap opens under the table. */
+      grid-template-rows: auto 1fr;
+      align-items: start;
+    }
+
+    .panel-table {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .panel-positions {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .panel-matches {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+    }
+  }
+
+  /* From 1200px the Full table fits without scrolling next to a fixed-width match column. */
+  @media (width >= 1200px) {
+    .sections {
+      grid-template-columns: minmax(0, 1fr) 340px;
+    }
+  }
+</style>

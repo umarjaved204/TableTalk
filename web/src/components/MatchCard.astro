@@ -1,0 +1,247 @@
+---
+// One match, scoreboard style: home team, kick-off clock (or the final score),
+// away team, then the three-way prediction, the likeliest score, expected
+// goals, and a status line saying when the prediction was made and whether
+// it counts. The words for each status are in src/format/match-status.ts.
+//
+// An upcoming card carries its kick-off and prediction time as data
+// attributes, so local-times.ts can mark it "Kicked off" once the visitor's
+// clock passes the kick-off (the page may be up to a day old). A postponed or
+// cancelled match gets no prediction time, so it is never marked.
+import type { MatchView } from "../data/models.ts";
+import { formatGoals } from "../format/number.ts";
+import { earlierVoidedNote, isOffSchedule, statusLabel } from "../format/match-status.ts";
+import { formatChance, matchPercents } from "../format/probability.ts";
+import { formatClock } from "../format/time.ts";
+import LabelParts from "./LabelParts.astro";
+import ProbabilityBar from "./ProbabilityBar.astro";
+import FavName from "./FavName.astro";
+import { teamSlug } from "../data/teams.ts";
+
+interface Props {
+  match: MatchView;
+}
+const { match } = Astro.props;
+const { status, prediction } = match;
+const label = statusLabel(status);
+const percents = prediction ? matchPercents(prediction.probabilities) : null;
+const likeliest = prediction?.likelyScorelines[0];
+const score = status.kind === "played" ? status.score : null;
+
+/** Which outcome happened, for a played match. */
+const result = score ? (score.home > score.away ? "home" : score.home < score.away ? "away" : "draw") : null;
+
+const outcomes = percents
+  ? [
+      { key: "home", short: "Home", long: `${match.home} win`, percent: percents.home },
+      { key: "draw", short: "Draw", long: "Draw", percent: percents.draw },
+      { key: "away", short: "Away", long: `${match.away} win`, percent: percents.away },
+    ]
+  : [];
+---
+
+<article
+  class="match"
+  data-match
+  data-status={status.kind}
+  data-kickoff={match.kickoffUtc ?? undefined}
+  data-date={match.date ?? undefined}
+  data-predicted-at={
+    status.kind === "upcoming" && !isOffSchedule(status.fixtureStatus) ? status.predictedAt : undefined
+  }
+  aria-label={`${match.home} v ${match.away}`}
+  data-teams={`${teamSlug(match.home)} ${teamSlug(match.away)}`}
+>
+  <div class="scoreboard">
+    <span class="team home" data-team={teamSlug(match.home)}>
+      <FavName name={match.home} />
+    </span>
+    <span class:list={["clock", { score: score !== null }]}>
+      {score ? (
+        <>
+          <span class="visually-hidden">Final score</span>
+          {score.home}–{score.away}
+        </>
+      ) : match.kickoffUtc ? (
+        <time datetime={match.kickoffUtc} data-format="clock">
+          {formatClock(match.kickoffUtc, "UTC")}
+        </time>
+      ) : (
+        <abbr title="Time to be confirmed">TBC</abbr>
+      )}
+    </span>
+    <span class="team away" data-team={teamSlug(match.away)}>
+      <FavName name={match.away} />
+    </span>
+  </div>
+
+  {percents && (
+    <>
+      <ProbabilityBar percents={percents} />
+      <p class="outcomes">
+        {outcomes.map((o) => (
+          <span class:list={{ happened: result === o.key }}>
+            {o.key === "draw" ? (
+              "Draw"
+            ) : (
+              <>
+                <span aria-hidden="true">{o.short}</span>
+                <span class="visually-hidden">{o.long}</span>
+              </>
+            )}{" "}
+            <strong>{o.percent}%</strong>
+            {result === o.key && (
+              <span class="result-mark">
+                <span aria-hidden="true"> ✓</span>
+                <span class="visually-hidden"> (what happened)</span>
+              </span>
+            )}
+          </span>
+        ))}
+      </p>
+    </>
+  )}
+
+  <p class="detail">
+    {score && match.kickoffUtc && (
+      <span>
+        Kick-off{" "}
+        <time datetime={match.kickoffUtc} data-format="clock">
+          {formatClock(match.kickoffUtc, "UTC")}
+        </time>
+      </span>
+    )}
+    {likeliest && (
+      <span>
+        Most likely {likeliest.home}–{likeliest.away} ({formatChance(likeliest.probability)})
+      </span>
+    )}
+    {prediction?.expectedGoals && (
+      <span>
+        Expected goals {formatGoals(prediction.expectedGoals.home)}–
+        {formatGoals(prediction.expectedGoals.away)}
+      </span>
+    )}
+    {!match.kickoffUtc && <span>Time to be confirmed</span>}
+  </p>
+
+  <p class="status">
+    <span class="badge" data-status-badge>
+      {label.badge}
+    </span>
+    <span data-status-line>
+      <LabelParts parts={label.parts} />
+    </span>
+  </p>
+
+  {match.earlierVoided.map((voided) => (
+    <p class="earlier">
+      <LabelParts parts={earlierVoidedNote(voided)} />
+    </p>
+  ))}
+</article>
+
+<style>
+  .match {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border);
+
+    /* Tinted when the visitor's favourite plays (favouriteCss in favourite-core.js). */
+    background: var(--fav-card-bg, transparent);
+  }
+
+  .scoreboard {
+    display: grid;
+
+    /* minmax(0, ...) lets the name columns shrink, so long names wrap instead of overflowing */
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .team {
+    font-weight: 600;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .home {
+    text-align: right;
+  }
+
+  .clock {
+    min-width: 4.4em;
+    padding: 2px var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-1);
+    background: var(--surface-2);
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.03em;
+    text-align: center;
+  }
+
+  .clock.score {
+    border-color: var(--border-strong);
+  }
+
+  .clock abbr {
+    font-size: var(--step-0);
+  }
+
+  .outcomes,
+  .detail,
+  .status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3);
+    font-size: var(--step--1);
+    color: var(--text-muted);
+  }
+
+  .outcomes {
+    justify-content: space-between;
+  }
+
+  .outcomes strong {
+    color: var(--text);
+  }
+
+  /* The outcome that happened: underlined and ticked, not just coloured. */
+  .happened {
+    color: var(--text);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.25em;
+  }
+
+  .badge {
+    padding: 0 var(--space-2);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-1);
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .match[data-status="voided"] .badge,
+  .match[data-status="invalid"] .badge,
+  .match[data-status="missed"] .badge {
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    border-color: var(--warn-text);
+  }
+
+  .earlier {
+    font-size: var(--step--1);
+    color: var(--text-muted);
+  }
+</style>

@@ -1,0 +1,78 @@
+---
+// "How the race has moved": title chances, relegation chances and projected
+// points over the season's updates. Until there are enough different rounds
+// of results (MIN_RESULT_DATES), it says it is too early instead.
+import { RELEGATION_THRESHOLD, TITLE_THRESHOLD, type RaceData } from "../data/race.ts";
+import type { Zone } from "../data/models.ts";
+import { formatPlaces } from "../format/number.ts";
+import RaceChart from "./RaceChart.astro";
+import TooEarly from "./TooEarly.astro";
+
+interface Props {
+  race: RaceData;
+  zones: Zone[];
+}
+const { race, zones } = Astro.props;
+const relegation = zones.find((z) => z.id === "relegation");
+const playoff = zones.find((z) => z.id === "relegation_playoff");
+const relegationPlaces = relegation ? formatPlaces(relegation.positions) : "";
+const percent = (p: number) => `${Math.round(p * 100)}%`;
+---
+
+<section class="race" aria-labelledby="race-heading">
+  <h2 id="race-heading">How the race has moved</h2>
+  {race.enoughForTrend ? (
+    <>
+      <RaceChart
+        id="race-title"
+        heading="Title chances"
+        intro={`Teams whose title chance reached ${percent(TITLE_THRESHOLD)} at any point.`}
+        kind="chance"
+        series={race.title}
+        extra={race.extra.title}
+        runDates={race.runDates}
+        dataThrough={race.dataThrough}
+      />
+      {relegation && (
+        <RaceChart
+          id="race-relegation"
+          heading={`Relegation chances (${relegationPlaces})`}
+          intro={`Chance of finishing ${relegationPlaces}, for teams whose chance reached ${percent(RELEGATION_THRESHOLD)} at any point.${playoff ? ` The play-off place (${formatPlaces(playoff.positions)}) is not included.` : ""}`}
+          kind="chance"
+          series={race.relegation}
+          extra={race.extra.relegation}
+          runDates={race.runDates}
+          dataThrough={race.dataThrough}
+        />
+      )}
+      <RaceChart
+        id="race-points"
+        heading="Projected points"
+        intro="Average final points across the simulated seasons, for the teams in the two charts above."
+        kind="points"
+        series={race.points}
+        extra={race.extra.points}
+        runDates={race.runDates}
+        dataThrough={race.dataThrough}
+      />
+    </>
+  ) : (
+    <TooEarly resultDates={race.resultDates} latestResults={race.dataThrough.at(-1)} />
+  )}
+</section>
+
+<style>
+  .race {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+  }
+
+  h2 {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--step-1);
+  }
+</style>

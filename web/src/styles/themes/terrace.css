@@ -1,0 +1,17 @@
+/* Terrace: concrete grey with scoreboard amber. */
+[data-theme="terrace"] {
+  color-scheme: dark;
+  --bg: #232527;
+  --surface: #2c2f31;
+  --surface-2: #35383b;
+  --border: #45494d;
+  --border-strong: #8c9196;
+  --text: #f3f1eb;
+  --text-muted: #c3c0b8;
+  --accent: #ffb300;
+  --on-accent: #1d1a12;
+  --focus: #ffb300;
+  --pitch-line: rgb(255 179 0 / 16%);
+  --warn-bg: #45391a;
+  --warn-text: #ffe7b0;
+}

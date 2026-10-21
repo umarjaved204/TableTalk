@@ -1,0 +1,6 @@
+{
+  "branch": "data",
+  "commit": "d6de3e47c8e7ba1f2228db12b27aec4e9712ff11",
+  "note": "Not a published commit: the pipeline at contract 1.2.0 (hardening branch, 20 Oct 2026) run offline on a copy of the data branch at this commit, with now = 2026-10-21T06:30:00Z and 200 simulations. Real teams, results and locks; first files with pipeline_hash, results_complete and missing_results.",
+  "copied_at": "2026-10-20T23:30:00Z"
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tabletalk/contracts/index.schema.json",
+  "title": "TableTalk run index",
+  "description": "What the latest run did for each league, and where its snapshot is. Contract version 1.x; see contracts/README.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "generated_at", "history_path", "competitions"],
+  "properties": {
+    "contract_version": {"type": "string", "pattern": "^1\\.\\d+\\.\\d+$"},
+    "generated_at": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+    "history_path": {"type": "string"},
+    "competitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "file", "status", "snapshot_generated_at", "data_through", "provisional", "error",
+                     "results_complete", "missing_results"],
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "file": {"type": ["string", "null"]},
+          "status": {"enum": ["updated", "kept_previous", "no_snapshot"]},
+          "snapshot_generated_at": {"type": ["string", "null"]},
+          "data_through": {"type": ["string", "null"]},
+          "provisional": {"type": ["boolean", "null"]},
+          "error": {"type": ["string", "null"]},
+          "results_complete": {"type": ["boolean", "null"]},
+          "missing_results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["match_id", "home_team", "away_team", "kickoff_utc"],
+              "properties": {
+                "match_id": {"type": ["string", "null"]},
+                "home_team": {"type": "string"},
+                "away_team": {"type": "string"},
+                "kickoff_utc": {
+                  "oneOf": [
+                    {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+                    {"type": "null"}
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

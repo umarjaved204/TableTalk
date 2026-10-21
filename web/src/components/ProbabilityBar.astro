@@ -1,0 +1,52 @@
+---
+// Home / draw / away as one bar. Drawn as SVG so the segment widths are
+// attributes, not inline styles (the Content Security Policy blocks inline
+// styles). Decorative: the percentages are always printed next to it.
+import type { OutcomePercents } from "../format/probability.ts";
+
+interface Props {
+  percents: OutcomePercents;
+}
+const { percents } = Astro.props;
+const GAP = 0.8; // a thin surface-coloured gap between segments
+const drawStart = percents.home;
+const awayStart = percents.home + percents.draw;
+---
+
+<svg class="bar" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+  <rect class="home" x="0" y="0" width={Math.max(0, percents.home - GAP / 2)} height="8"></rect>
+  <rect class="draw" x={drawStart + GAP / 2} y="0" width={Math.max(0, percents.draw - GAP)} height="8"></rect>
+  <rect
+    class="away"
+    x={awayStart + GAP / 2}
+    y="0"
+    width={Math.max(0, percents.away - GAP / 2)}
+    height="8"
+  ></rect>
+</svg>
+
+<style>
+  .bar {
+    display: block;
+    width: 100%;
+    height: 10px;
+  }
+
+  .home {
+    fill: var(--data-home);
+  }
+
+  .draw {
+    fill: var(--data-draw);
+  }
+
+  .away {
+    fill: var(--data-away);
+  }
+
+  @media (forced-colors: active) {
+    rect {
+      fill: CanvasText;
+    }
+  }
+</style>

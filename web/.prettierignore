@@ -1,0 +1,15 @@
+dist/
+dist-e2e/
+.e2e-data/
+dist-rollover/
+.rollover-data/
+.astro/
+.data/
+node_modules/
+package-lock.json
+src/data/contract.gen.ts
+playwright-report/
+test-results/
+# Copies kept byte for byte as the pipeline writes them (tests compare them).
+contracts/
+tests/fixtures/data-1.2.0-replay/

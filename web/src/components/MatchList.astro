@@ -1,0 +1,79 @@
+---
+// Matches grouped by date, in the order given (earliest first for upcoming,
+// newest first for recent). Built grouped by the UTC date; the browser
+// regroups by the visitor's own date (a late kick-off in UTC can be the next
+// day elsewhere) and keeps the same order.
+import type { MatchView } from "../data/models.ts";
+import { formatDayHeading, localDateKey } from "../format/time.ts";
+import MatchCard from "./MatchCard.astro";
+
+interface Props {
+  matches: MatchView[];
+  /** Heading level for the date headings (h3 inside a section with an h2). */
+  headingLevel?: 3 | 4;
+}
+const { matches, headingLevel = 3 } = Astro.props;
+const Heading = `h${headingLevel}` as "h3" | "h4";
+
+const groups = new Map<string, MatchView[]>();
+for (const match of matches) {
+  const key = match.kickoffUtc ? localDateKey(match.kickoffUtc, "UTC") : (match.date ?? "unknown");
+  groups.set(key, [...(groups.get(key) ?? []), match]);
+}
+---
+
+<!-- Two lines on purpose: the browser rewrites "UTC" as "your time zone (BST)",
+     and a single line could then wrap in the narrow match column and push the
+     matches down after the page has appeared (layout shift). -->
+<p class="note">
+  <span class="line">
+    Times in <span data-tz-label>UTC</span>.
+  </span>
+  <span class="line">Kick-off times can still change.</span>
+</p>
+<div class="list" data-match-list data-heading-level={headingLevel}>
+  {[...groups].map(([key, group]) => (
+    <div class="day">
+      <Heading class="day-heading">
+        {key === "unknown" ? "Date to be confirmed" : formatDayHeading(key)}
+      </Heading>
+      {group.map((match) => (
+        <MatchCard match={match} />
+      ))}
+    </div>
+  ))}
+</div>
+
+<script>
+  import "../scripts/local-times.ts";
+</script>
+
+<style>
+  /* "Your team only" (matches page) hides other matches; a day left with no
+     match showing is hidden too. Needs :has(); a browser without it just
+     keeps the empty day's heading (see README, browser support). */
+  .list :global(.day:not(:has([data-match]:not([hidden])))) {
+    display: none;
+  }
+
+  .note .line {
+    display: block;
+  }
+
+  .note {
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--step--1);
+    color: var(--text-muted);
+  }
+
+  .list :global(.day-heading) {
+    padding: var(--space-2) var(--space-4);
+    background: var(--surface-2);
+    border-block: 1px solid var(--border);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+</style>

@@ -1,0 +1,257 @@
+---
+// One league on the home page: "title races at a glance". The three teams
+// most likely to win the title and the three most likely to be relegated,
+// each with its chance and a mini bar, and how recent the results are.
+// Values come from src/data/home.ts.
+//
+// Always three per race, so every card is the same height. The number is
+// always printed; the bar is decorative (aria-hidden). Title bars are the
+// table's top-zone blue, relegation bars its bottom-zone red with a dashed
+// fill (a shape cue, like the table's dashed edge, not colour alone). Bars
+// grow in once, only when the visitor's device allows motion.
+import { cardValues, type ZoneLeader } from "../data/home.ts";
+import type { LeagueData } from "../data/models.ts";
+import { teamSlug } from "../data/teams.ts";
+import { formatPlaces } from "../format/number.ts";
+import { formatChance } from "../format/probability.ts";
+import FavName from "./FavName.astro";
+import UpdatedStamp from "./UpdatedStamp.astro";
+
+interface Props {
+  data: LeagueData;
+}
+const { data } = Astro.props;
+const { league } = data;
+const values = data.state === "ready" ? cardValues(data) : null;
+
+const races: { kind: "title" | "relegation"; label: string; leaders: ZoneLeader[] }[] = [];
+if (values && values.title.length > 0)
+  races.push({ kind: "title", label: "Title race", leaders: values.title });
+if (values && values.relegation[0])
+  races.push({
+    kind: "relegation",
+    label: `Relegation (${formatPlaces(values.relegation[0].zone.positions)})`,
+    leaders: values.relegation,
+  });
+/** The bar's length, in the SVG's 0-100 units. */
+const length = (chance: number) => Math.round(chance * 1000) / 10;
+---
+
+<article class="card" aria-labelledby={`card-${league.slug}`} data-league-card={league.id}>
+  <h2 id={`card-${league.slug}`}>
+    <a class="title-link" href={`/${league.slug}/`}>
+      {league.name}
+    </a>
+    {data.state === "ready" && <span class="season">{data.season}</span>}
+  </h2>
+
+  {data.state === "ready" ? (
+    <>
+      {races.map((race) => (
+        <div class:list={["race", race.kind]}>
+          <h3 class="race-head">{race.label}</h3>
+          <ol>
+            {race.leaders.map((leader) => (
+              <li data-team={teamSlug(leader.team)}>
+                <FavName name={leader.team} />
+                <span class="chance">{formatChance(leader.chance)}</span>
+                <svg
+                  class="bar"
+                  viewBox="0 0 100 6"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <line x1="0" x2={length(leader.chance)} y1="3" y2="3" />
+                </svg>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ))}
+      {data.provisional && <p class="flag">Provisional: includes a result not confirmed yet.</p>}
+      <UpdatedStamp
+        generatedAt={data.generatedAt}
+        dataThrough={data.dataThrough}
+        runStatus={data.runStatus}
+        resultsComplete={data.resultsComplete}
+        compact
+      />
+    </>
+  ) : data.state === "unsupported" ? (
+    <p class="flag">Numbers hidden: the data is in a newer format than this site understands.</p>
+  ) : (
+    <p class="flag">
+      No forecast right now:{" "}
+      {data.reason === "no_snapshot"
+        ? "the last update couldn't produce one."
+        : data.reason === "missing"
+          ? "its file is missing from the published data."
+          : "its published file couldn't be read."}
+    </p>
+  )}
+
+  <p class="links">
+    <a href={`/${league.slug}/`}>Table and chances</a>
+    <a href={`/${league.slug}/matches/`}>Matches</a>
+  </p>
+</article>
+
+<style>
+  .card {
+    display: grid;
+    align-content: start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+  }
+
+  h2 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 var(--space-2);
+    font-size: var(--step-2);
+  }
+
+  .title-link {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .title-link:hover {
+    text-decoration: underline;
+  }
+
+  .season {
+    color: var(--text-muted);
+    font-size: var(--step-0);
+    font-weight: 600;
+  }
+
+  .race {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .race-head {
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  ol {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Name and number on one line, the bar under both. */
+  li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 2px var(--space-2);
+    font-size: var(--step--1);
+  }
+
+  li :global(.fav-name) {
+    font-weight: 600;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  /* Scoreboard digits: the display face, bold, equal-width figures. */
+  .chance {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    text-align: right;
+  }
+
+  .bar {
+    display: block;
+    grid-column: 1 / -1;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--surface-2);
+  }
+
+  .bar line {
+    stroke: var(--zone-top);
+    stroke-width: 6;
+  }
+
+  .relegation .bar line {
+    stroke: var(--zone-rel);
+    stroke-dasharray: 7 2;
+  }
+
+  /* Grow in once, from the left, only if the device allows motion. A
+     transform, so it moves nothing else (no layout shift). */
+  @media (prefers-reduced-motion: no-preference) {
+    .bar line {
+      transform-box: view-box;
+      transform-origin: 0 50%;
+      animation: grow 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    }
+
+    li:nth-child(2) .bar line {
+      animation-delay: 60ms;
+    }
+
+    li:nth-child(3) .bar line {
+      animation-delay: 120ms;
+    }
+  }
+
+  @keyframes grow {
+    from {
+      transform: scaleX(0);
+    }
+  }
+
+  @media (forced-colors: active) {
+    .bar {
+      forced-color-adjust: none;
+      background: Canvas;
+      outline: 1px solid CanvasText;
+    }
+
+    .bar line,
+    .relegation .bar line {
+      stroke: CanvasText;
+    }
+  }
+
+  .flag {
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-1);
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    font-size: var(--step--1);
+    font-weight: 600;
+  }
+
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-4);
+  }
+
+  .links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
+  }
+</style>

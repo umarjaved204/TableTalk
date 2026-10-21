@@ -1,0 +1,140 @@
+---
+// Calibration chart: "when the model said 60%, did it happen about 60% of the
+// time?" One panel each for home win, draw and away win. Each dot is one
+// group of forecasts: across, the average forecast; up, how often it
+// happened, with its 95% interval as a vertical line. Dots on the diagonal
+// mean the forecasts were honest. Drawn as SVG at build time; the same
+// numbers are in the calibration table next to it, so the SVG is decorative.
+import type { CalibrationRow } from "../data/track-record-view.ts";
+import { scale } from "../format/chart.ts";
+
+interface Props {
+  calibration: Record<"home" | "draw" | "away", CalibrationRow[]>;
+}
+const { calibration } = Astro.props;
+
+const SIZE = 240;
+const LEFT = 40;
+const BOTTOM = 30;
+const PAD = 10;
+const x = scale(0, 1, LEFT, SIZE - PAD);
+const y = scale(0, 1, SIZE - BOTTOM, PAD);
+const TICKS = [0, 0.5, 1];
+
+const panels = (["home", "draw", "away"] as const).map((outcome) => ({
+  title: { home: "Home win", draw: "Draw", away: "Away win" }[outcome],
+  rows: calibration[outcome],
+}));
+---
+
+<ul class="calibration-chart" aria-hidden="true">
+  {panels.map((panel) => (
+    <li>
+      <p class="panel-title">{panel.title}</p>
+      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} focusable="false">
+        {TICKS.map((t) => (
+          <>
+            <line class="grid" x1={x(0)} x2={x(1)} y1={y(t)} y2={y(t)} />
+            <line class="grid" x1={x(t)} x2={x(t)} y1={y(0)} y2={y(1)} />
+            <text class="tick" x={LEFT - 6} y={y(t) + 4} text-anchor="end">
+              {Math.round(t * 100)}%
+            </text>
+            <text class="tick" x={x(t)} y={SIZE - BOTTOM + 18} text-anchor="middle">
+              {Math.round(t * 100)}%
+            </text>
+          </>
+        ))}
+        <line class="diagonal" x1={x(0)} y1={y(0)} x2={x(1)} y2={y(1)} />
+        {panel.rows.map((row) => (
+          <>
+            <line
+              class="interval"
+              x1={x(row.meanForecast)}
+              x2={x(row.meanForecast)}
+              y1={y(row.ciLow)}
+              y2={y(row.ciHigh)}
+            />
+            <circle class="dot" cx={x(row.meanForecast)} cy={y(row.observed)} r="4.5" />
+          </>
+        ))}
+      </svg>
+    </li>
+  ))}
+</ul>
+<p class="axes-note">
+  Across: the average forecast in each group. Up: how often it happened, with its 95% interval. On the
+  diagonal = honest forecasts.
+</p>
+
+<style>
+  .calibration-chart {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .panel-title {
+    font-weight: 600;
+  }
+
+  svg {
+    display: block;
+    width: 100%;
+    max-width: 320px;
+    height: auto;
+  }
+
+  .grid {
+    stroke: var(--border);
+    stroke-width: 1;
+  }
+
+  .diagonal {
+    stroke: var(--border-strong);
+    stroke-width: 1.5;
+  }
+
+  .tick {
+    fill: var(--text-muted);
+    font-size: 12px;
+  }
+
+  .interval {
+    stroke: var(--data-home);
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .dot {
+    fill: var(--data-home);
+    stroke: var(--surface);
+    stroke-width: 2;
+  }
+
+  .axes-note {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  @media (forced-colors: active) {
+    .interval {
+      stroke: CanvasText;
+    }
+
+    .dot {
+      fill: CanvasText;
+    }
+
+    .grid,
+    .diagonal {
+      stroke: GrayText;
+    }
+
+    .tick {
+      fill: CanvasText;
+    }
+  }
+</style>

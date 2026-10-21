@@ -1,0 +1,21 @@
+---
+// A status line made of text and times (see src/format/match-status.ts).
+// Times are <time> elements: built in UTC, rewritten in the visitor's time zone.
+import type { LabelPart } from "../format/match-status.ts";
+import { formatDateTime } from "../format/time.ts";
+
+interface Props {
+  parts: LabelPart[];
+}
+const { parts } = Astro.props;
+---
+
+{parts.map((part) =>
+  typeof part === "string" ? (
+    part
+  ) : (
+    <time datetime={part.time} data-format="datetime">
+      {formatDateTime(part.time, "UTC")}
+    </time>
+  ),
+)}

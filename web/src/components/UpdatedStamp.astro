@@ -1,0 +1,99 @@
+---
+// "Updated 29 Sep, 18:56 · Results up to 20 Sep". Built in UTC; the browser
+// rewrites the time in the visitor's zone. If the numbers are older than 30
+// hours, the first line is a warning from the first paint (see the CSS).
+import { formatDateTime, formatShortDate } from "../format/time.ts";
+
+interface Props {
+  generatedAt: string;
+  dataThrough: string | null;
+  runStatus: "updated" | "kept_previous";
+  /** False: some results that should be in are missing from these numbers. */
+  resultsComplete?: boolean | null;
+  /** Home page cards: hide the "Updated" line unless the numbers are stale
+   *  (the page already says when the last update was). */
+  compact?: boolean;
+}
+const { generatedAt, dataThrough, runStatus, resultsComplete = null, compact = false } = Astro.props;
+---
+
+<div class:list={["stamp", { compact }]} data-generated={generatedAt}>
+  <p class="line" data-stale-message>
+    Updated{" "}
+    <time datetime={generatedAt} data-format="datetime">
+      {formatDateTime(generatedAt, "UTC")} UTC
+    </time>
+  </p>
+  <p class="line">
+    {dataThrough ? <>Results up to {formatShortDate(dataThrough)}</> : <>No results yet this season</>}
+  </p>
+  {resultsComplete === false && (
+    <p class="note">Some results are not in yet. They will be in a later update.</p>
+  )}
+  {runStatus === "kept_previous" && (
+    <p class="warn">
+      Last night's update failed for this league, so these are the most recent numbers we have.
+    </p>
+  )}
+</div>
+
+<script>
+  import "../scripts/local-times.ts";
+</script>
+
+<style>
+  .stamp {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  /* Phones: one line each, so rewriting the time in the visitor's zone (a
+     different length) can't change how the lines wrap (layout shift). */
+  @media (width < 640px) {
+    .stamp {
+      display: grid;
+    }
+  }
+
+  .line {
+    min-height: 1.55em;
+  }
+
+  /* Out of date (older than 30 hours): decided before the first paint by the
+     early script, which sets these custom properties on this element
+     (staleCss in src/scripts/favourite-core.js). The line becomes a warning
+     and "(2 days ago): these numbers may be out of date" is added after it,
+     so it is in place from the first frame and nothing moves later. */
+  [data-stale-message] {
+    padding: 0 var(--stale-pad, 0);
+    border-radius: var(--radius-1);
+    background: var(--stale-bg, transparent);
+    color: var(--stale-fg, inherit);
+    font-weight: var(--stale-weight, inherit);
+  }
+
+  [data-stale-message]::after {
+    content: var(--stale-note, none);
+  }
+
+  .note {
+    flex-basis: 100%;
+  }
+
+  .warn {
+    flex-basis: 100%;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-1);
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    font-weight: 600;
+  }
+
+  /* Home page cards: the "Updated" line only when it is a warning. */
+  .compact [data-stale-message] {
+    display: var(--stale-show, none);
+  }
+</style>

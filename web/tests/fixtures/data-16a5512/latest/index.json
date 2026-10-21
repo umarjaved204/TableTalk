@@ -1,0 +1,57 @@
+{
+  "contract_version": "1.1.0",
+  "generated_at": "2026-09-29T17:56:40Z",
+  "history_path": "history/2026-09-29T1756Z",
+  "competitions": [
+    {
+      "id": "bundesliga",
+      "name": "Bundesliga",
+      "file": "bundesliga.json",
+      "status": "updated",
+      "snapshot_generated_at": "2026-09-29T17:56:40Z",
+      "data_through": "2026-09-20",
+      "provisional": false,
+      "error": null
+    },
+    {
+      "id": "la_liga",
+      "name": "La Liga",
+      "file": "la_liga.json",
+      "status": "updated",
+      "snapshot_generated_at": "2026-09-29T17:56:40Z",
+      "data_through": "2026-09-20",
+      "provisional": false,
+      "error": null
+    },
+    {
+      "id": "ligue_1",
+      "name": "Ligue 1",
+      "file": "ligue_1.json",
+      "status": "updated",
+      "snapshot_generated_at": "2026-09-29T17:56:40Z",
+      "data_through": "2026-09-20",
+      "provisional": false,
+      "error": null
+    },
+    {
+      "id": "premier_league",
+      "name": "Premier League",
+      "file": "premier_league.json",
+      "status": "updated",
+      "snapshot_generated_at": "2026-09-29T17:56:40Z",
+      "data_through": "2026-09-20",
+      "provisional": false,
+      "error": null
+    },
+    {
+      "id": "serie_a",
+      "name": "Serie A",
+      "file": "serie_a.json",
+      "status": "updated",
+      "snapshot_generated_at": "2026-09-29T17:56:40Z",
+      "data_through": "2026-09-20",
+      "provisional": false,
+      "error": null
+    }
+  ]
+}

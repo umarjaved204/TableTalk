@@ -1,0 +1,427 @@
+---
+// How TableTalk works, in plain English. The backtest numbers come from
+// src/data/backtests.ts (copied from the project README, checked against it
+// by a unit test) until contract request R10 publishes them as a data file.
+import { BACKTESTS, PREMIER_LEAGUE_LOG_LOSS, README_COMMIT, REPORT_SEASONS } from "../data/backtests.ts";
+import { LEAGUES } from "../data/leagues.ts";
+import { formatDifference } from "../format/track-record.ts";
+import Base from "../layouts/Base.astro";
+
+const REPO = "https://github.com/umarjaved204/TableTalk";
+const README = `${REPO}/blob/${README_COMMIT}/README.md`;
+const whole = new Intl.NumberFormat("en-GB");
+const name = (id: string) => LEAGUES.find((l) => l.id === id)?.name ?? id;
+const oneDecimal = (x: number) => x.toFixed(1);
+
+const SECTIONS = [
+  ["model", "The match model"],
+  ["season", "From matches to a season"],
+  ["uncertainty", "Why season chances are less extreme"],
+  ["promoted", "Promoted teams"],
+  ["reading", "How to read the numbers"],
+  ["backtests", "Backtests: how well it has done on past seasons"],
+  ["limitations", "Known limitations"],
+  ["honesty", "Locking and honesty rules"],
+  ["source", "Source code and reference"],
+] as const;
+---
+
+<Base
+  title="Methodology"
+  description="How TableTalk works: a Dixon-Coles match model, 10,000 simulated seasons, rating uncertainty, backtests per league, and known limitations."
+>
+  <div class="container page">
+    <header class="head">
+      <h1>How TableTalk works</h1>
+      <p class="lede">
+        A match model turns each team's past results into a chance of every scoreline. A simulator plays the
+        rest of the season 10,000 times with those chances. Both were tested on past seasons before any live
+        prediction was made.
+      </p>
+      <nav aria-labelledby="toc-heading" class="toc">
+        <h2 id="toc-heading" class="toc-heading">
+          On this page
+        </h2>
+        <ol>
+          {SECTIONS.map(([id, title]) => (
+            <li>
+              <a href={`#${id}`}>{title}</a>
+            </li>
+          ))}
+        </ol>
+      </nav>
+    </header>
+
+    <section class="part" id="model" aria-labelledby="model-heading">
+      <h2 id="model-heading">1. The match model</h2>
+      <p>
+        TableTalk uses the <strong>Dixon-Coles</strong> model (1997), a small model of goals that can be
+        explained in a few sentences:
+      </p>
+      <ol>
+        <li>
+          Every team has two numbers: an <strong>attack</strong> strength and a <strong>defence</strong>{" "}
+          strength. One league-wide <strong>home advantage</strong> is added on top.
+        </li>
+        <li>
+          Those numbers give each side's expected goals in a match. They work as multipliers: an attack of
+          +0.24 means about 27% more goals than an average team.
+        </li>
+        <li>
+          Goals are then drawn around those expectations (a Poisson distribution), with one small correction:
+          real football has more 0–0s and 1–1s, and fewer 1–0s and 0–1s, than that predicts. One extra number,
+          called rho, fixes exactly those four scores.
+        </li>
+        <li>
+          The numbers are fitted to past results, with recent matches counting more: a match's weight halves
+          every 365 days.
+        </li>
+      </ol>
+      <p>
+        <strong>Why this model:</strong> a season simulator needs whole scorelines, because goal difference
+        decides places, and Dixon-Coles gives a full distribution over scores. Every number in it means
+        something you can say out loud. The trade-off: it knows only results, nothing about injuries,
+        transfers or managers.
+      </p>
+    </section>
+
+    <section class="part" id="season" aria-labelledby="season-heading">
+      <h2 id="season-heading">2. From matches to a season</h2>
+      <p>One simulated season works like this:</p>
+      <ol>
+        <li>Start from the real table.</li>
+        <li>Draw this season's team strengths from how uncertain they are (next section).</li>
+        <li>Play every remaining fixture by drawing a scoreline from the match model.</li>
+        <li>
+          Add the simulated results to the real ones and rank the table with the league's own points and
+          tie-breaking rules.
+        </li>
+      </ol>
+      <p>
+        That is repeated 10,000 times. A team's title chance is the share of those seasons it finished first;
+        “Proj. pts” is its average final points across them. The fixtures come from the real published fixture
+        list, never a generated one. Each league's rules (number of teams, tiebreakers, play-off places) are
+        settings, and every official final table from 2010-11 to 2025-26 is reproduced exactly from the
+        results.
+      </p>
+    </section>
+
+    <section class="part" id="uncertainty" aria-labelledby="uncertainty-heading">
+      <h2 id="uncertainty-heading">3. Why season chances are less extreme</h2>
+      <p>
+        We don't know exactly how good each team is. A team that is really a little better than its rating is
+        better in <em>all</em> its remaining matches, not just one. So each simulated season draws its own
+        strengths, spread according to how well the results pin each team down: wide for promoted teams and
+        early in a season, narrow for established sides.
+      </p>
+      <p>
+        Without this, early-season forecasts were over-confident in the Premier League backtest: when it said
+        70–99% before a season started, the outcome happened 71% of the time against an average forecast of
+        87%. With it, 83% against 86%. That is why a team's season chances are a little less extreme than
+        repeating each match's chances would suggest.
+      </p>
+    </section>
+
+    <section class="part" id="promoted" aria-labelledby="promoted-heading">
+      <h2 id="promoted-heading">4. Promoted teams</h2>
+      <p>
+        A newly promoted team has few or no results in its new league. Rated on a handful of games, it can
+        look far better or worse than it is. So each promoted team starts from the average first-season rating
+        of the teams promoted in the previous 15 seasons, and its own results pull it away from there.
+      </p>
+      <p>
+        Two alternatives were tested: no special handling, and rating the second division alongside. In the
+        Premier League this approach was consistently better but modest against both (ahead in 10 of 12
+        seasons against each, with margins inside the noise in one of the two halves of the data). In the
+        other leagues the three were within noise of each other, so the same approach is used everywhere.
+      </p>
+    </section>
+
+    <section class="part" id="reading" aria-labelledby="reading-heading">
+      <h2 id="reading-heading">5. How to read the numbers</h2>
+      <ul>
+        <li>
+          <strong>Whole percentages.</strong> With 10,000 simulated seasons, a 50% chance carries about ±1
+          point of simulation noise, so a decimal would claim precision that isn't there.
+        </li>
+        <li>
+          <strong>Never 0% or 100%.</strong> “Didn't happen in 10,000 simulations” is not the same as
+          impossible, so very small chances show as “&lt;1%” and very large ones as “&gt;99%”.
+        </li>
+        <li>
+          <strong>Home, draw and away add up to 100.</strong> They are rounded together so the three shown
+          always sum to 100.
+        </li>
+        <li>
+          <strong>Zones are league positions only:</strong> title, top four, top five, top half, relegation
+          and, where a league has one, the relegation play-off place. They are not claims about European
+          qualification, which also depends on cups that aren't modelled.
+        </li>
+        <li>
+          <strong>Times are in your time zone.</strong> Kick-off times can still change, for example for
+          television.
+        </li>
+      </ul>
+    </section>
+
+    <section class="part" id="backtests" aria-labelledby="backtests-heading">
+      <h2 id="backtests-heading">6. Backtests: how well it has done on past seasons</h2>
+      <p>
+        A backtest replays past seasons week by week: each forecast uses only results from before that week.
+        The settings were chosen on 2012-13 to 2017-18, and the results below are from the{" "}
+        <strong>report seasons</strong> ({REPORT_SEASONS}), which were never used to choose anything. The two
+        seasons affected by COVID are left out, a decision made before any results were seen.
+      </p>
+      <p>
+        Scores are <strong>log loss</strong> (lower is better). Each forecast is compared, on the same
+        matches, with base rates (the league's usual home, draw and away frequencies) and with the betting
+        market (closing odds with the bookmaker's margin removed, the strongest public forecast). In the
+        Premier League the log losses were: model {PREMIER_LEAGUE_LOG_LOSS.model}, base rates{" "}
+        {PREMIER_LEAGUE_LOG_LOSS.baseRates}, market {PREMIER_LEAGUE_LOG_LOSS.market}.
+      </p>
+      <div class="scroll" role="region" aria-labelledby="backtest-caption" tabindex="0">
+        <table data-backtests>
+          <caption id="backtest-caption">Match forecasts, report seasons</caption>
+          <thead>
+            <tr>
+              <th scope="col">League</th>
+              <th scope="col">Matches</th>
+              <th scope="col">Log loss compared with base rates</th>
+              <th scope="col">Share of the gap to the market closed</th>
+              <th scope="col">Model minus market, log loss (± 95% interval)</th>
+              <th scope="col">Calibration gap, home / draw / away (points)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {BACKTESTS.map((b) => (
+              <tr>
+                <th scope="row">{name(b.leagueId)}</th>
+                <td>{whole.format(b.matches)}</td>
+                <td>{oneDecimal(-b.vsBaseRatesPercent)}% lower*</td>
+                <td>{b.gapClosedPercent}%</td>
+                <td>{formatDifference(b.minusMarket.diff, b.minusMarket.ci95)}</td>
+                <td>
+                  {oneDecimal(b.calibrationGap.home)} / {oneDecimal(b.calibrationGap.draw)} /{" "}
+                  {oneDecimal(b.calibrationGap.away)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <ul class="notes">
+        <li>
+          <strong>Against the market:</strong> in every league the market's log loss is lower, by about 0.02,
+          and every interval excludes zero. The model closes 77–85% of the gap between knowing nothing and the
+          market. Part of the gap is information the model never sees: team news, line-ups, managerial
+          changes.
+        </li>
+        <li>
+          <strong>Calibration gap:</strong> how far, on average, the forecasts sit from “60% happens 60% of
+          the time”, in percentage points. Small is good.
+        </li>
+        <li>
+          * <strong>Against base rates</strong> the README gives no interval, so none is shown here. Contract
+          request R10 asks for these numbers, with intervals, in a published file.
+        </li>
+        <li>
+          Numbers copied from the project <a href={README}>README at commit {README_COMMIT}</a>, where every
+          figure, the method and the code that produced it are written up.
+        </li>
+      </ul>
+      <p>
+        The live <a href="/track-record/">track record</a> is separate: it scores only predictions locked
+        before kick-off, and is never mixed with these backtests.
+      </p>
+    </section>
+
+    <section class="part" id="limitations" aria-labelledby="limitations-heading">
+      <h2 id="limitations-heading">7. Known limitations</h2>
+      <ul>
+        <li>
+          <strong>Nothing beyond results:</strong> no injuries, suspensions, transfers, managerial changes or
+          fixture congestion. A sudden change in a team reaches the ratings only through later results.
+        </li>
+        <li>
+          <strong>Ratings lag a team that is genuinely declining.</strong> Late in a season it still partly
+          trusts ratings built on last season, and mid-to-late season forecasts are slightly under-confident.
+        </li>
+        <li>
+          <strong>It can't pick out likely draws.</strong> Draw forecasts are honest but almost all sit
+          between 20% and 30%; the market's barely vary more.
+        </li>
+        <li>
+          <strong>Future points deductions are not anticipated.</strong> Only decisions already announced are
+          applied.
+        </li>
+        <li>
+          <strong>One home advantage per league</strong>, although some grounds are harder to visit than
+          others.
+        </li>
+        <li>
+          <strong>Ratings can't be compared across leagues.</strong> Each league is fitted on its own, so a
+          rating is relative to that league's average.
+        </li>
+        <li>
+          <strong>Early-season forecasts lean on last season</strong>, because there are few results yet.
+        </li>
+      </ul>
+    </section>
+
+    <section class="part" id="honesty" aria-labelledby="honesty-heading">
+      <h2 id="honesty-heading">8. Locking and honesty rules</h2>
+      <ul>
+        <li>
+          Every night the newest prediction for each upcoming match is saved. The last one saved before
+          kick-off is the match's <strong>locked prediction</strong>, and only locked predictions are scored.
+        </li>
+        <li>
+          Postponed matches have their lock voided and get a new one before the new kick-off. A prediction
+          found to be from after the actual kick-off is not counted. Nothing is back-dated.
+        </li>
+        <li>
+          Every lock records the exact version of the model that made it. Each line of the lock log carries a
+          fingerprint of the line before it, so editing an old line shows.
+        </li>
+        <li>
+          Every night's files are published to a public, protected branch: strong evidence of when each
+          prediction was made, not proof, since it rests on GitHub's records.
+        </li>
+      </ul>
+      <p>
+        The scored results are on the <a href="/track-record/">track record</a> page.
+      </p>
+    </section>
+
+    <section class="part" id="source" aria-labelledby="source-heading">
+      <h2 id="source-heading">9. Source code and reference</h2>
+      <p>
+        All the code, the backtests and their write-up are public:{" "}
+        <a href={REPO}>github.com/umarjaved204/TableTalk</a>.
+      </p>
+      <p class="reference">
+        Dixon, M. J. and Coles, S. G. (1997).{" "}
+        <em>Modelling Association Football Scores and Inefficiencies in the Football Betting Market.</em>{" "}
+        Journal of the Royal Statistical Society, Series C (Applied Statistics), 46(2), 265–280.
+      </p>
+    </section>
+  </div>
+</Base>
+
+<style>
+  /* A long link (a URL) may break anywhere rather than widen the page. */
+  .page a {
+    overflow-wrap: anywhere;
+  }
+
+  .page {
+    display: grid;
+    gap: var(--space-6);
+    padding-block: var(--space-6) 0;
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .lede {
+    max-width: 70ch;
+    font-size: var(--step-1);
+  }
+
+  .toc {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .toc-heading {
+    font-size: var(--step-0);
+  }
+
+  .toc ol {
+    display: grid;
+    gap: 0 var(--space-5);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+    margin: 0;
+    padding-left: 1.4em;
+  }
+
+  .toc a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+  }
+
+  .part {
+    display: grid;
+    gap: var(--space-3);
+    min-width: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2);
+    background: var(--surface);
+    scroll-margin-top: var(--space-4);
+  }
+
+  .part h2 {
+    font-size: var(--step-1);
+  }
+
+  .part p,
+  .part ol,
+  .part ul {
+    max-width: 75ch;
+    margin: 0;
+  }
+
+  .part ol,
+  .part ul {
+    display: grid;
+    gap: var(--space-2);
+    padding-left: 1.4em;
+  }
+
+  .notes {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  .scroll {
+    overflow-x: auto;
+  }
+
+  table {
+    border-collapse: collapse;
+    font-size: var(--step--1);
+  }
+
+  caption {
+    padding-block: var(--space-1);
+    color: var(--text-muted);
+    text-align: left;
+  }
+
+  th,
+  td {
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  thead th {
+    font-weight: 600;
+    vertical-align: bottom;
+    white-space: normal;
+    min-width: 7em;
+  }
+
+  tbody th {
+    text-align: left;
+  }
+
+  .reference {
+    color: var(--text-muted);
+  }
+</style>

@@ -1,0 +1,57 @@
+{
+  "name": "tabletalk-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The TableTalk website: reads the published files described in ../contracts, never the Python code.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "scripts": {
+    "data": "node scripts/fetch-data.mjs",
+    "types": "node scripts/gen-types.mjs",
+    "dev": "astro dev",
+    "check": "astro check",
+    "build": "astro check && npm run build:site",
+    "build:site": "astro build && node scripts/check-build.mjs dist",
+    "verify": "npm run check && npm run lint && npm test && npm run build:site",
+    "preview": "astro preview",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "lint": "eslint . && stylelint \"src/**/*.{css,astro}\" && prettier --check .",
+    "format": "prettier --write .",
+    "lighthouse": "node scripts/lighthouse.mjs",
+    "test:rollover": "playwright test -c playwright.rollover.config.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/source-sans-3": "5.3.1",
+    "@fontsource/barlow-condensed": "5.3.0",
+    "ajv": "8.20.0",
+    "astro": "7.4.0",
+    "qrcode-generator": "2.0.4"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "@axe-core/playwright": "4.14.0",
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.2",
+    "esbuild": "0.28.2",
+    "eslint": "10.13.0",
+    "eslint-plugin-astro": "3.2.1",
+    "globals": "17.13.0",
+    "json-schema-to-typescript": "16.0.0",
+    "lighthouse": "13.5.0",
+    "postcss-html": "2.0.0",
+    "prettier": "3.9.10",
+    "prettier-plugin-astro": "1.1.1",
+    "stylelint": "17.16.0",
+    "stylelint-config-standard": "40.0.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.2",
+    "vitest": "5.0.5"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}

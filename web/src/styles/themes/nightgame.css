@@ -1,0 +1,17 @@
+/* Night Game: deep indigo with electric cyan. */
+[data-theme="nightgame"] {
+  color-scheme: dark;
+  --bg: #0c0d2a;
+  --surface: #14163a;
+  --surface-2: #1c1f4a;
+  --border: #2b3068;
+  --border-strong: #7178b8;
+  --text: #eef0ff;
+  --text-muted: #aab0e2;
+  --accent: #33e0f0;
+  --on-accent: #05061a;
+  --focus: #33e0f0;
+  --pitch-line: rgb(51 224 240 / 16%);
+  --warn-bg: #3a2f10;
+  --warn-text: #ffe2a3;
+}

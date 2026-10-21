@@ -1,0 +1,75 @@
+import type { Locator, Page } from "@playwright/test";
+import { LEAGUES } from "../../src/data/leagues.ts";
+import { STORAGE_KEY, THEMES } from "../../src/themes.ts";
+
+export const THEME_IDS = THEMES.map((t) => t.id);
+export const WIDTHS = [360, 390, 768, 1024, 1440] as const;
+export const LIGHT = "matchday";
+export const DARK = "floodlights";
+
+/** One team page per data state: numbers with a trend (Premier League), too
+ *  early with a provisional table and older numbers (Ligue 1), unavailable
+ *  (La Liga) and a newer format (Serie A). The other team pages are the same
+ *  page with other numbers. */
+export const TEAM_PAGES = [
+  "/premier-league/brentford/",
+  "/ligue-1/monaco/",
+  "/la-liga/atletico-madrid/",
+  "/serie-a/inter-milan/",
+];
+
+/** Every page the site builds (the test site has one data state per league),
+ *  with the team pages represented by TEAM_PAGES. */
+export const ALL_PAGES = [
+  "/",
+  ...LEAGUES.flatMap((league) => [`/${league.slug}/`, `/${league.slug}/matches/`]),
+  ...TEAM_PAGES,
+  "/track-record/",
+  "/methodology/",
+  "/about/",
+  "/404/",
+];
+
+/** Open a page as a returning visitor who chose `theme`, collecting any console errors. */
+export async function openAs(page: Page, path: string, theme: string, width: number): Promise<string[]> {
+  const errors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  page.on("pageerror", (error) => errors.push(String(error)));
+  await page.setViewportSize({ width, height: 900 });
+  // Seed the saved theme once per tab (not on every reload, so a test can
+  // check that a choice made on the page survives a reload).
+  await page.addInitScript(
+    ([key, value]) => {
+      try {
+        if (sessionStorage.getItem("seeded")) return;
+        sessionStorage.setItem("seeded", "1");
+        if (value === "system") localStorage.removeItem(key!);
+        else localStorage.setItem(key!, value!);
+      } catch {
+        // ignore
+      }
+    },
+    [STORAGE_KEY, theme],
+  );
+  await page.goto(path, { waitUntil: "networkidle" });
+  return errors;
+}
+
+/** How many favourite stars show inside `scope`. A linked team name draws its
+ *  star as the link's ::before (FavName.astro); other stars are a .fav-star span. */
+export async function stars(scope: Locator): Promise<number> {
+  return scope
+    .locator(".fav-name, .fav-star")
+    .evaluateAll(
+      (els) =>
+        els.filter(
+          (el) => getComputedStyle(el, el.matches(".fav-name") ? "::before" : null).display !== "none",
+        ).length,
+    );
+}
+
+export async function hasSidewaysScroll(page: Page): Promise<boolean> {
+  return page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+}

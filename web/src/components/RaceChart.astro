@@ -1,0 +1,364 @@
+---
+// One "How the race has moved" chart, as small multiples: a small panel per
+// team, all on the same scale, each headed with the team's name and its
+// latest value. The team's own line is drawn thick; the other teams in the
+// same race are faint lines behind it, so the panel still shows the race.
+//
+// Why panels rather than one chart with every line: on a phone there is no
+// room to write long team names at the end of crossing lines, and lines
+// that cross can't be told apart without colour. In a panel each line is
+// labelled by its heading, and nothing relies on colour.
+//
+// Drawn as SVG at build time: no chart library and no browser JavaScript.
+// The SVG is decorative (aria-hidden); the same numbers are in the table.
+//
+// The visitor's favourite team is always included: a panel (and a table
+// column) is pre-built for every team NOT in this race, inside <template>
+// elements, which cost nothing until used. The early script copies in the
+// favourite's, if it has one (FILL_SCRIPT, see src/scripts/favourite-head.js).
+// The race teams' faint lines are drawn once (a <g> reused with <use>), not
+// once per panel: with 9 teams that is 9 paths instead of 72. Each panel's
+// own line then also has a faint copy, hidden under its thick line. (With
+// only 2 or 3 teams and no pre-built panels, drawing them in each panel takes
+// fewer elements, so then they are.)
+import { tableRows, type Series } from "../data/race.ts";
+import { teamHref } from "../data/team-page.ts";
+import { teamSlug } from "../data/teams.ts";
+import { FILL_SCRIPT } from "../scripts/theme-script.ts";
+import FavName from "./FavName.astro";
+import { chanceTop, lastPoint, linePath, pointsRange, scale, xPositions, type Box } from "../format/chart.ts";
+import { formatPoints } from "../format/number.ts";
+import { formatChance } from "../format/probability.ts";
+import { formatShortDate } from "../format/time.ts";
+
+interface Props {
+  /** Used for ids, e.g. "title". */
+  id: string;
+  heading: string;
+  /** One sentence under the heading: what's plotted. */
+  intro: string;
+  kind: "chance" | "points";
+  series: Series[];
+  /** Teams not in this race: one pre-built panel each, for the favourite. */
+  extra?: Series[];
+  runDates: string[];
+  dataThrough: (string | null)[];
+}
+const { id, heading, intro, kind, series, extra = [], runDates, dataThrough } = Astro.props;
+
+const BOX: Box = { width: 200, height: 72, pad: 5 };
+const xs = xPositions(runDates, BOX);
+// The scale covers the pre-built panels too, so the favourite's line always fits.
+const values = [...series, ...extra].flatMap((s) => s.values.filter((v): v is number => v !== null));
+const [low, high] = kind === "chance" ? [0, chanceTop(Math.max(...values))] : pointsRange(values);
+const y = scale(low, high, BOX.height - BOX.pad, BOX.pad);
+
+const show = (v: number | null) => (v === null ? "–" : kind === "chance" ? formatChance(v) : formatPoints(v));
+const scaleText =
+  kind === "chance"
+    ? `from 0% at the bottom to ${Math.round(high * 100)}% at the top`
+    : `from ${low} points at the bottom to ${high} at the top`;
+const firstDate = runDates[0]?.slice(0, 10);
+const lastDate = runDates.at(-1)?.slice(0, 10);
+
+const panels = series.map((s) => ({
+  team: s.team,
+  latest: s.values.at(-1) ?? null,
+  first: s.values.find((v) => v !== null) ?? null,
+  path: linePath(s.values, xs, y),
+  dot: lastPoint(s.values, xs, y),
+  others: series.filter((o) => o.team !== s.team).map((o) => linePath(o.values, xs, y)),
+}));
+
+const extraPanels = extra.map((s) => ({
+  team: s.team,
+  slug: teamSlug(s.team),
+  latest: s.values.at(-1) ?? null,
+  first: s.values.find((v) => v !== null) ?? null,
+  path: linePath(s.values, xs, y),
+  dot: lastPoint(s.values, xs, y),
+}));
+const raceLines = series.map((s) => linePath(s.values, xs, y));
+const shareLines = extraPanels.length > 0 || series.length >= 4;
+
+/** Table rows: one per round of results, newest first (tableRows). */
+const rows = tableRows(dataThrough).map((i) => ({
+  date: runDates[i] ?? "",
+  dataThrough: dataThrough[i] ?? null,
+  i,
+}));
+---
+
+<figure class="race-chart" aria-labelledby={`${id}-heading`}>
+  <h3 id={`${id}-heading`}>{heading}</h3>
+  <p class="intro">
+    {intro} Each panel runs {scaleText}, {firstDate && formatShortDate(firstDate)} to{" "}
+    {lastDate && formatShortDate(lastDate)}.
+  </p>
+
+  {shareLines && (
+    <svg class="sprite" aria-hidden="true" focusable="false">
+      <g id={`${id}-race-lines`}>
+        {raceLines.map((d) => (
+          <path class="other" d={d} />
+        ))}
+      </g>
+    </svg>
+  )}
+  <ul class="panels" data-fav-slot={extraPanels.length > 0 ? "team" : undefined}>
+    {panels.map((panel) => (
+      <li class="panel" data-team={teamSlug(panel.team)}>
+        <p class="panel-head">
+          <span class="team">
+            <FavName name={panel.team} />
+          </span>
+          <span class="value">
+            {show(panel.latest)} <span class="was">(was {show(panel.first)})</span>
+          </span>
+        </p>
+        <svg viewBox={`0 0 ${BOX.width} ${BOX.height}`} aria-hidden="true" focusable="false">
+          <line class="grid" x1="0" x2={BOX.width} y1={y(low)} y2={y(low)} />
+          <line class="grid" x1="0" x2={BOX.width} y1={y(high)} y2={y(high)} />
+          {shareLines ? (
+            <use href={`#${id}-race-lines`} />
+          ) : (
+            panel.others.map((d) => <path class="other" d={d} />)
+          )}
+          <path class="line" d={panel.path} />
+          {panel.dot && <circle class="dot" cx={panel.dot.x} cy={panel.dot.y} r="4" />}
+        </svg>
+      </li>
+    ))}
+    {extraPanels.map((panel) => (
+      <template data-for={panel.slug}>
+        <p class="panel-head" data-team={panel.slug}>
+          <span class="team">
+            <a class="fav-name" href={teamHref(panel.team)}>
+              {panel.team}
+            </a>{" "}
+            <span class="your">(your team)</span>
+          </span>
+          <span class="value">
+            {show(panel.latest)} <span class="was">(was {show(panel.first)})</span>
+          </span>
+        </p>
+        <svg viewBox={`0 0 ${BOX.width} ${BOX.height}`} aria-hidden="true" focusable="false">
+          <line class="grid" x1="0" x2={BOX.width} y1={y(low)} y2={y(low)} />
+          <line class="grid" x1="0" x2={BOX.width} y1={y(high)} y2={y(high)} />
+          <use href={`#${id}-race-lines`} />
+          <path class="line" d={panel.path} />
+          {panel.dot && <circle class="dot" cx={panel.dot.x} cy={panel.dot.y} r="4" />}
+        </svg>
+        <table hidden data-fav-columns-for={`${id}-table`}>
+          <thead>
+            <tr>
+              <th scope="col" data-fav-cell>
+                {panel.team} (your team)
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr>
+                <td data-fav-cell>{show(extra.find((e) => e.team === panel.team)?.values[row.i] ?? null)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </template>
+    ))}
+    {extraPanels.length > 0 && <li class="panel extra" data-fav-target hidden></li>}
+  </ul>
+
+  <details class="numbers">
+    <summary>Show the numbers</summary>
+    <div class="scroll" role="region" aria-labelledby={`${id}-caption`} tabindex="0">
+      <table id={`${id}-table`}>
+        <caption id={`${id}-caption`}>{heading}, after each round of results (newest first)</caption>
+        <thead>
+          <tr>
+            <th scope="col">Updated</th>
+            <th scope="col">Results up to</th>
+            {series.map((s) => (
+              <th scope="col">{s.team}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr>
+              <th scope="row">{formatShortDate(row.date.slice(0, 10))}</th>
+              <td>{row.dataThrough ? formatShortDate(row.dataThrough) : "–"}</td>
+              {series.map((s) => (
+                <td>{show(s.values[row.i] ?? null)}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </details>
+  {
+    /* After the table, not the panels: the favourite's column goes into that
+       table, so it must have been parsed when the block is filled. */
+    extraPanels.length > 0 && <script is:inline set:html={FILL_SCRIPT} />
+  }
+</figure>
+
+<style>
+  .race-chart {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .intro {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  /* Name on top, chart at the bottom: panels line up even when a long name wraps. */
+  .panel {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: var(--space-1);
+  }
+
+  .panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: var(--space-3) var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0 var(--space-2);
+    font-size: var(--step--1);
+    line-height: 1.3;
+  }
+
+  .team {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  .value {
+    font-weight: 600;
+  }
+
+  .was,
+  .your {
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  /* Holds the race lines reused by the favourite's pre-built panel. Not
+     display: none, which stops <use> from drawing it in some browsers. */
+  .sprite {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .grid {
+    stroke: var(--border);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  path {
+    fill: none;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .other {
+    stroke: var(--border-strong);
+    stroke-width: 1;
+  }
+
+  .line {
+    stroke: var(--data-home);
+    stroke-width: 2.5;
+  }
+
+  .dot {
+    fill: var(--data-home);
+    stroke: var(--surface);
+    stroke-width: 2;
+  }
+
+  summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  .scroll {
+    overflow-x: auto;
+  }
+
+  table {
+    border-collapse: collapse;
+    font-size: var(--step--1);
+  }
+
+  caption {
+    padding-block: var(--space-1);
+    color: var(--text-muted);
+    text-align: left;
+  }
+
+  th,
+  td {
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  thead th {
+    font-weight: 600;
+    white-space: normal;
+    vertical-align: bottom;
+    min-width: 5.5em;
+  }
+
+  th:first-child,
+  td:nth-child(2) {
+    text-align: left;
+  }
+
+  @media (forced-colors: active) {
+    .line {
+      stroke: CanvasText;
+    }
+
+    .dot {
+      fill: CanvasText;
+    }
+
+    .other,
+    .grid {
+      stroke: GrayText;
+    }
+  }
+</style>

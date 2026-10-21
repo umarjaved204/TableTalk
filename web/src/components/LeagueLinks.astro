@@ -1,0 +1,34 @@
+---
+// A plain list of links to the five league pages (home page, 404 page).
+// Each link is a full-height row, comfortable to tap.
+import { LEAGUES } from "../data/leagues.ts";
+---
+
+<ul class="league-links">
+  {LEAGUES.map((league) => (
+    <li>
+      <a href={`/${league.slug}/`}>{league.name}</a>
+    </li>
+  ))}
+</ul>
+
+<style>
+  .league-links {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-main);
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+</style>

@@ -1,0 +1,32 @@
+---
+// A block that differs per visitor (the home page's "Your team" card, the
+// personal-link question). Every version is pre-built at build time inside a
+// <template data-for="...">, which the browser parses but doesn't show or
+// count as part of the page. The one-line script right after the block
+// (FILL_SCRIPT) copies the right version in while the page is still loading,
+// before it is painted, so nothing appears late or moves.
+//
+// kind="state": the template for the favourite's state ("none", "gone",
+//               "paused"), or the team's own (data-for="<slug>") when one is chosen.
+// kind="offer": the template for a waiting personal link ("offer", "replace", ...).
+//
+// Without JavaScript the block is hidden (data-needs-js) and nothing is copied.
+import { FILL_SCRIPT } from "../scripts/theme-script.ts";
+
+interface Props {
+  kind: "state" | "offer";
+  class?: string;
+  /** Class for the element the chosen version is copied into. */
+  targetClass?: string;
+  /** id of a data block (JSON) with each team's values, for a block with one
+   *  shared "@card" template (the home page's card). */
+  values?: string;
+}
+const { kind, class: className, targetClass, values } = Astro.props;
+---
+
+<div class={className} data-fav-slot={kind} data-fav-values={values} data-needs-js>
+  <slot />
+  <div class={targetClass} data-fav-target hidden></div>
+</div>
+<script is:inline set:html={FILL_SCRIPT} />
