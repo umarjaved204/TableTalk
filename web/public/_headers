@@ -9,8 +9,13 @@
 # no-cache: always revalidated (ETag), because the data changes every night.
 # no-transform: Cloudflare must not change the pages (e.g. inject its
 # analytics beacon). The CSP header only adds frame-ancestors; the full policy
-# stays in each page's <meta> tag.
+# stays in each page's <meta> tag. Report-To and Nel are Cloudflare's own
+# (Network Error Logging: after a failed load, Chromium browsers send a report
+# to a.nel.cloudflare.com); removed so the pages never cause a request to
+# another server.
 /*
+  ! Report-To
+  ! Nel
   Content-Security-Policy: frame-ancestors 'none'
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff

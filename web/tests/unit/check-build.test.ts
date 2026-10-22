@@ -69,6 +69,13 @@ describe("build check", () => {
     expect(problems).toContain('_headers: / gets X-Frame-Options "0 values: ", expected "DENY"');
   });
 
+  it("fails when Cloudflare's error-report headers are no longer removed", () => {
+    const problems = checkBuild(
+      build({ "index.html": "", _headers: HEADERS.replace(/^ {2}! Nel\r?\n/m, "") }),
+    );
+    expect(problems).toEqual(['_headers: rule /* is missing "! Nel"']);
+  });
+
   it("fails when an /_astro/ file would get two Cache-Control values (no detach)", () => {
     const problems = checkBuild(
       build({ "_astro/site.abc.css": "", _headers: HEADERS.replace(/^ {2}! Cache-Control\r?\n/m, "") }),

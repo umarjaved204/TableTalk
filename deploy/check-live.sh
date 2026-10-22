@@ -11,6 +11,7 @@
 #   - exactly one Cache-Control, with the value for its kind of file (two
 #     values joined with a comma would mean two _headers rules both set it);
 #   - no Set-Cookie (the footer promises no cookies);
+#   - no Report-To or Nel (Cloudflare's error reports to another server);
 #   - for pages, no "cloudflareinsights" (Cloudflare's injected beacon).
 # Prints one line per check and exits 1 if any failed.
 set -euo pipefail
@@ -71,6 +72,11 @@ check() {
   [ "$got" = "$want_cache" ] && ok "cache-control ($got)" || bad "cache-control: got '${got//$'\n'/ + }', expected '$want_cache'"
   got="$(values "$name" set-cookie)"
   [ -z "$got" ] && ok "no set-cookie" || bad "set-cookie: $got"
+  # Cloudflare's Network Error Logging (reports to a.nel.cloudflare.com).
+  for header in report-to nel; do
+    got="$(values "$name" "$header")"
+    [ -z "$got" ] && ok "no $header" || bad "$header: $got"
+  done
   if [ "$page" = "page" ]; then
     grep -qi cloudflareinsights "$work/$name.b" && bad "the page mentions cloudflareinsights" || ok "no cloudflareinsights"
   fi
