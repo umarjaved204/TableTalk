@@ -1140,6 +1140,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "la_liga|2026-27|Levante|Athletic Bilbao": {
+   "away_goals": 1,
+   "away_team": "Athletic Bilbao",
+   "competition": "la_liga",
+   "date": "2026-10-21",
+   "home_goals": 3,
+   "home_team": "Levante",
+   "kickoff_utc": "2026-10-21T18:00:00Z",
+   "match_id": "fdorg:564685",
+   "recorded_at": "2026-10-22T06:34:02Z",
+   "season": "2026-27"
+  },
   "la_liga|2026-27|Levante|Barcelona": {
    "away_goals": 4,
    "away_team": "Barcelona",

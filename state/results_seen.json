@@ -1386,6 +1386,18 @@
    "kickoff_utc": "2026-10-19T19:00:00Z",
    "season": "2026-27"
   },
+  "la_liga|2026-27|Levante|Athletic Bilbao": {
+   "away_team": "Athletic Bilbao",
+   "baseline": [],
+   "competition": "la_liga",
+   "first_seen": {
+    "football_data_org": "2026-10-22T06:34:02Z",
+    "football_data_uk": "2026-10-22T06:34:02Z"
+   },
+   "home_team": "Levante",
+   "kickoff_utc": "2026-10-21T18:00:00Z",
+   "season": "2026-27"
+  },
   "la_liga|2026-27|Levante|Barcelona": {
    "away_team": "Barcelona",
    "baseline": [
