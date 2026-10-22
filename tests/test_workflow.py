@@ -180,6 +180,16 @@ def test_the_deploy_job_holds_the_token_builds_nothing_and_skips_without_it():
     assert "continue-on-error" not in yaml.safe_dump(deploy)
 
 
+def test_both_callers_pass_the_cloudflare_token_by_name_and_nothing_else():
+    # A reusable workflow sees only the secrets its caller passes, even environment secrets:
+    # without this the token is an empty string and the deploy silently skips (22 Oct 2026).
+    declared = _triggers(_load(SITE))["workflow_call"]["secrets"]
+    assert list(declared) == ["CLOUDFLARE_API_TOKEN"]
+    for path in (DAILY, DEPLOY_SITE):
+        site = _load(path)["jobs"]["site"]
+        assert site["secrets"] == {"CLOUDFLARE_API_TOKEN": TOKEN}, path.name  # never `inherit`
+
+
 def test_an_out_of_date_deploy_starts_deploy_site_on_main_without_secrets():
     redeploy = _load(SITE)["jobs"]["redeploy"]
     assert redeploy["needs"] == "deploy"

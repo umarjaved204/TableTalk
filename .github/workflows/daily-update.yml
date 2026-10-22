@@ -305,3 +305,8 @@ jobs:
     uses: ./.github/workflows/site.yml
     with:
       data_ref: ${{ needs.publish.outputs.data_sha }}
+    # Only this one secret, by name: the deploy job gets its value from the
+    # "production" environment (never `secrets: inherit`, which would hand
+    # every secret to the site jobs).
+    secrets:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
