@@ -12,17 +12,19 @@ the Python code.
 - **No trackers, no analytics, no cookies, no third-party requests.** Fonts are
   self-hosted: Latin and Latin Extended only, as WOFF2 (`src/styles/fonts.css`). The visitor's theme, table choices and favourite team are
   kept in their own browser (`localStorage`) only.
-- **Content Security Policy** as a `<meta>` tag (the likely host, GitHub Pages,
-  can't send headers). Only the site's own hashed scripts can run, so inline
-  `style=""` attributes are not allowed anywhere.
+- **Content Security Policy** as a `<meta>` tag, because its script hashes
+  change with every build. Only the site's own hashed scripts can run, so
+  inline `style=""` attributes are not allowed anywhere. The other security
+  headers, and the cache rules, are in `public/_headers`, sent by the host
+  (Cloudflare Workers static assets, see [`DEPLOYMENT.md`](DEPLOYMENT.md)).
 
 ## Status
 
 Website stage 2, Step 4 (the look), awaiting review. Steps 2 (favourite
 teams) and 3 (team pages) are done. This was the stage's last step. Built on the first frontend
-plan's Steps 1-5. Local preview only; no deployment and no workflows during
-the pipeline trial. Work happens on the `frontend` branch; nothing goes on
-`main` until the trial is reviewed (and contract request R8 is done).
+plan's Steps 1-5. On `main` since the website merge. Deployment (Cloudflare
+Workers, built by the nightly run and on every website change) is set up
+but not live yet: see [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
 Speed (Lighthouse, median of 3, simulated slow phone, today's data, 6 Oct
 2026 after Step 4, nothing else running): with files gzip-compressed as a
@@ -38,9 +40,10 @@ and over 300 ms on a busy machine).
 
 ## The site's address (one setting)
 
-The public address is decided at deployment. It is one setting, the
-`SITE_URL` environment variable, used only for each page's canonical link and
-`og:url`:
+The public address is https://tabletalk.fyi. It is one setting, the
+`SITE_URL` environment variable (set in `../.github/workflows/site.yml` for
+every deploy), used for each page's canonical link and `og:url`, and needed
+for the sitemap, `robots.txt`'s sitemap line and the QR codes:
 
 ```sh
 SITE_URL=https://example.org npm run build
@@ -49,8 +52,9 @@ SITE_URL=https://example.org npm run build
 Without it those two tags are left out, never pointed at a local address. A
 non-https value stops the build. After every `npm run build`,
 `scripts/check-build.mjs` fails the build if any built file mentions
-`localhost` or `127.0.0.1`, or if it ships a font other than the Latin and
-Latin Extended WOFF2 files.
+`localhost` or `127.0.0.1`, if it ships a font other than the Latin and
+Latin Extended WOFF2 files, or if `_headers` is missing, loses a planned line
+or would send any file two `Cache-Control` values.
 
 ## Setup
 

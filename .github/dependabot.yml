@@ -47,3 +47,15 @@ updates:
       # The types must match the Node version the site runs on (24, web/.nvmrc).
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+
+  # Wrangler for the deploy job (deploy/package.json, one exact version).
+  # Review like an action update: the release notes, and that the release is
+  # two weeks old or more.
+  - package-ecosystem: npm
+    directory: /deploy
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      deploy:
+        patterns: ["*"]

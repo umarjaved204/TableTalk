@@ -1,0 +1,169 @@
+# Build the website and deploy it to Cloudflare (Workers static assets).
+#
+# A reusable workflow: the nightly run calls it after publishing new data
+# (daily-update.yml), and deploy-site.yml calls it when the website changes
+# on main. A push made by the nightly bot starts no other workflow, which is
+# why the nightly deploy is called from inside the nightly workflow.
+#
+# Two jobs, so the job that runs the website's code and npm packages never
+# holds the deploy token, and the job with the token builds nothing:
+#
+#   build-site  contents: read. Checks out the code and the data commit,
+#               installs the website's locked packages, runs `npm run verify`
+#               (type check, lint, unit tests, build, build check including
+#               _headers) and hands the built site over as an artifact.
+#   deploy      no repository permissions. Environment "production" (deploys
+#               from main only), the only place the Cloudflare token lives.
+#               Fetches just deploy/ (Wrangler's config and lockfile) at the
+#               same commit, installs Wrangler with install scripts off, and
+#               uploads the built site. Until the token secret exists it skips
+#               with a notice and the job passes; once it exists, a failed
+#               deploy fails the job.
+#
+# Actions are pinned to full commit SHAs (version in the comment) and values
+# reach the shell only through `env:`, as in daily-update.yml. Needs, in the
+# "production" environment: the secret CLOUDFLARE_API_TOKEN and the variable
+# CLOUDFLARE_ACCOUNT_ID (web/DEPLOYMENT.md).
+
+name: Site
+
+on:
+  workflow_call:
+    inputs:
+      data_ref:
+        description: "The data commit to build from (empty: the tip of the data branch)"
+        type: string
+        default: ""
+
+permissions: {}
+
+# The site's public address: the one setting for canonical links, og:url, the
+# sitemap, robots.txt and the QR codes.
+env:
+  SITE_URL: https://tabletalk.fyi
+
+jobs:
+  build-site:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # Exact versions from web/package-lock.json, checked against its hashes.
+      - name: Install the website's packages
+        working-directory: web
+        run: npm ci
+
+      # The data branch is public, so no credentials are needed. The fetched
+      # commit stands in for origin/data, and `npm run data -- --offline`
+      # copies the contract's files from it into web/.data.
+      - name: Copy the published data into web/.data
+        env:
+          DATA_REF: ${{ inputs.data_ref }}
+        run: |
+          git fetch --quiet --depth=1 origin "${DATA_REF:-refs/heads/data}"
+          git update-ref refs/remotes/origin/data FETCH_HEAD
+          echo "Building from data commit $(git rev-parse FETCH_HEAD)"
+          cd web
+          npm run data -- --offline
+
+      # A broken website commit stops here, and nothing is deployed.
+      - name: Check, test and build the site
+        working-directory: web
+        run: npm run verify
+
+      - name: Hand the built site to the deploy job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site
+          path: web/dist
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    needs: build-site
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions: {}
+    environment: production
+    # One deploy at a time across the nightly run and deploy-site.yml; a
+    # waiting deploy is never cancelled by a running one.
+    concurrency:
+      group: site-deploy
+      cancel-in-progress: false
+    steps:
+      # Only whether the secret exists reaches this step, never its value.
+      - name: Check that the Cloudflare token is set up
+        id: token
+        env:
+          HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+          HAS_ACCOUNT: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          if [ "$HAS_TOKEN" != "true" ]; then
+            echo "::notice::No CLOUDFLARE_API_TOKEN in the production environment yet: the site was built and checked, not deployed."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$HAS_ACCOUNT" != "true" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is set but the CLOUDFLARE_ACCOUNT_ID variable is not (production environment)."
+            exit 1
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      # Just deploy/ at the commit this run is for, fetched without any
+      # credentials (the repository is public; this job has no permissions).
+      - name: Fetch the deploy config (deploy/)
+        if: steps.token.outputs.ready == 'true'
+        env:
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          git init --quiet src
+          git -C src fetch --quiet --depth=1 "https://github.com/$REPO.git" "$SHA"
+          git -C src checkout --quiet FETCH_HEAD -- deploy
+
+      # No cache: nothing another job wrote is restored here.
+      - name: Set up Node
+        if: steps.token.outputs.ready == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: src/deploy/.nvmrc
+          package-manager-cache: false
+
+      - name: Fetch the built site
+        if: steps.token.outputs.ready == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: site
+          path: src/deploy/dist
+
+      # Wrangler at the exact version in deploy/package-lock.json. No install
+      # scripts run, so no package can run code while installing.
+      - name: Install Wrangler
+        if: steps.token.outputs.ready == 'true'
+        working-directory: src/deploy
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      # The token is in this step only. Settings come from deploy/wrangler.jsonc.
+      - name: Deploy to Cloudflare
+        if: steps.token.outputs.ready == 'true'
+        working-directory: src/deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: |
+          test -f dist/_headers || { echo "::error::The built site has no _headers file."; exit 1; }
+          ./node_modules/.bin/wrangler deploy

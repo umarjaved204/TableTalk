@@ -227,6 +227,13 @@ permissions by default, and each job gets only what it needs:
   the raw-download record. It cannot tell an honest new lock line from a
   made-up one: that would need the locks to be checked or signed at push time
   (hardening item F-06, not built).
+- *site*, after a successful publish, calls
+  [.github/workflows/site.yml](../.github/workflows/site.yml): *build-site*
+  (`contents: read`, no secrets) checks and builds the website from the
+  `data` commit just pushed, and *deploy* (no repository permissions; the
+  Cloudflare token lives only in the `production` environment) uploads it.
+  Until that token exists the deploy skips with a notice and the run still
+  passes. Details in [web/DEPLOYMENT.md](../web/DEPLOYMENT.md).
 
 Every action is pinned to a full commit SHA, with the version in a comment,
 and values from the event reach the shell only through `env:`.

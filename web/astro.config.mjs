@@ -3,7 +3,7 @@ import { defineConfig } from "astro/config";
 import { FILL_SCRIPT, cspHash, earlyScript } from "./src/scripts/theme-script.ts";
 
 // The site's public address: ONE setting, the SITE_URL environment variable
-// (e.g. SITE_URL=https://example.org npm run build), decided at deployment.
+// (SITE_URL=https://tabletalk.fyi, set by .github/workflows/site.yml).
 // It is used only for each page's canonical link and og:url. Without it those
 // two tags are left out, never pointed at a local address, and
 // scripts/check-build.mjs fails any build whose HTML mentions localhost.
@@ -30,8 +30,9 @@ export default defineConfig({
   // No code blocks on the site; Shiki's inline styles would break the CSP.
   markdown: { syntaxHighlight: false },
   security: {
-    // Content Security Policy as a <meta> tag, because the likely host
-    // (GitHub Pages) cannot send custom headers. Astro adds a hash for every
+    // Content Security Policy as a <meta> tag, because the script hashes
+    // change with every build; the host's fixed headers (public/_headers)
+    // only add frame-ancestors. Astro adds a hash for every
     // script and style it bundles; the two inline scripts' hashes are added
     // here (the early script, and the fixed one-line FILL_SCRIPT). Nothing else can run, and inline style="" attributes are not
     // allowed anywhere in the site.
