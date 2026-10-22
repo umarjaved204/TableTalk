@@ -79,6 +79,13 @@ describe("build check", () => {
     );
   });
 
+  it("fails on a header line without a colon, and on one before any rule", () => {
+    const broken = `  X-Early: yes\n${HEADERS.replace("X-Frame-Options: DENY", "X-Frame-Options DENY")}`;
+    const problems = checkBuild(build({ "index.html": "", _headers: broken }));
+    expect(problems).toContain('_headers: not "Name: value" or "! Name", in before any rule: "X-Early: yes"');
+    expect(problems).toContain('_headers: not "Name: value" or "! Name", in /*: "X-Frame-Options DENY"');
+  });
+
   it("accepts the later one-year HSTS and refuses anything else", () => {
     const year = HEADERS.replace("max-age=86400", "max-age=31536000");
     expect(checkBuild(build({ "index.html": "", _headers: year }))).toEqual([]);
@@ -87,7 +94,8 @@ describe("build check", () => {
   });
 
   it("gives pages, the 404 page and icons the page cache, /_astro/ files the immutable one", () => {
-    const rules = parseHeaders(HEADERS);
+    const { rules, malformed } = parseHeaders(HEADERS);
+    expect(malformed).toEqual([]);
     const cache = (path: string) => headersFor(rules, path).get("cache-control");
     for (const path of ["/", "/premier-league/arsenal/", "/no-such-page/", "/favicon.svg", "/sitemap.xml"])
       expect(cache(path)).toEqual(["no-cache, no-transform"]);

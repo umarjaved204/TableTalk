@@ -18,11 +18,13 @@
 #            scripts/check_publish.sh: one commit on top of that starting
 #            point, allowed paths only, history and the lock log append-only,
 #            the raw-download record add-only; then pushes.
-#   site     after a successful publish: site.yml builds the website from the
-#            data commit just pushed (build-site, contents: read) and deploys
-#            it to Cloudflare (deploy, no permissions, the token in the
-#            "production" environment only). Until that token exists the
-#            deploy skips with a notice and the run still passes.
+#   site     after a successful publish: site.yml builds the tip of main
+#            with the data commit just pushed (build-site, contents: read)
+#            and deploys it to Cloudflare (deploy, no permissions, the token
+#            in the "production" environment only). Until that token exists
+#            the deploy skips with a notice and the run still passes. If
+#            main or data moved on meanwhile, it skips and starts
+#            deploy-site.yml instead (redeploy, actions: write).
 #
 # Timing: the earliest kick-off in the five leagues is 10:30 UTC (Serie A,
 # 12:30 in Italy in summer; 11:30 UTC in winter). GitHub starts scheduled runs
@@ -295,9 +297,11 @@ jobs:
   site:
     needs: publish
     if: ${{ !cancelled() && needs.publish.result == 'success' }}
-    # The most the called jobs may have; each asks for less or the same.
+    # The most the called jobs may have; each asks for only its part
+    # (build-site contents: read, deploy nothing, redeploy actions: write).
     permissions:
       contents: read
+      actions: write
     uses: ./.github/workflows/site.yml
     with:
       data_ref: ${{ needs.publish.outputs.data_sha }}

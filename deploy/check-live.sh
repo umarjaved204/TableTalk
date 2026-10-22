@@ -37,9 +37,13 @@ ok() { echo "  ok    $*"; }
 bad() { echo "  FAIL  $*"; failed=1; }
 
 # fetch <path> <name>: GET the path; headers to $work/<name>.h (names in lower
-# case, no CR), body to $work/<name>.b, status code printed.
+# case, no CR), body to $work/<name>.b, status code printed. A failed request
+# (no DNS yet, no certificate, a timeout) prints curl's error and status 000,
+# and the checks carry on, so every address is still reported.
 fetch() {
-  curl -sS --max-time 30 -o "$work/$2.b" -D "$work/$2.raw" -w '%{http_code}' "$base$1"
+  : > "$work/$2.b"
+  : > "$work/$2.raw"
+  curl -sS --max-time 30 -o "$work/$2.b" -D "$work/$2.raw" -w '%{http_code}' "$base$1" || true
   tr -d '\r' < "$work/$2.raw" | awk -F': ' 'NF > 1 { $1 = tolower($1) } { print }' OFS=': ' > "$work/$2.h"
 }
 

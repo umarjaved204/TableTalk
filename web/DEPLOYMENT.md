@@ -29,32 +29,37 @@ one-time setup and the three go-live stages below are still to do.
 ```
 daily-update.yml (nightly)              deploy-site.yml (push to main
   update   -> publish (pushes data)       touching web/, deploy/ or the
-                 |                        site workflows; or by hand)
-                 v                                |
-      site.yml (reusable), with the data          v
-      commit publish just pushed          site.yml, with the tip of data
-                 |
+                 |                        site workflows; by hand; or
+                 v                        started by redeploy below)
+      site.yml (reusable), with the data          |
+      commit publish just pushed                  v
+                 |                        site.yml, with the tip of data
   build-site  contents: read, no secrets
-              checkout, npm ci, copy the data commit into web/.data,
-              npm run verify (astro check, lint, unit tests, build with
-              SITE_URL=https://tabletalk.fyi, build check), upload dist/
+              checkout the TIP OF MAIN, npm ci, copy the data commit
+              into web/.data, npm run verify (astro check, lint, unit
+              tests, build with SITE_URL=https://tabletalk.fyi, build
+              check), upload dist/; outputs the main and data commits
                  |
   deploy      no repository permissions; environment "production"
-              (main only); concurrency group "site-deploy" (one at a
-              time, a waiting deploy is never cancelled)
-              token missing? -> notice, stop, job passes
-              fetch deploy/ at the same commit (no credentials),
+              (main only); concurrency group "site-deploy"
+              token missing?          -> notice, stop, job passes
+              main or data moved on?  -> notice, stop, stale=true
+              fetch deploy/ at the built commit (no credentials),
               npm ci --ignore-scripts (Wrangler, exact version),
               download dist/, wrangler deploy
+                 |
+  redeploy    only if stale; actions: write, no secrets
+              gh workflow run deploy-site.yml --ref main
 ```
 
 - **Why the deploy is inside the nightly workflow:** a push made with the
   workflow's own token does not start other workflows, so an "on push to
   `data`" workflow would never run.
-- **Why two jobs:** the build runs the website's code and about 680 npm
-  packages; the token never reaches that job. The deploy job runs no website
-  code and no install scripts; its only third-party code is Wrangler, at the
-  version in `deploy/package-lock.json` (checked against its hashes).
+- **Why the build job and the deploy job are separate:** the build runs the
+  website's code and about 680 npm packages; the token never reaches that
+  job. The deploy job runs no website code and no install scripts; its only
+  third-party code is Wrangler, at the version in `deploy/package-lock.json`
+  (checked against its hashes).
 - **Why `npm run verify`, not just a build:** a website commit that fails its
   type check, lint or unit tests never goes live. The browser suite is not
   run here (it needs browsers and takes minutes); run it before merging.
@@ -63,16 +68,42 @@ daily-update.yml (nightly)              deploy-site.yml (push to main
 - **No checkout in the deploy job:** it has no repository permissions, so it
   fetches `deploy/` from the public repository with plain `git`, the way
   `scripts/check_publish.sh` fetches the `data` branch.
-- **A rare race:** if a website push and the nightly run deploy at the same
-  time, whichever deploys last wins, and it may have been built from the
-  older data or the older website. The next nightly run fixes it; to fix it
-  at once, run "Deploy site" by hand.
+
+### Never older files over newer ones
+
+Three rules (review of PR #4, 22 Oct 2026):
+
+1. **Always the tip of main.** A nightly run can start hours late and spend
+   up to about 40 minutes on the update, so the commit it started on can be
+   older than `main` by the time it builds. `build-site` therefore checks
+   out the tip of `main`, not the run's own commit.
+2. **Out of date means skip.** Just before deploying, the deploy job reads
+   the tips of `main` and `data` (`git ls-remote`, no credentials). If
+   either is not what was built, it doesn't deploy: something newer exists.
+3. **A skip asks for a redeploy.** GitHub keeps **one** waiting job per
+   concurrency group; a newer one replaces it (that run then shows as
+   cancelled). So a skipped deploy can't assume the newer commit's own
+   deploy is still coming. Example: a deploy-site deploy for main M2 is
+   waiting; the nightly deploy (built from M1) arrives, replaces it, then
+   finds it is out of date. The `redeploy` job (permission `actions: write`
+   only, no secrets) then starts "Deploy site" on `main`, which builds and
+   deploys the tips. A `workflow_dispatch` made with the workflow's own
+   token does start a run (GitHub's docs: `workflow_dispatch` and
+   `repository_dispatch` are the exceptions to "events from `GITHUB_TOKEN`
+   start no workflows"; checked 22 Oct 2026). If the tips move again before
+   that run deploys, it asks again.
+
+What remains: a deploy that has already passed the out-of-date check can
+still finish a minute after a newer commit lands; that newer commit's own
+deploy then waits its turn in the queue and follows. And a nightly run whose
+deploy was replaced in the queue ends as "cancelled", not "success" (its data
+was published; only the deploy was handed over to the newer run).
 
 ## The files
 
 | File                                   | What it is                                                                                               |
 | -------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `../.github/workflows/site.yml`        | The reusable workflow: `build-site` and `deploy`. `SITE_URL` is set here.                                |
+| `../.github/workflows/site.yml`        | The reusable workflow: `build-site`, `deploy` and `redeploy`. `SITE_URL` is set here.                    |
 | `../.github/workflows/deploy-site.yml` | Calls `site.yml` on a push to `main` touching the site, or by hand.                                      |
 | `../deploy/wrangler.jsonc`             | Every hosting setting, reviewed as code: static assets only, 404 page, `workers_dev`, the custom domain. |
 | `../deploy/package.json` + lockfile    | Wrangler at one exact version (4.148.0), nothing else. Dependabot proposes updates weekly.               |
@@ -113,8 +144,8 @@ needs checking. Without the `!` line these files would get
 Files outside `/_astro/` that aren't pages (icons, `manifest.webmanifest`,
 `robots.txt`, `sitemap.xml`, the QR codes) get the `/*` value too: their
 names don't change when their content does, so they must be checked as well.
-(The plan said `no-transform` for HTML only; on these files it changes
-nothing.)
+The plan said `no-transform` for HTML only; on these files it changes
+nothing, and this deviation was **accepted** (22 Oct 2026).
 
 **Checked twice:** `scripts/check-build.mjs` (part of every build) works out
 the headers each built file and the 404 page will get, the way Cloudflare
@@ -260,12 +291,13 @@ do steps 1 to 4.
 
 ## When something fails
 
-| What fails                                              | What visitors see                                                                               |
-| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| One league's update                                     | The site is rebuilt; that league shows its previous numbers with "last night's update failed"   |
-| The whole update, or publish                            | No build or deploy; yesterday's site stays up; after 30 hours each page shows the stale warning |
-| `npm run verify` (types, lint, unit tests, build check) | Nothing is deployed; the previous site stays up; the run fails and GitHub emails you            |
-| The deploy itself (token, Cloudflare, network)          | The previous site stays up; the run fails; re-run the deploy job once the cause is fixed        |
+| What fails                                                 | What visitors see                                                                               |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| One league's update                                        | The site is rebuilt; that league shows its previous numbers with "last night's update failed"   |
+| The whole update, or publish                               | No build or deploy; yesterday's site stays up; after 30 hours each page shows the stale warning |
+| `npm run verify` (types, lint, unit tests, build check)    | Nothing is deployed; the previous site stays up; the run fails and GitHub emails you            |
+| The deploy finds `main` or `data` moved on since its build | Not deployed (the job passes, with a notice); "Deploy site" is started to deploy the tips       |
+| The deploy itself (token, Cloudflare, network)             | The previous site stays up; the run fails; re-run the deploy job once the cause is fixed        |
 
 **Rolling back:** revert the bad commit on `main` (Deploy site then
 redeploys), or re-run an earlier run's deploy job. In an emergency,
@@ -309,21 +341,27 @@ does. About 16 months of data, a day or two behind.
 
 ### 3. What the site says
 
-The footer ("No trackers, no analytics, no cookies") stays true: no
-analytics script, no cookies. The About page's privacy section says (live
-from the first deploy):
+Every privacy statement on the site must be exactly true. The footer says
+"No trackers, no cookies, no analytics scripts" (changed 22 Oct 2026 from
+"no analytics", since Cloudflare's request counts are analytics of a kind,
+just not on the pages). The About page's privacy list says the same, and its
+paragraph (live from the first deploy) says:
 
 > The site is delivered by Cloudflare, which stores its files and sends them
 > to you. Like any web server, it sees the normal details of each request:
 > your IP address, the page asked for, the time and your browser's
-> user-agent. TableTalk uses only Cloudflare's totals (how many requests,
-> and from which countries), with no script on the pages and no cookies.
-> Cloudflare's own privacy policy covers what it keeps. The code and the
-> nightly data files are on GitHub; visiting the site never contacts GitHub,
-> only following a link there does.
+> user-agent. Cloudflare counts those requests on its own servers, and
+> TableTalk looks only at the anonymous totals (how many requests, and from
+> which countries), never at who made them. Nothing on the pages counts you:
+> no script, and nothing stored in your browser for it. Cloudflare's own
+> privacy policy covers what it keeps. The code and the nightly data files
+> are on GitHub; visiting the site never contacts GitHub, only following a
+> link there does.
 
-If a `Set-Cookie` ever appears in the go-live check, the footer and this
-paragraph must change.
+"Nothing stored in your browser for it" is deliberate: the site does keep
+the visitor's own theme, table settings and favourite team in local storage
+(said separately, with the details). If a `Set-Cookie` ever appears in the
+go-live check, the footer and this paragraph must change.
 
 ### 4. Later, if ever: a cookieless analytics script
 

@@ -9,7 +9,9 @@ the Python code.
   HTML with the numbers already in it. The only browser JavaScript is small
   scripts for the theme, the favourite team, the table controls, the phone
   tabs and local times.
-- **No trackers, no analytics, no cookies, no third-party requests.** Fonts are
+- **No trackers, no cookies, no analytics scripts, no third-party requests.**
+  (The host, Cloudflare, counts requests on its own servers; see
+  [`DEPLOYMENT.md`](DEPLOYMENT.md#visitor-numbers-without-tracking).) Fonts are
   self-hosted: Latin and Latin Extended only, as WOFF2 (`src/styles/fonts.css`). The visitor's theme, table choices and favourite team are
   kept in their own browser (`localStorage`) only.
 - **Content Security Policy** as a `<meta>` tag, because its script hashes

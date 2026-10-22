@@ -7,7 +7,8 @@
 //   2. Fonts: WOFF2 only, and only the Latin and Latin Extended subsets
 //      (see src/styles/fonts.css).
 //   3. Response headers (public/_headers, read by Cloudflare): the file is
-//      there and every planned line is in its rule. Then, the way Cloudflare
+//      there, every line in it is "Name: value" or "! Name", and every
+//      planned line is in its rule. Then, the way Cloudflare
 //      combines rules (every matching rule adds its headers; a header set
 //      twice gets both values joined with a comma; "! Name" removes it from
 //      the rules before), every built file, and a page that doesn't exist
@@ -60,9 +61,11 @@ function files(dir) {
   });
 }
 
-/** The rules of a _headers file, in order: { pattern, lines, set: [[name, value]], detach: [name] }. */
+/** A _headers file: its rules in order ({ pattern, lines, set: [[name, value]], detach: [name] }),
+ *  and every indented line that is neither "Name: value" nor "! Name" (or comes before any rule). */
 export function parseHeaders(text) {
   const rules = [];
+  const malformed = [];
   for (const raw of text.split(/\r?\n/)) {
     if (raw.trim() === "" || raw.trim().startsWith("#")) continue;
     if (!/^\s/.test(raw)) {
@@ -71,15 +74,17 @@ export function parseHeaders(text) {
     }
     const rule = rules.at(-1);
     const line = raw.trim();
-    if (!rule) continue;
-    rule.lines.push(line);
-    if (line.startsWith("! ")) rule.detach.push(line.slice(2).trim().toLowerCase());
-    else {
-      const colon = line.indexOf(":");
-      rule.set.push([line.slice(0, colon).trim().toLowerCase(), line.slice(colon + 1).trim()]);
+    const detach = /^!\s+([A-Za-z0-9-]+)$/.exec(line);
+    const set = /^([A-Za-z0-9-]+):\s*(\S.*)$/.exec(line);
+    if (!rule || (!detach && !set)) {
+      malformed.push(rule ? `${rule.pattern}: "${line}"` : `before any rule: "${line}"`);
+      continue;
     }
+    rule.lines.push(line);
+    if (detach) rule.detach.push(detach[1].toLowerCase());
+    else if (set) rule.set.push([set[1].toLowerCase(), set[2].trim()]);
   }
-  return rules;
+  return { rules, malformed };
 }
 
 /** Whether a path pattern ("*" any characters, ":name" any but "/") matches a path. */
@@ -114,8 +119,8 @@ function urlPath(name) {
 function checkHeaders(dir, names) {
   const file = join(dir, "_headers");
   if (!existsSync(file)) return ["_headers: missing (public/_headers must be copied into the build)"];
-  const problems = [];
-  const rules = parseHeaders(readFileSync(file, "utf8"));
+  const { rules, malformed } = parseHeaders(readFileSync(file, "utf8"));
+  const problems = malformed.map((line) => `_headers: not "Name: value" or "! Name", in ${line}`);
   for (const [pattern, required] of Object.entries(REQUIRED)) {
     const rule = rules.find((r) => r.pattern === pattern);
     for (const line of required) {

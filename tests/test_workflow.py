@@ -89,12 +89,18 @@ def test_only_github_owned_actions_are_used():
             assert not uses or uses.startswith("actions/"), f"{path.name} {job}: {uses}"
 
 
-def test_no_job_except_publish_can_write():
+def test_only_publish_can_write_contents_and_only_the_redeploy_path_can_start_workflows():
+    # actions: write is needed by site.yml's redeploy job, so its two callers must allow it too.
+    may_start_workflows = {(SITE, "redeploy"), (DAILY, "site"), (DEPLOY_SITE, "site")}
     for path in WORKFLOWS:
         for name, job in _load(path)["jobs"].items():
-            if (path, name) == (DAILY, "publish"):
-                continue
-            assert "write" not in yaml.safe_dump(job.get("permissions", {})), f"{path.name} {name}"
+            for scope, access in (job.get("permissions") or {}).items():
+                if access != "write":
+                    continue
+                allowed = (scope, path, name) == ("contents", DAILY, "publish") or (
+                    scope == "actions" and (path, name) in may_start_workflows
+                )
+                assert allowed, f"{path.name} {name}: {scope}: write"
 
 
 def test_the_nightly_run_deploys_the_site_after_a_successful_publish():
@@ -103,7 +109,7 @@ def test_the_nightly_run_deploys_the_site_after_a_successful_publish():
     assert site["uses"] == "./.github/workflows/site.yml"
     assert site["needs"] == "publish"
     assert "!cancelled()" in site["if"] and "needs.publish.result == 'success'" in site["if"]
-    assert site["permissions"] == {"contents": "read"}
+    assert site["permissions"] == {"contents": "read", "actions": "write"}
     assert site["with"]["data_ref"] == "${{ needs.publish.outputs.data_sha }}"
     publish = workflow["jobs"]["publish"]
     assert publish["outputs"]["data_sha"] == "${{ steps.push.outputs.data_sha }}"
@@ -118,10 +124,10 @@ def test_deploy_site_runs_on_website_changes_to_main_and_by_hand():
     assert "workflow_dispatch" in triggers
     assert workflow["permissions"] == {}
     assert workflow["jobs"]["site"]["uses"] == "./.github/workflows/site.yml"
-    assert workflow["jobs"]["site"]["permissions"] == {"contents": "read"}
+    assert workflow["jobs"]["site"]["permissions"] == {"contents": "read", "actions": "write"}
 
 
-def test_the_build_job_verifies_the_site_and_never_sees_the_token():
+def test_the_build_job_verifies_the_tip_of_main_and_never_sees_the_token():
     workflow = _load(SITE)
     assert "workflow_call" in _triggers(workflow)
     assert workflow["permissions"] == {}
@@ -129,6 +135,13 @@ def test_the_build_job_verifies_the_site_and_never_sees_the_token():
     build = workflow["jobs"]["build-site"]
     assert build["permissions"] == {"contents": "read"}
     assert "secrets." not in yaml.safe_dump(build) and "environment" not in build
+    # The tip of main, never the commit the (possibly hours-old) run started on.
+    checkout = next(step for step in build["steps"] if "actions/checkout@" in step.get("uses", ""))
+    assert checkout["with"]["ref"] == "main"
+    assert build["outputs"] == {
+        "main_sha": "${{ steps.commits.outputs.main_sha }}",
+        "data_sha": "${{ steps.commits.outputs.data_sha }}",
+    }
     runs = [step.get("run", "") for step in build["steps"]]
     assert "npm run verify" in runs
     assert any("upload-artifact" in step.get("uses", "") and step["with"]["path"] == "web/dist" for step in build["steps"])
@@ -141,11 +154,20 @@ def test_the_deploy_job_holds_the_token_builds_nothing_and_skips_without_it():
     assert deploy["environment"] == "production"
     assert deploy["concurrency"] == {"group": "site-deploy", "cancel-in-progress": False}
     steps = deploy["steps"]
-    # The first step only learns whether the token exists; every later step runs only if it does.
-    assert steps[0]["id"] == "token"
-    assert steps[0]["env"]["HAS_TOKEN"] == "${{ secrets.CLOUDFLARE_API_TOKEN != '' }}"
-    assert "::notice::" in steps[0]["run"] and "exit 0" in steps[0]["run"]
-    assert all(step.get("if") == "steps.token.outputs.ready == 'true'" for step in steps[1:])
+    # The first step only learns whether the token exists, and whether the build is still the
+    # tip of main and data; every later step runs only if both hold.
+    gate = steps[0]
+    assert gate["id"] == "gate"
+    assert gate["env"]["HAS_TOKEN"] == "${{ secrets.CLOUDFLARE_API_TOKEN != '' }}"
+    assert gate["env"]["BUILT_MAIN"] == "${{ needs.build-site.outputs.main_sha }}"
+    assert gate["env"]["BUILT_DATA"] == "${{ needs.build-site.outputs.data_sha }}"
+    assert "::notice::" in gate["run"] and "exit 0" in gate["run"]
+    assert "git ls-remote" in gate["run"] and 'echo "stale=true"' in gate["run"]
+    assert deploy["outputs"] == {"stale": "${{ steps.gate.outputs.stale }}"}
+    assert all(step.get("if") == "steps.gate.outputs.go == 'true'" for step in steps[1:])
+    # deploy/ is fetched at the commit that was built.
+    fetch = next(step for step in steps if "git init" in step.get("run", ""))
+    assert fetch["env"]["SHA"] == "${{ needs.build-site.outputs.main_sha }}"
     # The token's value reaches one step: the one that runs `wrangler deploy`, nothing else.
     with_token = [step for step in steps if TOKEN in step.get("env", {}).values()]
     assert len(with_token) == 1 and "wrangler deploy" in with_token[0]["run"]
@@ -156,6 +178,17 @@ def test_the_deploy_job_holds_the_token_builds_nothing_and_skips_without_it():
     assert not re.search(r"npm (run|install|i )|astro|verify", runs)
     # A real deploy failure fails the job.
     assert "continue-on-error" not in yaml.safe_dump(deploy)
+
+
+def test_an_out_of_date_deploy_starts_deploy_site_on_main_without_secrets():
+    redeploy = _load(SITE)["jobs"]["redeploy"]
+    assert redeploy["needs"] == "deploy"
+    assert redeploy["if"] == "${{ needs.deploy.outputs.stale == 'true' }}"
+    assert redeploy["permissions"] == {"actions": "write"}
+    assert "environment" not in redeploy and "secrets." not in yaml.safe_dump(redeploy)
+    (step,) = redeploy["steps"]
+    assert step["run"] == 'gh workflow run deploy-site.yml --repo "$REPO" --ref main'
+    assert step["env"]["GH_TOKEN"] == "${{ github.token }}"
 
 
 def test_wrangler_is_pinned_to_one_exact_version_and_the_config_is_static_assets_only():
