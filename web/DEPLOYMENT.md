@@ -118,7 +118,7 @@ was published; only the deploy was handed over to the newer run).
 | `scripts/check-build.mjs`              | Fails the build if `_headers` is missing or loses a line, or any file would get a wrong header.          |
 
 Nothing about hosting is set by hand in the Cloudflare dashboard, apart from
-the account-wide settings in the set-up list below.
+the account and zone settings in the set-up list below.
 
 ## Response headers
 
@@ -145,9 +145,14 @@ headers itself ("Network Error Logging", seen on the first workers.dev
 deploy, 22 Oct 2026): after a failed load, Chromium browsers send a short
 report to `a.nel.cloudflare.com`. Only failures are reported
 (`success_fraction` 0), but that would still be a request to another server,
-which the About page says never happens, so they are removed. If Cloudflare
-adds them after `_headers` is applied and they can't be removed this way,
-the go-live check fails and the About page's wording must change instead.
+which the About page says never happens. **The two `!` lines don't remove
+them:** Cloudflare adds the headers after `_headers` is applied (tested on
+workers.dev, 22 Oct 2026), so the go-live check fails there on these two
+headers only. workers.dev can't be changed, and stage 3 switches it off. For
+`tabletalk.fyi`, Network Error Logging is switched off in the zone's
+settings (set-up step 6). If the go-live check on the domain still finds
+the headers, the About page's wording changes instead. The two `!` lines are
+reviewed once that check has run.
 
 **`/_astro/*` (Astro's CSS, JavaScript and fonts):** `! Cache-Control`, then
 `Cache-Control: public, max-age=31536000, immutable`. Their names contain a
@@ -214,14 +219,20 @@ Cloudflare's docs on 22 Oct 2026; menus change, so check again.
 5. **The secret.** Add the token to the `production` environment as the
    secret `CLOUDFLARE_API_TOKEN`. Never in a repository secret, so only the
    deploy job (which names the environment) can read it.
-6. **Cloudflare account settings** (not part of the Worker, so not in
-   `wrangler.jsonc`):
-   - Web Analytics: no site for `tabletalk.fyi`, or **JS Snippet injection
-     off** (Analytics & Logs, Web Analytics, Manage site, Advanced options).
-     `Cache-Control: no-transform` should already stop the injection; the
+6. **Cloudflare account and zone settings** (not part of the Worker, so not
+   in `wrangler.jsonc`). All four were checked or set on 22 Oct 2026, before
+   the domain was attached; the menu places are where they were found then.
+   - Web Analytics: no site for `tabletalk.fyi`, or the site **Disabled**
+     (Observability, Analytics, Web analytics, Manage site). The dashboard
+     created a site entry, already Disabled, when Speed, Real user
+     monitoring was opened; it's left that way.
+     `Cache-Control: no-transform` should also stop the injection; the
      go-live check confirms it.
-   - Security, Bots: **Bot Fight Mode off** (it can show challenge pages to
-     real visitors and set cookies).
+   - **Network Error Logging off** for the `tabletalk.fyi` zone (the zone's
+     Network page). On by default for free zones; see
+     [Response headers](#response-headers).
+   - Security: **Bot Fight Mode off** (it can show challenge pages to real
+     visitors and set cookies). It was already off.
    - Domain Registration: **auto-renew on** for `tabletalk.fyi` (expires
      2027-10-22).
 7. **GitHub repository settings** (Settings, Advanced Security, and
@@ -241,14 +252,16 @@ Each stage is a reviewed change on `main`; nothing is set in the dashboard.
 1. **workers.dev.** With the token in place, run Actions, Deploy site, Run
    workflow (on `main`). The deploy log prints the address. Then run
    `bash deploy/check-live.sh https://tabletalk.<subdomain>.workers.dev`
-   and fix anything it reports.
+   and fix anything it reports. **Done 22 Oct 2026:** the site is at
+   `https://tabletalk.umarjaved.workers.dev`; the check passes apart from
+   `Report-To` and `Nel` (see [Response headers](#response-headers)).
 2. **The domain.** In `deploy/wrangler.jsonc`, add
    `"routes": [{ "pattern": "tabletalk.fyi", "custom_domain": true }]`
    (a pull request; merging it starts Deploy site). Cloudflare creates the
    DNS record and the certificate; the domain must have no DNS record for
-   `tabletalk.fyi` before this (none exists; don't add one). Allow a few
-   minutes for the certificate, then
-   `bash deploy/check-live.sh https://tabletalk.fyi`.
+   `tabletalk.fyi` before this (the zone had none on 22 Oct 2026; don't add
+   one). Do set-up step 6 first. Allow a few minutes for the certificate,
+   then `bash deploy/check-live.sh https://tabletalk.fyi`.
 3. **One address.** Set `"workers_dev": false` (another reviewed change),
    check the domain again, and check that the workers.dev address no longer
    serves the site.
