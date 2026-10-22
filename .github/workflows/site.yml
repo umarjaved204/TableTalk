@@ -44,6 +44,16 @@ on:
         description: "The data commit to build from (empty: the tip of the data branch)"
         type: string
         default: ""
+    # A reusable workflow sees only the secrets its caller passes, even one
+    # kept in the environment its job names: without this the token is an
+    # empty string (no error) and the deploy skips. Callers pass it by name
+    # (`CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}`), and the
+    # deploy job, which names the "production" environment, then gets the
+    # environment's value. Only the deploy job uses it.
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        description: "Pass by name; the value comes from the production environment"
+        required: false
 
 permissions: {}
 

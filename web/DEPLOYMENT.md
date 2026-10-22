@@ -68,6 +68,12 @@ daily-update.yml (nightly)              deploy-site.yml (push to main
 - **No checkout in the deploy job:** it has no repository permissions, so it
   fetches `deploy/` from the public repository with plain `git`, the way
   `scripts/check_publish.sh` fetches the `data` branch.
+- **The token is passed by name:** a reusable workflow sees only the secrets
+  its caller passes, even a secret kept in the environment its job names.
+  Both callers pass `CLOUDFLARE_API_TOKEN` (and nothing else; never
+  `secrets: inherit`), and the deploy job gets the `production` value. Found
+  on 22 Oct 2026: without it the first deploy saw an empty token and skipped
+  ("No CLOUDFLARE_API_TOKEN"), with a green run. A test now checks it.
 
 ### Never older files over newer ones
 
