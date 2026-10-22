@@ -15,13 +15,13 @@
     // An unknown address gets dist/404.html with status 404.
     "not_found_handling": "404-page"
   },
-  // Go-live stage 2: the custom domain. Cloudflare creates its DNS record and
-  // certificate; no DNS record is added by hand. Stage 1's address,
-  // tabletalk.umarjaved.workers.dev, stays on until stage 3, once
-  // https://tabletalk.fyi/ passes the go-live check, sets "workers_dev" to
-  // false so the site has one address only.
+  // The site's one address: the custom domain. Cloudflare creates its DNS
+  // record and certificate; no DNS record is added by hand.
   "routes": [{ "pattern": "tabletalk.fyi", "custom_domain": true }],
-  "workers_dev": true,
+  // Go-live stage 3: the workers.dev address (tabletalk.umarjaved.workers.dev)
+  // is off. Cloudflare adds Network Error Logging headers there that can't be
+  // switched off, and one address means one place to check.
+  "workers_dev": false,
   // No public preview address for each uploaded version.
   "preview_urls": false,
   // No Worker code runs, so there is nothing to log.
