@@ -1,235 +1,377 @@
-# Deployment plan (not done yet)
+# Deployment: Cloudflare Workers static assets
 
-A plan for putting the site online after the pipeline trial. **Nothing here
-has been set up**: no workflow, no hosting settings, no merge to `main`. Each
-step needs your go-ahead.
+The site is plain files, served by a Cloudflare Worker with **no Worker code**
+(static assets only) at **https://tabletalk.fyi**. Chosen over GitHub Pages
+(hardening plan, 15 Oct 2026) because Pages can't send response headers
+(`frame-ancestors`, HSTS, cache rules) and Cloudflare now hosts the domain
+anyway.
 
-## Before anything is deployed
+**Status (22 Oct 2026): built, not live.** The workflows, config and checks
+are on `main`, but nothing has been deployed: the deploy job skips (with a
+notice, and the run still passes) until the Cloudflare token exists. The
+one-time setup and the three go-live stages below are still to do.
 
-1. The pipeline trial is reviewed.
-2. **Contract request R8** (pipeline fingerprint) is done. Once `web/` is on
-   `main`, a website-only commit changes `code_commit` in every snapshot and
-   lock; R8 lets a reader see the model didn't change.
-3. `web/` is merged into `main`.
-4. The manual keyboard and NVDA passes in `docs/accessibility-review.md` are
-   done, and so is the real-phone pass there (including the home-screen app,
-   which has no back button on iPhones).
-5. The custom domain is set up (chosen; see below).
+## Contents
 
-## Where: GitHub Pages (recommended in the plan)
+- [What runs](#what-runs)
+- [The files](#the-files)
+- [Response headers](#response-headers)
+- [One-time setup](#one-time-setup)
+- [Going live in three stages](#going-live-in-three-stages)
+- [The go-live check](#the-go-live-check)
+- [Replacing the token before it expires](#replacing-the-token-before-it-expires)
+- [When something fails](#when-something-fails)
+- [Visitor numbers without tracking](#visitor-numbers-without-tracking)
+- [Still to decide](#still-to-decide)
 
-Free for a public repository, HTTPS included, and it serves plain files,
-which is all this site is. Two limits matter:
-
-- **No custom response headers.** The Content Security Policy is already a
-  `<meta>` tag, so it still applies. What a meta tag can't do is
-  `frame-ancestors` (stopping other sites from framing this one). The site has
-  no logins or actions, so being framed can't trick anyone into doing
-  anything; noted, accepted.
-- **The address.** A project site lives at
-  `https://umarjaved204.github.io/TableTalk/`, under `/TableTalk/`. Every link
-  in the site starts at the root (`/premier-league/`), so it would break
-  there. Two ways out:
-  - **A custom domain** (e.g. a domain you own, pointed at Pages): the site
-    is served from the root and **no code changes**. Recommended, and
-    **chosen** (2 Oct 2026): you will set it up once the remaining work is
-    done.
-  - **The `/TableTalk/` path:** set Astro's `base: "/TableTalk/"` and change
-    every internal link and asset to go through it (about 20 places), with a
-    browser test that follows every link on the built site.
-
-Either way, `SITE_URL` is set to the final https address in the build
-(canonical links and `og:url` need it; the build check refuses `localhost`).
-
-## How: a deploy job in the nightly workflow
-
-The site must be rebuilt after each nightly data commit. A push made with
-the workflow's own token (`GITHUB_TOKEN`) does **not** start other workflows,
-so a separate "on push to data" workflow would never run. The deploy is
-therefore a second job in `.github/workflows/daily-update.yml`:
+## What runs
 
 ```
-update  (existing: fetch, refit, simulate, commit to data)
-  └─ deploy  (new, needs: update; runs even if one league failed)
-       checkout main (web/), checkout the data branch into web/.data
-       setup Node 24, npm ci
-       SITE_URL=https://… npm run build       (type check, build, build check)
-       upload web/dist as the Pages artifact
-       deploy to GitHub Pages
+daily-update.yml (nightly)              deploy-site.yml (push to main
+  update   -> publish (pushes data)       touching web/, deploy/ or the
+                 |                        site workflows; by hand; or
+                 v                        started by redeploy below)
+      site.yml (reusable), with the data          |
+      commit publish just pushed                  v
+                 |                        site.yml, with the tip of data
+  build-site  contents: read, no secrets
+              checkout the TIP OF MAIN, npm ci, copy the data commit
+              into web/.data, npm run verify (astro check, lint, unit
+              tests, build with SITE_URL=https://tabletalk.fyi, build
+              check), upload dist/; outputs the main and data commits
+                 |
+  deploy      no repository permissions; environment "production"
+              (main only); concurrency group "site-deploy"
+              token missing?          -> notice, stop, job passes
+              main or data moved on?  -> notice, stop, stale=true
+              fetch deploy/ at the built commit (no credentials),
+              npm ci --ignore-scripts (Wrangler, exact version),
+              download dist/, wrangler deploy
+                 |
+  redeploy    only if stale; actions: write, no secrets
+              gh workflow run deploy-site.yml --ref main
 ```
 
-- **Permissions** for the deploy job only: `pages: write`, `id-token: write`,
-  `contents: read`. The update job keeps its own.
-- **Actions pinned** to exact versions, as the existing workflow already does
-  (`actions/configure-pages`, `actions/upload-pages-artifact`,
-  `actions/deploy-pages`).
-- **Concurrency:** one deploy at a time (`concurrency: pages`), so the backup
-  run can't race the main one.
-- **No secrets needed:** the data branch is public. The football-data.org key
-  stays in the update job only.
-- **Time:** about a minute (`npm ci` with a cache, a 5-second build).
+- **Why the deploy is inside the nightly workflow:** a push made with the
+  workflow's own token does not start other workflows, so an "on push to
+  `data`" workflow would never run.
+- **Why the build job and the deploy job are separate:** the build runs the
+  website's code and about 680 npm packages; the token never reaches that
+  job. The deploy job runs no website code and no install scripts; its only
+  third-party code is Wrangler, at the version in `deploy/package-lock.json`
+  (checked against its hashes).
+- **Why `npm run verify`, not just a build:** a website commit that fails its
+  type check, lint or unit tests never goes live. The browser suite is not
+  run here (it needs browsers and takes minutes); run it before merging.
+- **No `cloudflare/wrangler-action`:** the repository allows GitHub-owned
+  actions only. Wrangler runs from its own lockfile instead.
+- **No checkout in the deploy job:** it has no repository permissions, so it
+  fetches `deploy/` from the public repository with plain `git`, the way
+  `scripts/check_publish.sh` fetches the `data` branch.
+
+### Never older files over newer ones
+
+Three rules (review of PR #4, 22 Oct 2026):
+
+1. **Always the tip of main.** A nightly run can start hours late and spend
+   up to about 40 minutes on the update, so the commit it started on can be
+   older than `main` by the time it builds. `build-site` therefore checks
+   out the tip of `main`, not the run's own commit.
+2. **Out of date means skip.** Just before deploying, the deploy job reads
+   the tips of `main` and `data` (`git ls-remote`, no credentials). If
+   either is not what was built, it doesn't deploy: something newer exists.
+3. **A skip asks for a redeploy.** GitHub keeps **one** waiting job per
+   concurrency group; a newer one replaces it (that run then shows as
+   cancelled). So a skipped deploy can't assume the newer commit's own
+   deploy is still coming. Example: a deploy-site deploy for main M2 is
+   waiting; the nightly deploy (built from M1) arrives, replaces it, then
+   finds it is out of date. The `redeploy` job (permission `actions: write`
+   only, no secrets) then starts "Deploy site" on `main`, which builds and
+   deploys the tips. A `workflow_dispatch` made with the workflow's own
+   token does start a run (GitHub's docs: `workflow_dispatch` and
+   `repository_dispatch` are the exceptions to "events from `GITHUB_TOKEN`
+   start no workflows"; checked 22 Oct 2026). If the tips move again before
+   that run deploys, it asks again.
+
+What remains: a deploy that has already passed the out-of-date check can
+still finish a minute after a newer commit lands; that newer commit's own
+deploy then waits its turn in the queue and follows. And a nightly run whose
+deploy was replaced in the queue ends as "cancelled", not "success" (its data
+was published; only the deploy was handed over to the newer run).
+
+## The files
+
+| File                                   | What it is                                                                                               |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `../.github/workflows/site.yml`        | The reusable workflow: `build-site`, `deploy` and `redeploy`. `SITE_URL` is set here.                    |
+| `../.github/workflows/deploy-site.yml` | Calls `site.yml` on a push to `main` touching the site, or by hand.                                      |
+| `../deploy/wrangler.jsonc`             | Every hosting setting, reviewed as code: static assets only, 404 page, `workers_dev`, the custom domain. |
+| `../deploy/package.json` + lockfile    | Wrangler at one exact version (4.148.0), nothing else. Dependabot proposes updates weekly.               |
+| `../deploy/check-live.sh`              | The go-live check, run against the live address.                                                         |
+| `public/_headers`                      | The response headers. Astro copies it into `dist/`; Cloudflare reads it and doesn't serve it.            |
+| `scripts/check-build.mjs`              | Fails the build if `_headers` is missing or loses a line, or any file would get a wrong header.          |
+
+Nothing about hosting is set by hand in the Cloudflare dashboard, apart from
+the account-wide settings in the set-up list below.
+
+## Response headers
+
+`public/_headers` has two rules. Cloudflare applies **every** rule that
+matches a path, and when two rules set the same header it sends both values
+joined with a comma; `! Name` in a rule removes what earlier rules set.
+
+**`/*` (every response, including the 404 page):**
+
+| Header                         | Value                                                                              | Why                                                                                                                                                                                                                |
+| ------------------------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Content-Security-Policy`      | `frame-ancestors 'none'`                                                           | Stops other sites framing this one; only works as a header. The full policy stays in each page's `<meta>` tag (both apply), because its script hashes change with every build.                                     |
+| `X-Frame-Options`              | `DENY`                                                                             | The same, for older browsers.                                                                                                                                                                                      |
+| `X-Content-Type-Options`       | `nosniff`                                                                          | Browsers use the declared file type instead of guessing.                                                                                                                                                           |
+| `Referrer-Policy`              | `strict-origin-when-cross-origin`                                                  | Links to other sites send only the domain, never the page address (also the browsers' default).                                                                                                                    |
+| `Permissions-Policy`           | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()` | The site uses none of these, so nothing on it can ask for them.                                                                                                                                                    |
+| `Cross-Origin-Opener-Policy`   | `same-origin`                                                                      | A page this site opens (or that opens it) can't reach into its window.                                                                                                                                             |
+| `Cross-Origin-Resource-Policy` | `same-origin`                                                                      | Other sites can't load this site's files into their pages.                                                                                                                                                         |
+| `Strict-Transport-Security`    | `max-age=86400` now; `max-age=31536000` once HTTPS on the domain is stable         | Browsers refuse plain HTTP for the domain. No `includeSubDomains` or `preload` (hard to undo). The build check accepts these two values only.                                                                      |
+| `Cache-Control`                | `no-cache, no-transform`                                                           | `no-cache`: browsers may keep a copy but must check it first (cheap, with the ETag), because the data changes every night. `no-transform`: Cloudflare must not change the pages, e.g. inject its analytics beacon. |
+
+**`/_astro/*` (Astro's CSS, JavaScript and fonts):** `! Cache-Control`, then
+`Cache-Control: public, max-age=31536000, immutable`. Their names contain a
+hash of their content, so a changed file has a new name and an old one never
+needs checking. Without the `!` line these files would get
+`no-cache, no-transform, public, max-age=31536000, immutable` (tested with
+`wrangler dev`, 22 Oct 2026).
+
+Files outside `/_astro/` that aren't pages (icons, `manifest.webmanifest`,
+`robots.txt`, `sitemap.xml`, the QR codes) get the `/*` value too: their
+names don't change when their content does, so they must be checked as well.
+The plan said `no-transform` for HTML only; on these files it changes
+nothing, and this deviation was **accepted** (22 Oct 2026).
+
+**Checked twice:** `scripts/check-build.mjs` (part of every build) works out
+the headers each built file and the 404 page will get, the way Cloudflare
+combines the rules, and fails on a missing line, a header sent twice or a
+wrong value. `deploy/check-live.sh` checks the real responses.
+
+## One-time setup
+
+Steps 1 to 5 are needed before the first deploy. Checked against
+Cloudflare's docs on 22 Oct 2026; menus change, so check again.
+
+1. **GitHub environment.** Settings, Environments, New environment,
+   `production`. Deployment branches and tags: **Selected branches and
+   tags**, add `main`. No reviewers or wait timer. Create it **before**
+   merging the deploy step: a workflow that names a missing environment
+   creates it with no branch limit.
+2. **workers.dev subdomain.** In the Cloudflare dashboard, Workers & Pages:
+   if asked, choose the account's `workers.dev` subdomain (once per
+   account). Stage 1 serves the site at
+   `https://tabletalk.<subdomain>.workers.dev`.
+3. **Account ID.** Copy it from the dashboard (Account home, the account's
+   menu, Copy account ID) into the `production` environment as a
+   **variable** (not a secret) named `CLOUDFLARE_ACCOUNT_ID`. It isn't
+   secret, but keeping it out of the repository means it's in one place.
+4. **The API token.** My Profile, API Tokens, Create Token, **Create Custom
+   Token**, named e.g. `tabletalk-deploy-2026-10`:
+
+   | Permission                     | Scope                                                   | Why                                                                                                                                                                   |
+   | ------------------------------ | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | Account, Workers Scripts, Edit | Account Resources: Include, this account only           | Uploads the Worker and its static assets and deploys a version. Also what the Workers Domains API asks for to attach a domain (`PUT /accounts/{id}/workers/domains`). |
+   | Zone, Workers Routes, Edit     | Zone Resources: Include, Specific zone, `tabletalk.fyi` | Cloudflare's Workers permissions page: adding, changing or removing a route or **Custom Domain** needs "Workers Routes Write" on each affected zone.                  |
+   - **Client IP address filtering:** none (GitHub's runners have no fixed
+     addresses).
+   - **TTL:** an end date about 90 days ahead. Put a reminder two weeks
+     before it in your calendar (see
+     [Replacing the token](#replacing-the-token-before-it-expires)).
+   - **Not needed:** DNS Edit (a Custom Domain creates its own DNS record and
+     certificate), Zone Read, User Details, Account Settings (the account ID
+     is given), Pages, KV, R2 and every other permission.
+   - **Stage 1 alone** (workers.dev only) uses just Workers Scripts. The
+     Routes permission is included from the start so stage 2 needs no token
+     change; it covers this one zone only.
+   - **If stage 2 fails** with an authentication error about the zone or
+     DNS: add `Zone, DNS, Edit` for `tabletalk.fyi` only (some people report
+     needing it), re-run, and record it here.
+   - **Wrangler bug, already handled:** before Wrangler 4.143.1, later
+     deploys of a custom-domain-only Worker with `workers_dev` off failed
+     with "No access" unless the token could read the zone's routes
+     (workers-sdk issue 15863). The pinned 4.148.0 has the fix.
+
+5. **The secret.** Add the token to the `production` environment as the
+   secret `CLOUDFLARE_API_TOKEN`. Never in a repository secret, so only the
+   deploy job (which names the environment) can read it.
+6. **Cloudflare account settings** (not part of the Worker, so not in
+   `wrangler.jsonc`):
+   - Web Analytics: no site for `tabletalk.fyi`, or **JS Snippet injection
+     off** (Analytics & Logs, Web Analytics, Manage site, Advanced options).
+     `Cache-Control: no-transform` should already stop the injection; the
+     go-live check confirms it.
+   - Security, Bots: **Bot Fight Mode off** (it can show challenge pages to
+     real visitors and set cookies).
+   - Domain Registration: **auto-renew on** for `tabletalk.fyi` (expires
+     2027-10-22).
+7. **GitHub repository settings** (Settings, Advanced Security, and
+   Settings, Rules):
+   - Secret scanning and push protection on.
+   - Dependabot alerts and Dependabot security updates on.
+   - Private vulnerability reporting on.
+   - **Ruleset `protect-main` (decided 22 Oct 2026):** a branch ruleset
+     targeting `main` only, with **Restrict deletions** and **Block force
+     pushes**; no pull-request or status-check requirements; an empty bypass
+     list. The owner creates it by hand, like `protect-data`.
+
+## Going live in three stages
+
+Each stage is a reviewed change on `main`; nothing is set in the dashboard.
+
+1. **workers.dev.** With the token in place, run Actions, Deploy site, Run
+   workflow (on `main`). The deploy log prints the address. Then run
+   `bash deploy/check-live.sh https://tabletalk.<subdomain>.workers.dev`
+   and fix anything it reports.
+2. **The domain.** In `deploy/wrangler.jsonc`, add
+   `"routes": [{ "pattern": "tabletalk.fyi", "custom_domain": true }]`
+   (a pull request; merging it starts Deploy site). Cloudflare creates the
+   DNS record and the certificate; the domain must have no DNS record for
+   `tabletalk.fyi` before this (none exists; don't add one). Allow a few
+   minutes for the certificate, then
+   `bash deploy/check-live.sh https://tabletalk.fyi`.
+3. **One address.** Set `"workers_dev": false` (another reviewed change),
+   check the domain again, and check that the workers.dev address no longer
+   serves the site.
+
+**Later:** once HTTPS on the domain has been stable for a few weeks, raise
+`Strict-Transport-Security` to `max-age=31536000` in `public/_headers`.
+`www.tabletalk.fyi` isn't set up; if wanted, it would be a second Custom
+Domain plus a redirect, decided then.
+
+**Before announcing the site:** the manual keyboard, NVDA and real-phone
+passes in `docs/accessibility-review.md` are still marked "to do".
+
+## The go-live check
+
+```sh
+bash deploy/check-live.sh https://tabletalk.fyi
+```
+
+It asks for the home page, a team page (the first one linked from the
+Premier League page), a page that doesn't exist, the home page's first
+`/_astro/` stylesheet and the first font in its stylesheets, and checks, for
+each:
+
+1. the status (404 for the missing page, 200 for the rest);
+2. every security header in the table above, **exactly once**, with the
+   planned value (`Strict-Transport-Security` may be either value);
+3. **exactly one** `Cache-Control`: `no-cache, no-transform` for the three
+   pages, `public, max-age=31536000, immutable` for the stylesheet and the
+   font;
+4. **no `Set-Cookie`** (the footer promises no cookies);
+5. for the pages, **no `cloudflareinsights`** in the HTML (Cloudflare's
+   injected Web Analytics beacon).
+
+It prints a line per check and exits 1 if any failed; the site isn't live
+until it passes. Tested on 22 Oct 2026 against `wrangler dev` (passing), and
+with the `! Cache-Control` line removed (failing on the two `/_astro/` files,
+as it should). Afterwards, run the browser tests against the live address
+once.
+
+## Replacing the token before it expires
+
+1. Two weeks before the expiry date (the calendar reminder), create a new
+   token with **the same permissions and scope** (step 4 above) and a new
+   end date about 90 days ahead.
+2. Settings, Environments, `production`: replace the `CLOUDFLARE_API_TOKEN`
+   secret with the new token.
+3. Run Actions, Deploy site, Run workflow, and check the deploy job passed
+   (a deploy, not the "no token" notice).
+4. Revoke the old token (My Profile, API Tokens, the old token, Delete).
+5. Move the calendar reminder to two weeks before the new expiry date.
+
+If the token expires anyway, the deploy job fails (a token exists but
+doesn't work), you get GitHub's email, and the site stays as it was; then
+do steps 1 to 4.
 
 ## When something fails
 
-| What fails                                                                 | What visitors see                                                                                       |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| One league's update                                                        | The site still builds; that league shows its previous numbers with "last night's update failed"         |
-| The whole update job                                                       | The deploy job doesn't run; yesterday's site stays up; after 30 hours each page shows the stale warning |
-| The build (a broken index, contradicting lock files, a failed build check) | Nothing is deployed; the previous site stays up; the run is marked failed and you get GitHub's email    |
-| The deploy step itself                                                     | The previous site stays up; re-run the job by hand                                                      |
+| What fails                                                 | What visitors see                                                                               |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| One league's update                                        | The site is rebuilt; that league shows its previous numbers with "last night's update failed"   |
+| The whole update, or publish                               | No build or deploy; yesterday's site stays up; after 30 hours each page shows the stale warning |
+| `npm run verify` (types, lint, unit tests, build check)    | Nothing is deployed; the previous site stays up; the run fails and GitHub emails you            |
+| The deploy finds `main` or `data` moved on since its build | Not deployed (the job passes, with a notice); "Deploy site" is started to deploy the tips       |
+| The deploy itself (token, Cloudflare, network)             | The previous site stays up; the run fails; re-run the deploy job once the cause is fixed        |
 
-Rolling back: re-run an earlier successful deploy, or revert the commit on
-`main` and re-run.
+**Rolling back:** revert the bad commit on `main` (Deploy site then
+redeploys), or re-run an earlier run's deploy job. In an emergency,
+Cloudflare's dashboard can roll the Worker back to an earlier version
+(Workers & Pages, `tabletalk`, Deployments); the next deploy replaces it.
 
-## Visitor numbers without tracking (plan only, nothing set up)
+**Limits (free plan):** requests for static assets are free and unlimited;
+up to 20,000 files per version and 25 MiB per file. The site is about 350
+files and 1 MB.
+
+## Visitor numbers without tracking
 
 Goal: know roughly how many people visit and how they find the site, without
-adding a script, a cookie or a third-party request to any page. The footer's
-"No trackers, no analytics, no cookies" stays true, and the Content Security
-Policy doesn't change. Checked 4 Oct 2026; plans and menus change, so check
-again when setting it up.
+adding a script, a cookie or a third-party request to any page.
 
-### 1. Cloudflare (free plan) in front of the custom domain
+### 1. Cloudflare's request counts
 
-The domain's DNS moves to Cloudflare and the site's records are "proxied"
-(orange cloud): visitors connect to Cloudflare, which fetches the pages from
-GitHub Pages. Cloudflare counts the requests it passes on.
+Cloudflare counts the requests it serves. The zone `tabletalk.fyi`,
+Analytics & Logs, Traffic: requests, page views, bandwidth, "unique
+visitors", countries and status codes, kept for at least 30 days. Nothing is
+added to the pages. Limits to say out loud:
 
-**What it shows (Analytics & Logs > Traffic, free plan):** requests, page
-views, bandwidth, "unique visitors", countries and status codes. Since 2 Oct
-2026 every plan keeps at least 30 days of this data (before that, the free
-plan showed 1 to 8 days depending on the view). Nothing is added to the
-pages: the numbers come from requests Cloudflare already handles.
+- **"Unique visitors" are unique IP addresses**, not people (one school
+  counts once; one person on two devices counts twice).
+- **Bots are included** on the free plan. Treat the numbers as an upper
+  bound and look at trends, not totals.
+- **Cloudflare's "Web Analytics" is a different product**: a JavaScript
+  beacon it can inject into pages. Keep it off (setup step 6). The CSP would
+  block it anyway (`script-src` lists only our hashes, `connect-src 'none'`),
+  so it would mean console errors and a broken promise, not tracking.
 
-**Limits to say out loud:**
+### 2. Google Search Console
 
-- **"Unique visitors" are unique IP addresses**, not people. Several people
-  behind one address (a school, a mobile network) count once; one person on a
-  phone and a laptop counts twice.
-- **Bots are included.** Crawlers, uptime checkers and scanners count as
-  visitors on the free plan; the bot breakdown (Bot Analytics) needs a paid
-  plan. Treat the numbers as an upper bound and look at trends, not totals.
-- **Cloudflare's "Web Analytics" product is different**: it is a JavaScript
-  beacon, and since September 2025 Cloudflare injects it into proxied pages
-  **by default on the free plan**. Switch it off: Analytics & Logs > Web
-  Analytics > Manage site > Advanced options > JS Snippet injection: off
-  (some people report having to enable Web Analytics first to reach the
-  switch). Our CSP would block the injected script anyway (`script-src` lists
-  only our hashes, `connect-src 'none'`), so leaving it on would mean console
-  errors and a broken promise rather than tracking. After setup, check that
-  the pages as served contain no `cloudflareinsights` script.
-- Leave **Bot Fight Mode** off: it can show challenge pages to real visitors,
-  and a static site doesn't need it.
+Search impressions, clicks, positions and queries, measured on Google's
+side: nothing is added to the pages. Add a **Domain property** verified with
+the **TXT record** Search Console gives (added in Cloudflare's DNS; not the
+HTML-file or meta-tag methods, which would put Google's token into the
+site), then submit `https://tabletalk.fyi/sitemap.xml`. The build makes the
+sitemap and `robots.txt` when `SITE_URL` is set, which the deploy always
+does. About 16 months of data, a day or two behind.
 
-**With GitHub Pages (custom domain, HTTPS):**
+### 3. What the site says
 
-1. Point the domain at GitHub Pages with the records **DNS only** (grey
-   cloud) first. GitHub can only issue its Let's Encrypt certificate when it
-   sees its own addresses; while proxied it reports that the domain "is not
-   properly configured to support HTTPS".
-2. Once the certificate is issued and "Enforce HTTPS" is ticked in the
-   repository's Pages settings, set Cloudflare's SSL/TLS mode to **Full
-   (strict)**, and only then switch the records to **proxied**. Never
-   "Flexible": it talks to GitHub over plain HTTP and loops with Enforce HTTPS.
-3. **Known issue: certificate renewal.** GitHub renews its certificate about
-   every three months over plain HTTP; behind the proxy that request can be
-   redirected to HTTPS and fail, and with Full (strict) an expired GitHub
-   certificate takes the site down. Mitigations, best first: a Cloudflare rule
-   that lets `/.well-known/acme-challenge/*` through without the HTTPS
-   redirect; a calendar reminder about 80 days after issue to check the
-   certificate; if renewal fails, switch to grey cloud, let GitHub reissue,
-   then switch back.
-4. Caching: Cloudflare follows the cache headers GitHub Pages sends (10
-   minutes) and doesn't cache HTML by default, so a nightly deploy shows up
-   within minutes. No cache rules needed.
+Every privacy statement on the site must be exactly true. The footer says
+"No trackers, no cookies, no analytics scripts" (changed 22 Oct 2026 from
+"no analytics", since Cloudflare's request counts are analytics of a kind,
+just not on the pages). The About page's privacy list says the same, and its
+paragraph (live from the first deploy) says:
 
-### 2. Real security headers (same Cloudflare setup)
+> The site is delivered by Cloudflare, which stores its files and sends them
+> to you. Like any web server, it sees the normal details of each request:
+> your IP address, the page asked for, the time and your browser's
+> user-agent. Cloudflare counts those requests on its own servers, and
+> TableTalk looks only at the anonymous totals (how many requests, and from
+> which countries), never at who made them. Nothing on the pages counts you:
+> no script, and nothing stored in your browser for it. Cloudflare's own
+> privacy policy covers what it keeps. The code and the nightly data files
+> are on GitHub; visiting the site never contacts GitHub, only following a
+> link there does.
 
-A `<meta>` tag can't set response headers, and GitHub Pages can't send
-custom ones. Cloudflare can add them on the way out with a **response header
-Transform Rule** (free plan: 10 rules; one rule can set several headers).
+"Nothing stored in your browser for it" is deliberate: the site does keep
+the visitor's own theme, table settings and favourite team in local storage
+(said separately, with the details). If a `Set-Cookie` ever appears in the
+go-live check, the footer and this paragraph must change.
 
-| Header                         | Value                                                                              | Why                                                                                                                                                                                                                                                                    |
-| ------------------------------ | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Content-Security-Policy`      | `frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'none'`   | `frame-ancestors` only works as a header: it stops other sites framing this one. The script rules stay in the `<meta>` tag (both policies apply), because the early script's hash changes with the team list and the code, and a fixed header can't follow each build. |
-| `Strict-Transport-Security`    | `max-age=86400` at first, then `max-age=31536000` once HTTPS is known to be stable | Browsers then refuse plain HTTP for the domain. Set in SSL/TLS > Edge Certificates > HSTS (free). No `includeSubDomains` or `preload` unless every subdomain is HTTPS for good: preload is hard to undo.                                                               |
-| `X-Content-Type-Options`       | `nosniff`                                                                          | Browsers use the declared file type instead of guessing.                                                                                                                                                                                                               |
-| `Referrer-Policy`              | `strict-origin-when-cross-origin`                                                  | Links to other sites (GitHub, football-data.org) send only the domain, never the page address. It is also the browsers' default; stating it keeps it if defaults change.                                                                                               |
-| `Permissions-Policy`           | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()` | The site uses none of these, so nothing on it can ever ask for them.                                                                                                                                                                                                   |
-| `X-Frame-Options`              | `DENY`                                                                             | The same protection as `frame-ancestors`, for older browsers.                                                                                                                                                                                                          |
-| `Cross-Origin-Opener-Policy`   | `same-origin`                                                                      | A page this site opens (or that opens it) can't reach into its window.                                                                                                                                                                                                 |
-| `Cross-Origin-Resource-Policy` | `same-origin`                                                                      | Other sites can't load this site's files (fonts, scripts, images, QR codes) into their own pages. Nothing here is meant to be embedded elsewhere.                                                                                                                      |
+### 4. Later, if ever: a cookieless analytics script
 
-**Go-live gate (must pass before the site is announced).** Run:
+Plausible, Umami or GoatCounter count page views more accurately, but each
+adds a third-party request (unless self-hosted), needs `script-src` and
+`connect-src` opened in the CSP, and makes "no analytics" untrue. Not
+proposed: the request counts and Search Console answer "is anyone visiting,
+and how do they find it?" without any of this.
 
-```sh
-curl -sI https://<domain>/
-```
+## Still to decide
 
-and check that the response:
-
-1. shows **every** header in the table above, with the value planned
-   (`Strict-Transport-Security` may still be on its first `max-age=86400`);
-2. has **no `Set-Cookie`** header (the footer promises no cookies);
-3. and that the page itself contains **no `cloudflareinsights`** (Cloudflare's
-   injected Web Analytics beacon): `curl -s https://<domain>/` must not
-   mention it.
-
-If any check fails, the site isn't live yet: fix the rule or the Cloudflare
-setting and run the gate again. Then check with a header scanner, and run
-the browser tests against the live address once.
-
-### 3. Google Search Console
-
-Search impressions, clicks, positions and the queries people used to find the
-site, measured on Google's side: **nothing is added to the pages**.
-
-- Add a **Domain property** and verify it with the **TXT record** Search
-  Console gives, added in Cloudflare's DNS. (Not the HTML-file or meta-tag
-  methods, which would put Google's token into the site.)
-- Submit `https://<domain>/sitemap.xml`. The build makes it when `SITE_URL`
-  is set (every real page, never the noindex stub pages), and `robots.txt`,
-  also made by the build, then points to it: nothing to add by hand.
-- It keeps about 16 months of data, with a delay of a day or two.
-
-### 4. What the About page must say once Cloudflare is in use
-
-The footer stays true: no trackers, no analytics scripts, no cookies set by
-this site. Cloudflare's free plan doesn't set cookies on a static site with
-Bot Fight Mode and challenges off; check the response headers for
-`Set-Cookie` after setup, and if one ever appears, the footer must change.
-The About page's privacy section gains a paragraph:
-
-> The site is delivered through Cloudflare, which sits between you and the
-> site's files on GitHub Pages. Like any web server, it sees the normal
-> details of each request: your IP address, the page asked for, the time and
-> your browser's user-agent. TableTalk uses only Cloudflare's totals (how
-> many requests, and from which countries), with no script on the pages and
-> no cookies. Cloudflare's own privacy policy covers what it keeps.
-
-GitHub, which hosts the files, is already in the same position, and the
-About page should say so too when the site goes live.
-
-### 5. Later, if ever: a cookieless analytics script
-
-Plausible, Umami or GoatCounter count page views more accurately (they filter
-most bots and show which pages are read). Each would change things:
-
-- **A third-party request on every page** (unless self-hosted), which breaks
-  "no third-party requests" in the README and on the About page.
-- **The CSP**: `script-src` and `connect-src` must allow the service's address.
-- **The footer**: "no analytics" would no longer be true; it would become
-  something like "cookieless page-view counts, no personal data".
-
-Not proposed now: Cloudflare's request counts and Search Console answer "is
-anyone visiting, and how do they find it?" without any of this.
-
-## Decided later, at deployment
-
-- **Share images** (Open Graph cards per league): deferred to here. They need
-  the public `SITE_URL`, and how they're made depends on where the build runs.
-- **`robots.txt`**: add a `Sitemap:` line once the address is known (a sitemap
-  needs absolute URLs). `sitemap.xml` itself is generated by the build from
-  Step 3 of the favourites stage.
-- **Limits:** a Pages site may be up to 1 GB with a soft 100 GB/month of
-  traffic; this site is about 1 MB.
+- **Share images** (Open Graph cards per league): now possible, since the
+  public address is known; how they're made is still open.

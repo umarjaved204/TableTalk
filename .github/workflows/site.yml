@@ -1,0 +1,227 @@
+# Build the website and deploy it to Cloudflare (Workers static assets).
+#
+# A reusable workflow: the nightly run calls it after publishing new data
+# (daily-update.yml), and deploy-site.yml calls it when the website changes
+# on main. A push made by the nightly bot starts no other workflow, which is
+# why the nightly deploy is called from inside the nightly workflow.
+#
+# Three jobs, so the job that runs the website's code and npm packages never
+# holds the deploy token, and the job with the token builds nothing:
+#
+#   build-site  contents: read. Checks out the tip of main (always, so a
+#               nightly run that started hours ago never builds old website
+#               code) and the data commit, installs the website's locked
+#               packages, runs `npm run verify` (type check, lint, unit tests,
+#               build, build check including _headers) and hands the built
+#               site over as an artifact, with the two commits it used.
+#   deploy      no repository permissions. Environment "production" (deploys
+#               from main only), the only place the Cloudflare token lives.
+#               Until the token secret exists it skips with a notice and the
+#               job passes. Otherwise, if main or data has moved on since the
+#               build, it skips too (never putting older files over newer
+#               ones) and asks for a redeploy. Else it fetches just deploy/
+#               (Wrangler's config and lockfile) at the built commit, installs
+#               Wrangler with install scripts off, and uploads the built site;
+#               a failed deploy fails the job.
+#   redeploy    actions: write only, no secrets. Runs only after a skipped
+#               out-of-date deploy: starts deploy-site.yml on main, which
+#               builds and deploys the newest commits. A deploy waiting in the
+#               queue can be replaced by a later one (GitHub keeps one waiting
+#               job per concurrency group), so without this the newest commit
+#               could wait for the next night.
+#
+# Actions are pinned to full commit SHAs (version in the comment) and values
+# reach the shell only through `env:`, as in daily-update.yml. Needs, in the
+# "production" environment: the secret CLOUDFLARE_API_TOKEN and the variable
+# CLOUDFLARE_ACCOUNT_ID (web/DEPLOYMENT.md).
+
+name: Site
+
+on:
+  workflow_call:
+    inputs:
+      data_ref:
+        description: "The data commit to build from (empty: the tip of the data branch)"
+        type: string
+        default: ""
+
+permissions: {}
+
+# The site's public address: the one setting for canonical links, og:url, the
+# sitemap, robots.txt and the QR codes.
+env:
+  SITE_URL: https://tabletalk.fyi
+
+jobs:
+  build-site:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      main_sha: ${{ steps.commits.outputs.main_sha }}
+      data_sha: ${{ steps.commits.outputs.data_sha }}
+    steps:
+      - name: Check out the code (the tip of main)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # Exact versions from web/package-lock.json, checked against its hashes.
+      - name: Install the website's packages
+        working-directory: web
+        run: npm ci
+
+      # The data branch is public, so no credentials are needed. The fetched
+      # commit stands in for origin/data, and `npm run data -- --offline`
+      # copies the contract's files from it into web/.data.
+      - name: Copy the published data into web/.data
+        id: commits
+        env:
+          DATA_REF: ${{ inputs.data_ref }}
+        run: |
+          git fetch --quiet --depth=1 origin "${DATA_REF:-refs/heads/data}"
+          git update-ref refs/remotes/origin/data FETCH_HEAD
+          echo "main_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "data_sha=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_OUTPUT"
+          echo "Building main $(git rev-parse HEAD) with data $(git rev-parse FETCH_HEAD)"
+          cd web
+          npm run data -- --offline
+
+      # A broken website commit stops here, and nothing is deployed.
+      - name: Check, test and build the site
+        working-directory: web
+        run: npm run verify
+
+      - name: Hand the built site to the deploy job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site
+          path: web/dist
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    needs: build-site
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions: {}
+    environment: production
+    # One deploy at a time across the nightly run and deploy-site.yml. A
+    # running deploy is never cancelled, but GitHub keeps only one waiting job
+    # per group: a newer one replaces it (that run then shows as cancelled).
+    # The out-of-date check and the redeploy job make sure the newest commits
+    # still get deployed.
+    concurrency:
+      group: site-deploy
+      cancel-in-progress: false
+    outputs:
+      stale: ${{ steps.gate.outputs.stale }}
+    steps:
+      # Only whether the secret exists reaches this step, never its value. The
+      # tips are read from the public repository without credentials.
+      - name: Decide whether to deploy (token set up, build still current)
+        id: gate
+        env:
+          HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+          HAS_ACCOUNT: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' }}
+          REPO: ${{ github.repository }}
+          BUILT_MAIN: ${{ needs.build-site.outputs.main_sha }}
+          BUILT_DATA: ${{ needs.build-site.outputs.data_sha }}
+        run: |
+          echo "stale=false" >> "$GITHUB_OUTPUT"
+          if [ "$HAS_TOKEN" != "true" ]; then
+            echo "::notice::No CLOUDFLARE_API_TOKEN in the production environment yet: the site was built and checked, not deployed."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$HAS_ACCOUNT" != "true" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is set but the CLOUDFLARE_ACCOUNT_ID variable is not (production environment)."
+            exit 1
+          fi
+          tips="$(git ls-remote "https://github.com/$REPO.git" refs/heads/main refs/heads/data)"
+          main="$(echo "$tips" | awk '$2 == "refs/heads/main" { print $1 }')"
+          data="$(echo "$tips" | awk '$2 == "refs/heads/data" { print $1 }')"
+          if [ -z "$main" ] || [ -z "$data" ]; then
+            echo "::error::Could not read the tips of main and data."
+            exit 1
+          fi
+          if [ "$main" != "$BUILT_MAIN" ] || [ "$data" != "$BUILT_DATA" ]; then
+            echo "::notice::Out of date: built main $BUILT_MAIN with data $BUILT_DATA, but the tips are now $main and $data. Not deployed; asking deploy-site.yml to deploy the tips."
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "go=true" >> "$GITHUB_OUTPUT"
+
+      # Just deploy/ at the commit that was built, fetched without any
+      # credentials (the repository is public; this job has no permissions).
+      - name: Fetch the deploy config (deploy/)
+        if: steps.gate.outputs.go == 'true'
+        env:
+          REPO: ${{ github.repository }}
+          SHA: ${{ needs.build-site.outputs.main_sha }}
+        run: |
+          git init --quiet src
+          git -C src fetch --quiet --depth=1 "https://github.com/$REPO.git" "$SHA"
+          git -C src checkout --quiet FETCH_HEAD -- deploy
+
+      # No cache: nothing another job wrote is restored here.
+      - name: Set up Node
+        if: steps.gate.outputs.go == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: src/deploy/.nvmrc
+          package-manager-cache: false
+
+      - name: Fetch the built site
+        if: steps.gate.outputs.go == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: site
+          path: src/deploy/dist
+
+      # Wrangler at the exact version in deploy/package-lock.json. No install
+      # scripts run, so no package can run code while installing.
+      - name: Install Wrangler
+        if: steps.gate.outputs.go == 'true'
+        working-directory: src/deploy
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      # The token is in this step only. Settings come from deploy/wrangler.jsonc.
+      - name: Deploy to Cloudflare
+        if: steps.gate.outputs.go == 'true'
+        working-directory: src/deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: |
+          test -f dist/_headers || { echo "::error::The built site has no _headers file."; exit 1; }
+          ./node_modules/.bin/wrangler deploy
+
+  # A workflow_dispatch made with the workflow's own token does start a run
+  # (one of GitHub's two exceptions to "the GITHUB_TOKEN starts no workflows").
+  # The new run builds the tips; if they move again before it deploys, it
+  # asks again, so the newest commits always end up deployed.
+  redeploy:
+    needs: deploy
+    if: ${{ needs.deploy.outputs.stale == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Start deploy-site.yml on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: gh workflow run deploy-site.yml --repo "$REPO" --ref main

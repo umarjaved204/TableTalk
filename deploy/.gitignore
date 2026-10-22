@@ -1,0 +1,4 @@
+node_modules/
+# The built site, downloaded here by the deploy job (or copied for a dry run).
+dist/
+.wrangler/

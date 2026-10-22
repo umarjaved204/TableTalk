@@ -1,0 +1,36 @@
+# Rebuild and deploy the website when it changes on main (or by hand).
+#
+# The nightly run deploys after each data commit (daily-update.yml); this
+# covers everything else: website code, the deploy config (deploy/, e.g.
+# adding the custom domain) and the site workflow itself. Both call the same
+# reusable workflow (site.yml) and share its "site-deploy" concurrency group,
+# so two deploys never run at once. It builds the tips of main and data.
+# site.yml's redeploy job also starts it (with the workflow's own token, which
+# GitHub allows for workflow_dispatch) when a deploy found it was out of date.
+#
+# Run by hand (Actions, Deploy site, Run workflow) to redeploy, e.g. after
+# replacing the Cloudflare token. Only main can deploy (the "production"
+# environment allows main only).
+
+name: Deploy site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "deploy/**"
+      - ".github/workflows/site.yml"
+      - ".github/workflows/deploy-site.yml"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  site:
+    # The most the called jobs may have; each asks for only its part
+    # (build-site contents: read, deploy nothing, redeploy actions: write).
+    permissions:
+      contents: read
+      actions: write
+    uses: ./.github/workflows/site.yml

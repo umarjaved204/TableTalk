@@ -84,3 +84,5 @@ else
   git push --quiet "$remote" "$new:refs/heads/$branch"
 fi
 echo "Published $new to $branch."
+# For the site job (GitHub Actions only): the data commit to build from.
+if [ -n "${GITHUB_OUTPUT:-}" ]; then echo "data_sha=$new" >> "$GITHUB_OUTPUT"; fi

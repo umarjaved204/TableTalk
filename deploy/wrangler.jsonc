@@ -1,0 +1,29 @@
+// The Cloudflare Worker that serves the website: static files only, no Worker
+// code ("main" is left out on purpose). The deploy job puts the built site
+// (web/dist from the build job) into ./dist and runs `wrangler deploy` here.
+// Every hosting setting lives in this file, reviewed as code; nothing is set
+// by hand in the Cloudflare dashboard. See web/DEPLOYMENT.md.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "tabletalk",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    // Pages are folders (/premier-league/ -> premier-league/index.html);
+    // /premier-league is redirected to /premier-league/.
+    "html_handling": "auto-trailing-slash",
+    // An unknown address gets dist/404.html with status 404.
+    "not_found_handling": "404-page"
+  },
+  // Go-live stage 1: the site is only at tabletalk.<account>.workers.dev.
+  // Stage 2 adds the custom domain (Cloudflare then creates its DNS record
+  // and certificate):
+  //   "routes": [{ "pattern": "tabletalk.fyi", "custom_domain": true }],
+  // Stage 3, once https://tabletalk.fyi/ passes the go-live check, sets
+  // "workers_dev" to false so the site has one address only.
+  "workers_dev": true,
+  // No public preview address for each uploaded version.
+  "preview_urls": false,
+  // No Worker code runs, so there is nothing to log.
+  "observability": { "enabled": false }
+}

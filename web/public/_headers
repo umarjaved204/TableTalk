@@ -1,0 +1,28 @@
+# Response headers for Cloudflare Workers static assets (see DEPLOYMENT.md).
+# Not served itself. Every rule that matches a path adds its headers, and a
+# header set by two rules gets both values joined with a comma, so the
+# /_astro/* rule detaches ("! ") the Cache-Control from /* before setting its
+# own. scripts/check-build.mjs fails the build if a line here goes missing or
+# any built file would get two Cache-Control values.
+
+# Every response: pages, the 404 page, icons, robots.txt, sitemap.xml.
+# no-cache: always revalidated (ETag), because the data changes every night.
+# no-transform: Cloudflare must not change the pages (e.g. inject its
+# analytics beacon). The CSP header only adds frame-ancestors; the full policy
+# stays in each page's <meta> tag.
+/*
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  Strict-Transport-Security: max-age=86400
+  Cache-Control: no-cache, no-transform
+
+# Astro's hashed files (CSS, JavaScript, fonts): a new name for every change,
+# so they never need revalidating.
+/_astro/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
