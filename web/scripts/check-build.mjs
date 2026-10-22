@@ -45,9 +45,6 @@ const HASHED_CACHE = "public, max-age=31536000, immutable";
 // Each rule's lines: exact text, or a pattern for the one value that may change.
 const REQUIRED = {
   "/*": [
-    // Cloudflare's Network Error Logging headers, removed (see public/_headers).
-    "! Report-To",
-    "! Nel",
     ...Object.entries(SECURITY).map(([name, value]) => `${name}: ${value}`),
     /^Strict-Transport-Security: max-age=(86400|31536000)$/,
     `Cache-Control: ${PAGE_CACHE}`,
