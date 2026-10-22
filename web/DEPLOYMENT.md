@@ -261,10 +261,12 @@ Each stage is a reviewed change on `main`; nothing is set in the dashboard.
    DNS record and the certificate; the domain must have no DNS record for
    `tabletalk.fyi` before this (the zone had none on 22 Oct 2026; don't add
    one). Do set-up step 6 first. Allow a few minutes for the certificate,
-   then `bash deploy/check-live.sh https://tabletalk.fyi`.
+   then `bash deploy/check-live.sh https://tabletalk.fyi`. **Done 22 Oct
+   2026:** the check passed in full, including no `Report-To` or `Nel`.
 3. **One address.** Set `"workers_dev": false` (another reviewed change),
    check the domain again, and check that the workers.dev address no longer
-   serves the site.
+   serves the site. This also ends the only place the NEL headers were still
+   sent.
 
 **Later:** once HTTPS on the domain has been stable for a few weeks, raise
 `Strict-Transport-Security` to `max-age=31536000` in `public/_headers`.
