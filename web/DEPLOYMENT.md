@@ -140,19 +140,19 @@ joined with a comma; `! Name` in a rule removes what earlier rules set.
 | `Strict-Transport-Security`    | `max-age=86400` now; `max-age=31536000` once HTTPS on the domain is stable         | Browsers refuse plain HTTP for the domain. No `includeSubDomains` or `preload` (hard to undo). The build check accepts these two values only.                                                                      |
 | `Cache-Control`                | `no-cache, no-transform`                                                           | `no-cache`: browsers may keep a copy but must check it first (cheap, with the ETag), because the data changes every night. `no-transform`: Cloudflare must not change the pages, e.g. inject its analytics beacon. |
 
-Also in `/*`: **`! Report-To`** and **`! Nel`**. Cloudflare adds these two
-headers itself ("Network Error Logging", seen on the first workers.dev
-deploy, 22 Oct 2026): after a failed load, Chromium browsers send a short
-report to `a.nel.cloudflare.com`. Only failures are reported
-(`success_fraction` 0), but that would still be a request to another server,
-which the About page says never happens. **The two `!` lines don't remove
-them:** Cloudflare adds the headers after `_headers` is applied (tested on
-workers.dev, 22 Oct 2026), so the go-live check fails there on these two
-headers only. workers.dev can't be changed, and stage 3 switches it off. For
-`tabletalk.fyi`, Network Error Logging is switched off in the zone's
-settings (set-up step 6). If the go-live check on the domain still finds
-the headers, the About page's wording changes instead. The two `!` lines are
-reviewed once that check has run.
+**Not sent: `Report-To` and `Nel`.** Cloudflare adds these two headers
+itself ("Network Error Logging", seen on the first workers.dev deploy,
+22 Oct 2026): after a failed load, Chromium browsers send a short report to
+`a.nel.cloudflare.com`. Only failures are reported (`success_fraction` 0),
+but that would still be a request to another server, which the About page
+says never happens. `! Report-To` and `! Nel` in `_headers` **don't remove
+them**: Cloudflare adds the headers after `_headers` is applied (tested on
+workers.dev, 22 Oct 2026), so those two lines were taken out again. Instead,
+Network Error Logging is switched off in the `tabletalk.fyi` zone's settings
+(set-up step 6); the go-live check passed twice on 22 Oct 2026 with neither
+header, and it fails if they come back. workers.dev couldn't be changed,
+which is one reason stage 3 switched it off. If the zone setting ever stops
+working, the About page's wording must change.
 
 **`/_astro/*` (Astro's CSS, JavaScript and fonts):** `! Cache-Control`, then
 `Cache-Control: public, max-age=31536000, immutable`. Their names contain a
@@ -266,7 +266,8 @@ Each stage is a reviewed change on `main`; nothing is set in the dashboard.
 3. **One address.** Set `"workers_dev": false` (another reviewed change),
    check the domain again, and check that the workers.dev address no longer
    serves the site. This also ends the only place the NEL headers were still
-   sent.
+   sent. **Done 22 Oct 2026:** the go-live check on the domain passed, and
+   the workers.dev address answers 404 with Cloudflare's "error code: 1042".
 
 **Later:** once HTTPS on the domain has been stable for a few weeks, raise
 `Strict-Transport-Security` to `max-age=31536000` in `public/_headers`.
