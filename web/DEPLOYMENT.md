@@ -140,6 +140,15 @@ joined with a comma; `! Name` in a rule removes what earlier rules set.
 | `Strict-Transport-Security`    | `max-age=86400` now; `max-age=31536000` once HTTPS on the domain is stable         | Browsers refuse plain HTTP for the domain. No `includeSubDomains` or `preload` (hard to undo). The build check accepts these two values only.                                                                      |
 | `Cache-Control`                | `no-cache, no-transform`                                                           | `no-cache`: browsers may keep a copy but must check it first (cheap, with the ETag), because the data changes every night. `no-transform`: Cloudflare must not change the pages, e.g. inject its analytics beacon. |
 
+Also in `/*`: **`! Report-To`** and **`! Nel`**. Cloudflare adds these two
+headers itself ("Network Error Logging", seen on the first workers.dev
+deploy, 22 Oct 2026): after a failed load, Chromium browsers send a short
+report to `a.nel.cloudflare.com`. Only failures are reported
+(`success_fraction` 0), but that would still be a request to another server,
+which the About page says never happens, so they are removed. If Cloudflare
+adds them after `_headers` is applied and they can't be removed this way,
+the go-live check fails and the About page's wording must change instead.
+
 **`/_astro/*` (Astro's CSS, JavaScript and fonts):** `! Cache-Control`, then
 `Cache-Control: public, max-age=31536000, immutable`. Their names contain a
 hash of their content, so a changed file has a new name and an old one never
@@ -269,7 +278,8 @@ each:
 3. **exactly one** `Cache-Control`: `no-cache, no-transform` for the three
    pages, `public, max-age=31536000, immutable` for the stylesheet and the
    font;
-4. **no `Set-Cookie`** (the footer promises no cookies);
+4. **no `Set-Cookie`** (the footer promises no cookies), and **no
+   `Report-To` or `Nel`** (Cloudflare's error reports to another server);
 5. for the pages, **no `cloudflareinsights`** in the HTML (Cloudflare's
    injected Web Analytics beacon).
 
