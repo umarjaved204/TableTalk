@@ -14,7 +14,8 @@
 #     values joined with a comma would mean two _headers rules both set it);
 #   - no Set-Cookie (the footer promises no cookies);
 #   - no Report-To or Nel (Cloudflare's error reports to another server);
-#   - for pages, no "cloudflareinsights" (Cloudflare's injected beacon).
+#   - for pages, no "cloudflareinsights" (Cloudflare's injected beacon), and
+#     the page is compressed for a browser that asks (gzip or Brotli).
 # Prints one line per check and exits 1 if any failed.
 set -euo pipefail
 
@@ -24,7 +25,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 failed=0
 
-PAGE_CACHE="no-cache, no-transform"
+PAGE_CACHE="no-cache"
 HASHED_CACHE="public, max-age=31536000, immutable"
 SECURITY=(
   "content-security-policy|frame-ancestors 'none'"
@@ -81,6 +82,13 @@ check() {
   done
   if [ "$page" = "page" ]; then
     grep -qi cloudflareinsights "$work/$name.b" && bad "the page mentions cloudflareinsights" || ok "no cloudflareinsights"
+    # Asked again as a browser asks. Pages were once sent at full size
+    # (no-transform in Cache-Control stopped Cloudflare compressing them).
+    got="$(curl -sS --max-time 30 -o /dev/null -H 'Accept-Encoding: gzip, br' -w '%header{content-encoding}' "$base$path" || true)"
+    case "$got" in
+      gzip | br | zstd) ok "compressed ($got)" ;;
+      *) bad "not compressed for a browser that asks: content-encoding '$got'" ;;
+    esac
   fi
 }
 

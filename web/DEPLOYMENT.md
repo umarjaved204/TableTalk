@@ -130,17 +130,17 @@ joined with a comma; `! Name` in a rule removes what earlier rules set.
 
 **`/*` (every response, including the 404 page):**
 
-| Header                         | Value                                                                              | Why                                                                                                                                                                                                                |
-| ------------------------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `Content-Security-Policy`      | `frame-ancestors 'none'`                                                           | Stops other sites framing this one; only works as a header. The full policy stays in each page's `<meta>` tag (both apply), because its script hashes change with every build.                                     |
-| `X-Frame-Options`              | `DENY`                                                                             | The same, for older browsers.                                                                                                                                                                                      |
-| `X-Content-Type-Options`       | `nosniff`                                                                          | Browsers use the declared file type instead of guessing.                                                                                                                                                           |
-| `Referrer-Policy`              | `strict-origin-when-cross-origin`                                                  | Links to other sites send only the domain, never the page address (also the browsers' default).                                                                                                                    |
-| `Permissions-Policy`           | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()` | The site uses none of these, so nothing on it can ask for them.                                                                                                                                                    |
-| `Cross-Origin-Opener-Policy`   | `same-origin`                                                                      | A page this site opens (or that opens it) can't reach into its window.                                                                                                                                             |
-| `Cross-Origin-Resource-Policy` | `same-origin`                                                                      | Other sites can't load this site's files into their pages.                                                                                                                                                         |
-| `Strict-Transport-Security`    | `max-age=86400` now; `max-age=31536000` once HTTPS on the domain is stable         | Browsers refuse plain HTTP for the domain. No `includeSubDomains` or `preload` (hard to undo). The build check accepts these two values only.                                                                      |
-| `Cache-Control`                | `no-cache, no-transform`                                                           | `no-cache`: browsers may keep a copy but must check it first (cheap, with the ETag), because the data changes every night. `no-transform`: Cloudflare must not change the pages, e.g. inject its analytics beacon. |
+| Header                         | Value                                                                              | Why                                                                                                                                                                            |
+| ------------------------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Content-Security-Policy`      | `frame-ancestors 'none'`                                                           | Stops other sites framing this one; only works as a header. The full policy stays in each page's `<meta>` tag (both apply), because its script hashes change with every build. |
+| `X-Frame-Options`              | `DENY`                                                                             | The same, for older browsers.                                                                                                                                                  |
+| `X-Content-Type-Options`       | `nosniff`                                                                          | Browsers use the declared file type instead of guessing.                                                                                                                       |
+| `Referrer-Policy`              | `strict-origin-when-cross-origin`                                                  | Links to other sites send only the domain, never the page address (also the browsers' default).                                                                                |
+| `Permissions-Policy`           | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()` | The site uses none of these, so nothing on it can ask for them.                                                                                                                |
+| `Cross-Origin-Opener-Policy`   | `same-origin`                                                                      | A page this site opens (or that opens it) can't reach into its window.                                                                                                         |
+| `Cross-Origin-Resource-Policy` | `same-origin`                                                                      | Other sites can't load this site's files into their pages.                                                                                                                     |
+| `Strict-Transport-Security`    | `max-age=86400` now; `max-age=31536000` once HTTPS on the domain is stable         | Browsers refuse plain HTTP for the domain. No `includeSubDomains` or `preload` (hard to undo). The build check accepts these two values only.                                  |
+| `Cache-Control`                | `no-cache`                                                                         | Browsers may keep a copy but must check it first (cheap, with the ETag), because the data changes every night. No `no-transform` (see below).                                  |
 
 **Not sent: `Report-To` and `Nel`.** Cloudflare adds these two headers
 itself ("Network Error Logging", seen on the first workers.dev deploy,
@@ -160,14 +160,24 @@ working, the About page's wording must change.
 `Cache-Control: public, max-age=31536000, immutable`. Their names contain a
 hash of their content, so a changed file has a new name and an old one never
 needs checking. Without the `!` line these files would get
-`no-cache, no-transform, public, max-age=31536000, immutable` (tested with
-`wrangler dev`, 22 Oct 2026).
+both values joined, `no-cache, public, max-age=31536000, immutable` (tested
+with `wrangler dev` on 22 Oct 2026, when the first value still had
+`no-transform`).
 
 Files outside `/_astro/` that aren't pages (icons, `manifest.webmanifest`,
 `robots.txt`, `sitemap.xml`, the QR codes) get the `/*` value too: their
 names don't change when their content does, so they must be checked as well.
-The plan said `no-transform` for HTML only; on these files it changes
-nothing, and this deviation was **accepted** (22 Oct 2026).
+
+**No `no-transform` (removed 23 Oct 2026).** It was there so Cloudflare
+couldn't change the pages, for example by injecting its analytics beacon. But
+Cloudflare also honours it by not compressing: until 23 Oct 2026 every page
+was sent at full size (the Premier League page 232 KB instead of about 26 KB),
+and that page's largest paint on the live site was 2.7 s, over the 2.5 s
+budget. Injection is covered without it: Web Analytics is off (set-up step
+6), the go-live check after every deploy fails on its beacon, the deploy's
+wait step compares the live home page with the built one byte for byte, and
+each page's Content Security Policy would block an injected script. The
+go-live check now also fails if a page isn't compressed.
 
 **Checked twice:** `scripts/check-build.mjs` (part of every build) works out
 the headers each built file and the 404 page will get, the way Cloudflare
@@ -228,8 +238,7 @@ Cloudflare's docs on 22 Oct 2026; menus change, so check again.
      (Observability, Analytics, Web analytics, Manage site). The dashboard
      created a site entry, already Disabled, when Speed, Real user
      monitoring was opened; it's left that way.
-     `Cache-Control: no-transform` should also stop the injection; the
-     go-live check confirms it.
+     The go-live check, run after every deploy, fails if the beacon appears.
    - **Network Error Logging off** for the `tabletalk.fyi` zone (the zone's
      Network page). On by default for free zones; see
      [Response headers](#response-headers).
@@ -293,13 +302,14 @@ each:
 1. the status (404 for the missing page, 200 for the rest);
 2. every security header in the table above, **exactly once**, with the
    planned value (`Strict-Transport-Security` may be either value);
-3. **exactly one** `Cache-Control`: `no-cache, no-transform` for the three
+3. **exactly one** `Cache-Control`: `no-cache` for the three
    pages, `public, max-age=31536000, immutable` for the stylesheet and the
    font;
 4. **no `Set-Cookie`** (the footer promises no cookies), and **no
    `Report-To` or `Nel`** (Cloudflare's error reports to another server);
 5. for the pages, **no `cloudflareinsights`** in the HTML (Cloudflare's
-   injected Web Analytics beacon).
+   injected Web Analytics beacon), and the page **compressed** (gzip or
+   Brotli) when asked for as a browser asks.
 
 It prints a line per check and exits 1 if any failed; the site isn't live
 until it passes. Tested on 22 Oct 2026 against `wrangler dev` (passing), and

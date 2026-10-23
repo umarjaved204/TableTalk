@@ -75,7 +75,7 @@ describe("build check", () => {
     );
     expect(problems).toContain('_headers: rule /_astro/* is missing "! Cache-Control"');
     expect(problems).toContain(
-      '_headers: /_astro/site.abc.css gets Cache-Control "2 values: no-cache, no-transform + public, max-age=31536000, immutable", expected "public, max-age=31536000, immutable"',
+      '_headers: /_astro/site.abc.css gets Cache-Control "2 values: no-cache + public, max-age=31536000, immutable", expected "public, max-age=31536000, immutable"',
     );
   });
 
@@ -98,7 +98,7 @@ describe("build check", () => {
     expect(malformed).toEqual([]);
     const cache = (path: string) => headersFor(rules, path).get("cache-control");
     for (const path of ["/", "/premier-league/arsenal/", "/no-such-page/", "/favicon.svg", "/sitemap.xml"])
-      expect(cache(path)).toEqual(["no-cache, no-transform"]);
+      expect(cache(path)).toEqual(["no-cache"]);
     expect(cache("/_astro/source-sans-3-latin-wght-normal.abc.woff2")).toEqual([
       "public, max-age=31536000, immutable",
     ]);
