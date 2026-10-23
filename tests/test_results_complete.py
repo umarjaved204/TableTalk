@@ -2,7 +2,7 @@
 
 Covers: the missing-results rule, the fail-safe state file, the last try,
 tries starting out of order, cancelled / postponed matches, the first-seen
-results log, the first-update timing warning, and a whole day with results
+results log staying frozen, the first-update timing warning, and a whole day with results
 missing run through ``run_update``. Offline.
 """
 
@@ -221,38 +221,11 @@ def test_a_voided_lock_is_listed_in_the_report_after_locking():
 
 
 # ---------------------------------------------------------------------------
-# First seen: when each result appeared, per source
+# First seen: frozen (no longer written)
 # ---------------------------------------------------------------------------
-
-
-def test_first_seen_starts_with_a_baseline_then_records_delays_per_source(tmp_path):
-    kickoffs = {("A", "B"): "2026-10-11T13:00:00Z", ("C", "D"): "2026-10-11T15:30:00Z"}
-    first = pipeline_state.record_results_seen(
-        tmp_path, competition="aa", season="2026-27",
-        played_by_source={"football_data_org": {("A", "B")}, "football_data_uk": set()},
-        kickoffs=kickoffs, seen_at=T("2026-10-12T07:57:00Z"),
-    )
-    assert [item["baseline"] for item in first] == [True]  # already there when logging began
-    assert "already there when logging began" in pipeline_state.describe_results_seen(first)[0]
-
-    second = pipeline_state.record_results_seen(
-        tmp_path, competition="aa", season="2026-27",
-        played_by_source={"football_data_org": {("A", "B"), ("C", "D")}, "football_data_uk": {("A", "B")}},
-        kickoffs=kickoffs, seen_at=T("2026-10-13T08:25:00Z"),
-    )
-    by = {(item["source"], item["home_team"]): item for item in second}
-    assert set(by) == {("football_data_org", "C"), ("football_data_uk", "A")}  # nothing seen twice
-    assert by[("football_data_org", "C")]["hours_after_kickoff"] == pytest.approx(40 + 55 / 60)  # 11 Oct 15:30 -> 13 Oct 08:25
-    assert by[("football_data_uk", "A")]["hours_after_kickoff"] == pytest.approx(43 + 25 / 60)  # 11 Oct 13:00 -> 13 Oct 08:25
-    lines = pipeline_state.describe_results_seen(second)
-    assert lines == [
-        "- football_data_org: 1 new result(s), first seen 40.9 h after kick-off (median; range 40.9-40.9 h)",
-        "- football_data_uk: 1 new result(s), first seen 43.4 h after kick-off (median; range 43.4-43.4 h)",
-    ]
-    log = json.loads((tmp_path / "state" / "results_seen.json").read_text(encoding="utf-8"))
-    entry = log["matches"]["aa|2026-27|A|B"]
-    assert entry["first_seen"] == {"football_data_org": "2026-10-12T07:57:00Z", "football_data_uk": "2026-10-13T08:25:00Z"}
-    assert entry["baseline"] == ["football_data_org"]
+# Stopped on 23 Oct 2026: it could not measure what it was for. The test that
+# runs a whole update day (below) checks the file on the data branch is left
+# exactly as it was.
 
 
 # ---------------------------------------------------------------------------
@@ -308,8 +281,7 @@ class _FakeDay:
         run = SimpleNamespace(
             notices=[], fixtures=fixtures, season="2026-27",
             missing=[update._match_record(row) for row in missing.itertuples(index=False)], called_off=[],
-            played_by_source={"football_data_org": set(self.played)}, sources_results=[], forget=set(),
-            kickoffs={(m[1], m[2]): m[3] for m in (HULL, ATALANTA, COVENTRY)},
+            sources_results=[], forget=set(),
             upcoming=upcoming, p_home=self.p_home, now=now,
         )
         return run, ""
@@ -387,6 +359,18 @@ def test_the_last_try_with_results_still_missing_publishes_warns_and_fails(tmp_p
     assert "WARNING: this was the day's last scheduled try" in report
     state = json.loads((tmp_path / "state" / "run_state.json").read_text(encoding="utf-8"))
     assert state["last_try"] is True and state["leagues"]["premier_league"]["results_complete"] is False
+
+
+def test_the_frozen_first_seen_log_is_left_exactly_as_it_was(tmp_path, day):
+    frozen = tmp_path / "state" / "results_seen.json"
+    frozen.parent.mkdir(parents=True)
+    frozen.write_bytes(b'{"matches": {}}\n')
+    day.statuses = {HULL[0]: "FINISHED"}
+    day.played = {("Hull City", "Everton")}
+    _try(tmp_path, "2026-10-12T17:00:00Z")
+    assert frozen.read_bytes() == b'{"matches": {}}\n'
+    report = (tmp_path / "latest" / "run_report.md").read_text(encoding="utf-8")
+    assert "first seen" not in report.lower()
 
 
 def test_the_first_update_of_the_day_warns_when_close_to_kickoff_and_later_ones_do_not(tmp_path, day):

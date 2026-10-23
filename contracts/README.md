@@ -30,7 +30,8 @@ track_record/report.md            the same, written for a person
 `track_record/pending.json` and `meta.json` are working files for the
 pipeline, not part of the contract. So are `state/run_state.json` (whether
 today's run is done: every league updated and no results missing),
-`state/results_seen.json` (when each result first appeared, per source) and
+`state/results_seen.json` (when each result first appeared, per source; frozen
+since 23 Oct 2026, no longer written) and
 `state/known_results.json` (every final score a source has given, so a result
 stays counted while the sources stop listing it) and `state/raw_manifest.sha256`
 (the sha256 of every past-season download, so the run can check its cache).
@@ -204,3 +205,12 @@ entry; `contract_version` on each new lock-log line. Nothing removed or
 renamed. The first run with `pipeline_hash` has nothing earlier to compare
 with, so it is not a sign of a model change; compare `pipeline_hash` only
 between files that both have it.
+
+2026-10-23 (wording, files unchanged, still 1.2.0): a snapshot's `sources`
+lists only the sources that run loaded. The nightly update no longer loads the
+openfootball cross-check (`check`) or second-tier results (`context`, read only
+by the `second_tier` promoted-team strategy), so from this date they are no
+longer listed. `state/results_seen.json` is frozen. `pipeline_hash` and each
+league's `config_hash` change once on this date (the rating-drift option was
+removed, and these loading changes); no published number changes because of it
+(see docs/daily-update.md).

@@ -266,11 +266,8 @@ simulation:
     # Draw each simulated season's ratings from the fit's own uncertainty
     # (Laplace approximation): wide for promoted teams and early in a season.
     parameter_uncertainty: true
-    # Random-walk drift in every rating through the rest of the season.
-    # `implied` derives the step size from the time-decay half-life, so there
-    # is no separate number to tune. Off: it added nothing in the backtest,
-    # which suggests strength changes mostly between seasons, not within them.
-    drift: none
+    # Random-walk drift in every rating was tried too: it added nothing in the
+    # backtest (table above), so it was removed in October 2026.
 
 verification:
   checked_on: "2026-09-26"

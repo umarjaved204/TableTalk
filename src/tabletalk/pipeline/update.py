@@ -3,8 +3,10 @@
 ``python -m tabletalk update`` runs this for every configured league. Each
 league is handled on its own:
 
-1. fetch the current season from every source (history comes from the local
-   cache: it does not change);
+1. fetch the current season from the results and fixture sources (history
+   comes from the local cache: it does not change). Not fetched here: the
+   openfootball cross-check, and second-tier results unless the promoted-team
+   strategy is `second_tier`;
 2. load and reconcile, which stops on an unmapped team name or two sources
    disagreeing about a score;
 3. check the fixture list against the config;
@@ -88,7 +90,6 @@ class LeagueOutcome:
     # the day is not done while any league has some, so a later try runs again.
     missing: list[dict] = field(default_factory=list)
     called_off: list[dict] = field(default_factory=list)  # postponed / suspended / cancelled
-    new_results: list[dict] = field(default_factory=list)  # results first seen in this run, per source
 
     @property
     def ok(self) -> bool:
@@ -113,8 +114,9 @@ def run_league(
     """
     season = config.current_season
     refresh_seasons = {season} if refresh else False
-    matches = load_matches(config, refresh=refresh_seasons, save=False)
-    context = load_context_matches(config, refresh=refresh_seasons)
+    roles = nightly_roles(config)
+    matches = load_matches(config, refresh=refresh_seasons, save=False, cross_check="check" in roles)
+    context = load_context_matches(config, refresh=refresh_seasons) if "context" in roles else None
 
     api_frames = [loader.load() for loader in build_loaders(config, role="fixtures") if loader.name == "football_data_org"]
     api = pd.concat(api_frames, ignore_index=True) if api_frames else matches.iloc[0:0]
@@ -211,18 +213,28 @@ def run_league(
         latest_result=None if played.empty else played.iloc[-1],
         provisional=review.provisional,
         notices=notices,
+        source_roles=roles,
     )
     run.fixtures = api
     run.missing = [_match_record(row) for row in missing.itertuples(index=False)]
     run.called_off = [_match_record(row) for row in stopped.itertuples(index=False)]
-    run.played_by_source = _played_by_source(config, season)
     run.sources_results = sources_results
     run.forget = {(entry["home_team"], entry["away_team"]) for entry, _why in kept.withdrawn}
-    run.kickoffs = {
-        (str(row.home_team), str(row.away_team)): _iso(row.kickoff_utc)
-        for row in api.itertuples(index=False) if pd.notna(row.kickoff_utc)
-    }
     return run, review.draft_entries(config.id)
+
+
+def nightly_roles(config: CompetitionConfig) -> frozenset[str]:
+    """The source roles the daily update loads; the snapshot lists only these.
+
+    Not the openfootball cross-check (`check`): football-data.org and
+    football-data.co.uk must already agree, and a third download would only be
+    one more way for a league to fail. Not second-tier results (`context`)
+    unless the promoted-team strategy is `second_tier`, the only one that reads
+    them (every league uses `prior`). Both are still used by `data check` and
+    the backtests.
+    """
+    strategy = (config.model.get("promoted_teams") or {}).get("strategy", "prior")
+    return frozenset({"results", "fixtures"} | ({"context"} if strategy == "second_tier" else set()))
 
 
 #: Notices that start like this are warnings: written, but the run fails so a person is told.
@@ -249,26 +261,6 @@ def _known_results_notices(kept: known_results.Restored) -> list[str]:
             f"{why}, so it is not counted."
         )
     return notices
-
-
-def _played_by_source(config: CompetitionConfig, season: str) -> dict[str, set[tuple[str, str]]]:
-    """For each results source, the (home, away) pairs it has a final score for this season.
-
-    Reads what this run already fetched (the sources' caches were refreshed
-    above), so it costs no downloads. Only feeds the "first seen" log, which is
-    informational: if it fails, the log misses one run and the update goes on.
-    """
-    out: dict[str, set[tuple[str, str]]] = {}
-    try:
-        for loader in build_loaders(config, role="results", seasons=[season]):
-            frame = loader.load()
-            rows = frame.loc[(frame["season"].astype(str) == season) & frame["played"].fillna(False).astype(bool)]
-            out[loader.name] = set(zip(rows["home_team"].astype(str), rows["away_team"].astype(str)))
-    # Informational only: never let it fail a league that passed every check.
-    except Exception:  # noqa: BLE001
-        logger.exception("%s: could not read the results sources for the first-seen log", config.id)
-        return {}
-    return out
 
 
 def _iso(value) -> str | None:
@@ -384,10 +376,6 @@ def run_update(
             outcome.fixtures = run.fixtures
             outcome.warnings = [notice for notice in run.notices if notice.startswith(WARNING_PREFIXES)]
             outcome.missing, outcome.called_off = run.missing, run.called_off
-            outcome.new_results = pipeline_state.record_results_seen(
-                out_dir, competition=config.id, season=run.season, played_by_source=run.played_by_source,
-                kickoffs=run.kickoffs, seen_at=now,
-            )
         # A league's failure must not stop the others, and must be reported
         # whatever it was: this is the pipeline's boundary.
         except Exception as exc:  # noqa: BLE001
@@ -623,11 +611,6 @@ def run_report(outcomes: list[LeagueOutcome], index: dict, *, last_try: bool = F
     if any(outcome.called_off for outcome in outcomes):
         lines += ["", "Postponed, suspended and cancelled matches stay in the matches still to play (a cancelled",
                   "match is assumed to be replayed). Their locked predictions are voided and not scored."]
-    seen = [item for outcome in outcomes for item in outcome.new_results]
-    if seen:
-        lines += ["", "## Results first seen in this run", ""] + pipeline_state.describe_results_seen(seen)
-        if any(not item["baseline"] for item in seen):
-            lines.append("(First seen = the first of our runs to have it: an upper bound on the source's delay.)")
     drafts = [outcome for outcome in outcomes if outcome.awarded_drafts]
     if drafts:
         lines += [
@@ -668,6 +651,4 @@ def _describe(uncertainty) -> str:
     parts = []
     if getattr(uncertainty, "parameter_uncertainty", False):
         parts.append("each simulated season draws its ratings from the fit's uncertainty")
-    if getattr(uncertainty, "drift_variance_per_day", 0) > 0:
-        parts.append("ratings drift within the season")
     return "; ".join(parts) or "active"

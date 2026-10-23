@@ -158,11 +158,10 @@ evaluation:
 simulation:
   n_simulations: 10000
   random_seed: 20260927
-  # As for the Premier League: rating uncertainty on, drift off.
+  # As for the Premier League: rating uncertainty on.
   strength_uncertainty:
     enabled: true
     parameter_uncertainty: true
-    drift: none
 
 verification:
   checked_on: "2026-09-27"

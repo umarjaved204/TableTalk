@@ -24,8 +24,8 @@ updates:
         patterns: ["*"]
 
   # requirements-lock.txt, compiled from requirements-lock.in by pip-tools
-  # (Dependabot re-runs the command in the file's header). pyproject.toml and
-  # requirements.txt hold the same libraries as lower bounds only.
+  # (Dependabot re-runs the command in the file's header). pyproject.toml holds
+  # the same libraries as lower bounds only.
   - package-ecosystem: pip
     directory: /
     # Only the lock moves; the lower bounds (kept the same in pyproject.toml

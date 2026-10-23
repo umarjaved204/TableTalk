@@ -1,4 +1,4 @@
-"""Strength uncertainty: parameter covariance, drift, and the per-run score sampler."""
+"""Strength uncertainty: parameter covariance and the per-run score sampler."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ from tabletalk.simulation.uncertainty import (
     FIXED,
     StrengthUncertainty,
     draw_parameters,
-    implied_drift_variance_per_day,
     sample_dixon_coles,
     simulate_fixtures,
 )
@@ -45,18 +44,15 @@ def test_rejection_sampler_handles_a_different_rate_per_run():
 
 
 # ---------------------------------------------------------------------------
-# Drift implied by the half-life
+# Config
 # ---------------------------------------------------------------------------
 
 
-def test_implied_drift():
-    assert implied_drift_variance_per_day(None) == 0.0
-    # Shorter memory means the model believes strength moves faster.
-    assert implied_drift_variance_per_day(90) > implied_drift_variance_per_day(180) > implied_drift_variance_per_day(365)
-    # The worked example in the docstring: ~7e-5 per day, sd ~0.14 over 280 days.
-    variance = implied_drift_variance_per_day(180, goals_per_team_match=1.4)
-    assert variance == pytest.approx(7.4e-5, rel=0.05)
-    assert np.sqrt(variance * 280) == pytest.approx(0.14, abs=0.01)
+def test_a_config_still_asking_for_drift_is_refused():
+    # Drift was removed (October 2026); a leftover key must not be ignored silently.
+    assert StrengthUncertainty.from_config({"parameter_uncertainty": True}, model=None).parameter_uncertainty
+    with pytest.raises(ValueError, match="drift was removed"):
+        StrengthUncertainty.from_config({"parameter_uncertainty": True, "drift": "none"}, model=None)
 
 
 # ---------------------------------------------------------------------------
@@ -122,12 +118,13 @@ def test_uncertainty_widens_outcomes_without_moving_the_average(fit_with_covaria
     fixed = _wins_per_run(fit_with_covariance, FIXED, seed=3)
     uncertain = _wins_per_run(
         fit_with_covariance,
-        StrengthUncertainty(parameter_uncertainty=True, drift_variance_per_day=1e-4),
+        StrengthUncertainty(parameter_uncertainty=True),
         seed=3,
     )
     # A run where T0 is drawn stronger wins more of *all* twenty matches: the
-    # run-to-run spread grows well beyond pure match randomness...
-    assert uncertain.var() > 1.3 * fixed.var()
+    # run-to-run spread grows beyond pure match randomness (about 21% here;
+    # the 30% this once checked included drift, removed in October 2026)...
+    assert uncertain.var() > 1.15 * fixed.var()
     # ...while the expected number of wins barely moves.
     assert uncertain.mean() == pytest.approx(fixed.mean(), rel=0.05)
 

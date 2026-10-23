@@ -24,13 +24,15 @@ the environment only: never put it in a file in this repository.
 
 For each league, in order:
 
-1. **Fetch** the current season from every source. History comes from the local
-   cache, because it does not change: re-downloading 17 seasons every night
-   would add minutes and prove nothing.
+1. **Fetch** the current season from the results and fixture sources. History
+   comes from the local cache, because it does not change: re-downloading 17
+   seasons every night would add minutes and prove nothing.
 2. **Load and cross-check.** Current-season results come from football-data.co.uk
-   and football-data.org, the fixture list from football-data.org, and
-   openfootball is a second opinion. The run stops if a team name does not map,
-   or if two sources give different scores for the same match.
+   and football-data.org, and the fixture list from football-data.org. The run
+   stops if a team name does not map, or if the two sources give different
+   scores for the same match. Two sources the configs list are not loaded
+   nightly (since 23 Oct 2026, see "What the nightly run loads" below): the
+   openfootball cross-check and second-tier results.
 3. **Check the fixture list** against the league's rules (teams, matches, home
    and away).
 4. **Awarded matches** (results decided off the pitch) never stop the run. The
@@ -61,7 +63,7 @@ outputs/history/<time>/...           every run, kept unchanged
 outputs/track_record/locks.jsonl     locked predictions (see below)
 outputs/track_record/summary.json    the live track record
 outputs/state/run_state.json         working file: is today done? (not part of the contract)
-outputs/state/results_seen.json      working file: when each result first appeared, per source
+outputs/state/results_seen.json      frozen since 23 Oct 2026: no longer written (see below)
 outputs/state/known_results.json     working file: every final score a source has given (see below)
 outputs/state/raw_manifest.sha256    working file: the record of past-season downloads (see below)
 ```
@@ -108,6 +110,34 @@ the league's previous files are untouched.
 
 Then run `python -m tabletalk update` again.
 
+### What the nightly run loads
+
+Each league's config lists four kinds of source (`role`). Since 23 Oct 2026
+the nightly update loads only two of them (`nightly_roles` in
+`src/tabletalk/pipeline/update.py`), and each snapshot's `sources` lists only
+what that run loaded:
+
+| Role | Source | Nightly? |
+|---|---|---|
+| `results` | football-data.co.uk and football-data.org | yes |
+| `fixtures` | football-data.org | yes |
+| `check` | openfootball, a third opinion on scores | no: the two results sources must already agree, and a failed download used to fail the league |
+| `context` | second-tier results (Championship and so on) | only for the `second_tier` promoted-team strategy; every league uses `prior`, which never reads them |
+
+Both are still used by `python -m tabletalk data check` and the backtests.
+
+**Expected `pipeline_hash` and `config_hash` change, 23 Oct 2026.** This
+change and the removal of the rating-drift option (off since September; see
+[results.md](results.md)) changed `src/tabletalk/` and every league's config
+(the `drift: none` line is gone), so `pipeline_hash` and each league's
+`config_hash` change once, on the first run after the merge. It is not a model
+change. Every published number is unchanged: the model never used the
+second-tier data or the openfootball scores, and with drift off the simulator
+drew no random numbers for it, so a given seed gives the same seasons. Checked
+before merging: the update run offline on the old and the new code (same
+cached data, same time, all five leagues) gave identical tables, team chances
+and all 1,405 pending predictions; only the two hashes and `sources` differed.
+
 ### The nightly schedule (GitHub Actions)
 
 [.github/workflows/daily-update.yml](../.github/workflows/daily-update.yml) tries
@@ -147,13 +177,15 @@ were made without them, and the later tries skipped.
   working file outside the data contract. It fails safe: missing, unreadable,
   from another day, or not mentioning a league all mean "not done", and the
   update runs again.
-- **Two more checks in the run report.** *Results first seen:* for each new
-  result, which source had it and the first of our runs to see it
-  (`state/results_seen.json`), summarised as hours after kick-off. It is an
-  upper bound on the source's delay, since our runs only look a few times a
-  day; results already there when the log began are a baseline with no delay.
-  *Timing:* a warning when the day's first update publishes less than 60
-  minutes before the day's first kick-off. Neither fails the run.
+- **One more check in the run report.** *Timing:* a warning when the day's
+  first update publishes less than 60 minutes before the day's first kick-off.
+  It does not fail the run.
+- **The first-seen log is frozen.** From 13 to 23 Oct 2026 each run recorded
+  when it first saw each result (`state/results_seen.json`), to measure how
+  soon football-data.org has final scores. It could not: the delays it
+  recorded were bounded by our own run times (9 to 18 hours after kick-off).
+  So it is no longer written. The file stays on the `data` branch as it was,
+  because the publish check forbids deletions there.
 - **A result never disappears once published.** football-data.org sometimes
   lists finished matches as TIMED again, with no score, for hours or days
   (11 Oct 2026 matches on 16-17 Oct; six Serie A matches on 20 Oct), while
@@ -264,8 +296,9 @@ job. It is compiled by pip-tools from
 as `dependencies` in `pyproject.toml` (a test fails if the two differ). The
 names follow what Dependabot needs to recognise a pip-tools lock (a `.in` file
 and a `.txt` lock), so its weekly pull requests can move the versions on; each
-one changes nothing until it is merged. `requirements.txt` stays as the loose
-list for working on your own machine. To regenerate the lock by hand, on Linux
+one changes nothing until it is merged. On your own machine,
+`pip install -e ".[dev]"` installs the loose versions from `pyproject.toml`
+(plus pytest and Jupyter). To regenerate the lock by hand, on Linux
 (e.g. WSL) with Python 3.13 and pip-tools:
 
 ```

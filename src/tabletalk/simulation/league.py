@@ -28,8 +28,7 @@ How it is fast
 Strength uncertainty
 --------------------
 With a ``StrengthUncertainty`` (see ``simulation.uncertainty``), each simulated
-season draws its own ratings from the fit's uncertainty and lets them drift
-through the season, so outcomes are as spread out as our real ignorance says
+season draws its own ratings from the fit's uncertainty, so outcomes are as spread out as our real ignorance says
 they should be. Scorelines are then sampled per run rather than from one shared
 score matrix per fixture. Without it (``FIXED``), every run uses today's best
 estimates for every fixture: faster, but the season backtest shows it makes
