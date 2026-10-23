@@ -25,6 +25,7 @@ meantime. Numbers (R1, R2, ...) are stable ids; the list below is in
 | 13       | R13 | Can `upcoming_matches` include a match already kicked off?       | PATCH (wording)  | The site handles both: such a match shows as "kicked off", not upcoming              |
 | 14       | R15 | Teams that left each league since last season                    | MINOR            | Neutral wording: "isn't in the leagues we cover this season"                         |
 | 15       | R16 | Whether each league's results are complete (`latest/index.json`) | MINOR            | **Done in 1.2.0**; the site shows "Some results are not in yet"                      |
+| 16       | R17 | Plain-English pipeline notes (no field names)                    | PATCH (wording)  | Notes shown as written; field names in code type that wraps                          |
 | –        | R3  | Short team names: **folded into R14**                            | –                | Full names, wrapping onto two lines                                                  |
 
 R12 was added in Step 2 (the lock log is the only published file without a
@@ -34,7 +35,7 @@ added with favourite teams (website stage 2): R14 third, because team URLs and
 personal links are promises once the site is public; R3 (short names) is part
 of R14's team record, so it is folded in and keeps its id as a pointer; R15 at
 the end. R16 was added after the pipeline trial (15 Oct 2026), low priority, at
-the end.
+the end. R17 was added after go-live (23 Oct 2026), at the end.
 
 **Done in contract 1.2.0 (20 Oct 2026):** R11, R8, R7 and R16, all at once
 (hardening batch). The site keeps a copy of each contract version's schemas in
@@ -293,3 +294,21 @@ R16 would publish the per-league answer, not the working file.
 
 **Meanwhile.** The site says nothing about it; "Results up to" is shown as
 it is.
+
+## R17. Plain-English pipeline notes (PATCH, wording)
+
+**What.** The `notes` in `track_record/summary.json` written for visitors,
+without field names. Today one says "`matches_needed` is roughly how many
+matches it would take to detect a gap the size the backtest found"; it could
+say "Matches needed (the last column) is roughly how many matches it would
+take..." instead, as the site's tables head that column "Matches needed". A sentence in `contracts/README.md` saying the notes are shown to
+visitors as written.
+
+**Why.** The site shows every note on the track record page, under "Notes
+from the pipeline". A field name means nothing to a visitor, and as one long
+word it made the page wider than an iPhone SE with text at 200% (found on the
+live site, 22 Oct 2026).
+
+**Meanwhile.** The site shows the notes as written, with anything in
+`backticks` in code type, which may now wrap anywhere (`code` in
+`src/styles/global.css`). The site doesn't rewrite the pipeline's wording.

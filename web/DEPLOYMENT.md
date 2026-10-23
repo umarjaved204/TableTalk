@@ -46,7 +46,9 @@ daily-update.yml (nightly)              deploy-site.yml (push to main
               main or data moved on?  -> notice, stop, stale=true
               fetch deploy/ at the built commit (no credentials),
               npm ci --ignore-scripts (Wrangler, exact version),
-              download dist/, wrangler deploy
+              download dist/, wrangler deploy,
+              wait until the live home page is the built one (max 3 min),
+              bash deploy/check-live.sh https://tabletalk.fyi
                  |
   redeploy    only if stale; actions: write, no secrets
               gh workflow run deploy-site.yml --ref main
@@ -113,7 +115,7 @@ was published; only the deploy was handed over to the newer run).
 | `../.github/workflows/deploy-site.yml` | Calls `site.yml` on a push to `main` touching the site, or by hand.                                      |
 | `../deploy/wrangler.jsonc`             | Every hosting setting, reviewed as code: static assets only, 404 page, `workers_dev`, the custom domain. |
 | `../deploy/package.json` + lockfile    | Wrangler at one exact version (4.148.0), nothing else. Dependabot proposes updates weekly.               |
-| `../deploy/check-live.sh`              | The go-live check, run against the live address.                                                         |
+| `../deploy/check-live.sh`              | The go-live check: the last step of every deploy, and by hand against any address.                       |
 | `public/_headers`                      | The response headers. Astro copies it into `dist/`; Cloudflare reads it and doesn't serve it.            |
 | `scripts/check-build.mjs`              | Fails the build if `_headers` is missing or loses a line, or any file would get a wrong header.          |
 
@@ -302,8 +304,20 @@ each:
 It prints a line per check and exits 1 if any failed; the site isn't live
 until it passes. Tested on 22 Oct 2026 against `wrangler dev` (passing), and
 with the `! Cache-Control` line removed (failing on the two `/_astro/` files,
-as it should). Afterwards, run the browser tests against the live address
-once.
+as it should).
+
+**After every deploy** (since 23 Oct 2026) the deploy job runs it against
+`SITE_URL` as its last step, with curl only and no secrets. It first waits,
+for up to three minutes, until the live home page is byte for byte the
+`index.html` just built (Cloudflare changes nothing in the HTML), so it checks
+the new version, not the old one. A failed check, or a home page that never
+updates, fails the job and GitHub emails you; the new site stays up, so look
+at the failed lines and fix forward or roll back (below).
+
+The browser tests are written for the test data, so they are not run against
+the live site (many of their checks would fail on real data). To check the
+live site's speed, run Lighthouse against `https://tabletalk.fyi` itself
+(`npm run lighthouse` measures the local build, not the live site).
 
 ## Replacing the token before it expires
 
@@ -330,6 +344,7 @@ do steps 1 to 4.
 | `npm run verify` (types, lint, unit tests, build check)    | Nothing is deployed; the previous site stays up; the run fails and GitHub emails you            |
 | The deploy finds `main` or `data` moved on since its build | Not deployed (the job passes, with a notice); "Deploy site" is started to deploy the tips       |
 | The deploy itself (token, Cloudflare, network)             | The previous site stays up; the run fails; re-run the deploy job once the cause is fixed        |
+| The go-live check after a deploy                           | The new site is up; the run fails and GitHub emails you; the log shows each failed check        |
 
 **Rolling back:** revert the bad commit on `main` (Deploy site then
 redeploys), or re-run an earlier run's deploy job. In an emergency,

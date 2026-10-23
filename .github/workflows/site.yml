@@ -20,9 +20,12 @@
 #               job passes. Otherwise, if main or data has moved on since the
 #               build, it skips too (never putting older files over newer
 #               ones) and asks for a redeploy. Else it fetches just deploy/
-#               (Wrangler's config and lockfile) at the built commit, installs
-#               Wrangler with install scripts off, and uploads the built site;
-#               a failed deploy fails the job.
+#               (Wrangler's config, lockfile and go-live check) at the built
+#               commit, installs Wrangler with install scripts off, and uploads
+#               the built site; a failed deploy fails the job. Last, it waits
+#               until the live home page is the one just built and runs
+#               deploy/check-live.sh against SITE_URL (curl only, no token);
+#               a failed check fails the job too.
 #   redeploy    actions: write only, no secrets. Runs only after a skipped
 #               out-of-date deploy: starts deploy-site.yml on main, which
 #               builds and deploys the newest commits. A deploy waiting in the
@@ -217,6 +220,33 @@ jobs:
         run: |
           test -f dist/_headers || { echo "::error::The built site has no _headers file."; exit 1; }
           ./node_modules/.bin/wrangler deploy
+
+      # The new files take a moment to reach every Cloudflare location. Once
+      # they have, the live home page is byte for byte the built one
+      # (Cloudflare changes nothing in the HTML; checked 23 Oct 2026), so wait
+      # for that, for up to three minutes, before checking. A home page that
+      # didn't change since the last deploy matches at once.
+      - name: Wait for the new site to be served
+        if: steps.gate.outputs.go == 'true'
+        working-directory: src/deploy
+        run: |
+          for attempt in $(seq 1 18); do
+            if curl -sS --max-time 20 "$SITE_URL/" | cmp -s - dist/index.html; then
+              echo "The live home page is the one just deployed (attempt $attempt)."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::After 3 minutes, $SITE_URL/ is still not the home page just deployed."
+          exit 1
+
+      # The go-live check on the live site: curl only, no secrets (the token
+      # is only in the "Deploy to Cloudflare" step's env). A failure fails the
+      # job, and GitHub emails you.
+      - name: Check the live site (deploy/check-live.sh)
+        if: steps.gate.outputs.go == 'true'
+        working-directory: src/deploy
+        run: bash check-live.sh "$SITE_URL"
 
   # A workflow_dispatch made with the workflow's own token does start a run
   # (one of GitHub's two exceptions to "the GITHUB_TOKEN starts no workflows").
