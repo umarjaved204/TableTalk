@@ -19,7 +19,7 @@ git clone --single-branch --branch main https://github.com/umarjaved204/TableTal
 
 `--single-branch --branch main` downloads only the code. A plain `git clone`
 also downloads the `data` branch, where the nightly run adds a full copy of
-every prediction each day (see [the nightly schedule](daily-update.md#the-nightly-schedule-github-actions)),
+every prediction each day (see [the nightly schedule](runbook.md#the-nightly-schedule)),
 so it grows by tens of megabytes a season.
 
 ## Commands
@@ -52,6 +52,10 @@ configs/
   playoff_results.yaml               # position play-offs actually played
 scripts/
   fetch_official_tables.py           # official final tables from Wikipedia, as test fixtures
+  check_publish.sh                   # the publish job's checks on each nightly commit
+contracts/                           # the data contract: README and JSON Schemas
+web/                                 # the website (web/README.md)
+deploy/                              # Cloudflare deploy config and the go-live check
 src/tabletalk/
   config.py             # typed, validated view of a competition config
   paths.py              # where configs and data live
@@ -62,10 +66,12 @@ src/tabletalk/
     normalise.py        # team-name normalisation
     loaders/
       base.py               # MatchLoader interface
-      football_data_uk.py   # results
-      openfootball.py       # published fixture lists
+      football_data_uk.py   # results and closing odds, every season
+      football_data_org.py  # current results and the fixture list (API key)
+      openfootball.py       # a third opinion on scores (data check, backtests)
     fixtures.py         # the remaining fixtures; checking a schedule against the config
     reconcile.py        # merging results with the published fixture list
+    source_comparison.py  # the one-off comparison that chose the fixture source
     dataset.py          # assemble, filter and summarise a competition's matches
     deductions.py       # points deductions from configs/points_deductions.yaml
     awarded.py          # results awarded off the pitch
@@ -85,6 +91,17 @@ src/tabletalk/
     table.py            # league tables and the config-driven tiebreaker engine
     league.py           # LeagueSimulator: 10,000 seasons, zone probabilities
                         # (KnockoutSimulator arrives in Phase 3)
+    uncertainty.py      # rating uncertainty drawn per simulated season
+  pipeline/
+    update.py           # the nightly update, league by league
+    checks.py           # safety checks on fixtures and outputs
+    snapshot.py         # the published snapshot; seeds, config and pipeline hashes
+    locks.py            # pending predictions and the hash-chained lock log
+    track_record.py     # scoring locks against base rates and the market
+    known_results.py    # results kept while a source stops listing them
+    state.py            # working files: is today done, known results
+    raw_manifest.py     # the record of past-season downloads
+    awarded.py          # awarded matches: draft entries, provisional tables
 notebooks/              # results notebook (executed, outputs included)
 reports/figures/        # charts used in this README
 tests/                  # pytest; runs offline
@@ -98,8 +115,8 @@ data/processed/         # assembled standard-schema CSVs (gitignored, rebuilt on
 python -m pytest
 ```
 
-324 tests, no network access required (the integration test skips when the raw
-data is not cached). They cover the parts that are easy to get subtly wrong and hard
+About 400 tests, about two minutes, no network access required (the
+integration tests skip when the raw data is not cached). They cover the parts that are easy to get subtly wrong and hard
 to notice:
 
 - **Data:** config validation, team-name normalisation (idempotence, ambiguous

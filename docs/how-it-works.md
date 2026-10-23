@@ -5,12 +5,13 @@ competition simulators, producing the kind of numbers newspapers print as
 "supercomputer predicts the title race" — but with the method written down, the
 assumptions flagged, and the forecasts checked against what actually happened.
 
-Why the project is built in three layers, how the match model turns two teams into scoreline probabilities, and how the season simulator plays the rest of a season 10,000 times.
+Why the project is built in three layers, how the match model turns two teams into scoreline probabilities, how the season simulator plays the rest of a season 10,000 times, and where the data and each league's rules come from.
 
 Contents:
 
 - [Why this architecture](#why-this-architecture)
 - [The league simulator](#the-league-simulator)
+- [Leagues, rules and data](#leagues-rules-and-data)
 - [Reference](#reference)
 
 [Back to the README](../README.md)
@@ -198,6 +199,313 @@ steadily within them. It was removed from the code in October 2026; the
 comparison is kept in [results.md](results.md).
 
 `--fixed-strengths` switches uncertainty off, for comparison.
+
+## Leagues, rules and data
+
+Where the data comes from, how a league is added, and each league's rules:
+which were verified against the official tables and which are assumptions.
+How well each league is forecast is in [results.md](results.md).
+
+### The data layer
+
+**One schema, whatever the source**: `date, competition, season, home_team,
+away_team, home_goals, away_goals, neutral, played`. A loader's only job is to
+produce that frame; nothing downstream knows where a row came from. Validation is
+strict and noisy on purpose (missing values, scores on unplayed fixtures, teams
+playing themselves, duplicate fixtures, negative goals) because a quietly mangled
+column would show up as plausible but wrong probabilities.
+
+Played results and future fixtures live in the same frame, distinguished by
+`played`: the model fits on the played rows, the simulator fills in the rest.
+
+**Sources, each with a role** (in each league's config):
+
+| Role | Source | Used for |
+|---|---|---|
+| `results` | [football-data.co.uk](https://www.football-data.co.uk/): free, one CSV per league-season back to the 1990s, with closing odds | Every season's scores, and the market benchmark |
+| `results` | [football-data.org](https://www.football-data.org/) (free API key) | The current season's scores; the two must agree on every score they share |
+| `fixtures` | football-data.org | The published fixture list with kick-off times, and match ids for locking |
+| `check` | [openfootball](https://github.com/openfootball/football.json): public-domain, versioned in git | A third opinion on scores, in `data check` and the backtests (not the nightly run) |
+| `context` | football-data.co.uk's second tiers (Championship, 2. Bundesliga, ...) | Model input only, for the `second_tier` promoted-team strategy; never tabulated, simulated or checked against the schedule |
+
+The long history (2010-11 on) is there for the backtests and the promoted-team
+prior; time decay means the current ratings rest almost entirely on the last
+two seasons.
+
+**Team-name normalisation.** Sources spell clubs differently ("Man United",
+"Manchester Utd", "Manchester United FC"). Unreconciled, that silently splits one
+club into several weaker teams. Names are resolved through
+`configs/team_aliases.yaml` in two steps: a fingerprint (lower-case, accents and
+punctuation stripped, club suffixes like "FC"/"AFC" dropped) that handles most
+variation for free, then explicit aliases for the rest ("Spurs" is not a
+fingerprint of "Tottenham Hotspur"). There is deliberately **no fuzzy fallback**:
+an unknown name raises, listing close matches, so the fix is one line in the alias
+file. `python -m tabletalk data check` reports all unknown names at once.
+
+**Remaining fixtures come from the published fixture list**, never a generated
+round robin. Results and fixtures are reconciled on `(season, home team, away
+team)` rather than on the date, because dates move (postponements, TV
+rescheduling) while the pairing does not. Played matches keep the results
+source's score; the fixture entries that have not happened yet become the
+remaining fixtures, with real dates.
+
+Mismatches are reported, not patched over: a played result with no entry in the
+fixture list almost always means a team name that failed to normalise in one source,
+which would otherwise appear as a phantom extra team. `check_fixture_list`
+separately verifies the loaded schedule against the config (team count, matches per
+team, home/away balance, every pairing present the right number of times), so a
+schedule missing a match cannot quietly produce confident wrong numbers.
+
+### Adding a league: the checklist
+
+The five leagues were added this way; no model or simulator code is specific to
+any of them.
+
+1. **Rules, from the league's own regulations**, not from memory: team count,
+   points, the tiebreaker chain (in order), relegation and play-off places, and
+   whether any place is settled by a play-off match. Record each with its source
+   and the date checked in the config's `verification` block, and list what
+   could not be confirmed as an assumption.
+2. **Check whether the rules changed** over the seasons you load. Put the rules at
+   the start of the data at the top of the config and every later change under
+   `rule_changes` (`from_season` for a lasting change, `seasons` for a one-off
+   such as a season stopped early), each with a reason and a source.
+3. **Copy a config** (`configs/competitions/bundesliga.yaml` is a compact one) and
+   set the data sources: football-data.co.uk `division` for results (with
+   `odds_preference` for the market benchmark), football-data.org
+   `competition_code` for current results and fixtures, openfootball
+   `league_code` as the cross-check, the second tier as a `role: context`
+   source.
+4. **Team names:** run `python -m tabletalk data check -c <league>` and add every
+   name it reports to `configs/team_aliases.yaml` (exact matching; watch for two
+   clubs from one town).
+5. **Official tables:** run `python scripts/fetch_official_tables.py <league>
+   "{season} <Wikipedia title>"` and resolve every season that differs: a missing
+   points deduction (`configs/points_deductions.yaml`), a result awarded off the
+   pitch (`configs/awarded_results.yaml`), a play-off (`configs/playoff_results.yaml`),
+   a rule you got wrong, or (rarely) an error on Wikipedia, recorded with evidence
+   in the script's `CORRECTIONS`. Only when every season matches is the league
+   done.
+6. **COVID seasons and the split:** list excluded seasons with reasons under
+   `evaluation.exclude_seasons` and reuse the tune/report split.
+7. **Tests:** a test file for the league's distinctive tiebreakers (build a table
+   where they decide and another league's chain would not).
+8. **Backtest:** `evaluate`, `evaluate-seasons` and `benchmark` with `--split
+   report`, and write up the results and limitations.
+
+If any step needs a change to the model or the simulator, stop: it is a design
+problem, not a league detail.
+
+**Verify the rules; do not assume they match England.** Tiebreaker order in
+particular differs by league (La Liga and Serie A use head-to-head results
+*before* goal difference; the Premier League does the opposite), as do relegation
+play-offs and European places.
+
+**Every final table, every season.** `tests/test_official_tables.py` rebuilds
+every completed season's final table (finishing order and points) for all five
+leagues, 2010-11 to 2025-26, and compares it with the official one (fetched from
+Wikipedia's structured season tables; a secondary source, checked against
+official sources where they disagree). All 80 are identical. It checks the
+results data, team names, each league's tiebreakers and the data files of
+deductions, awarded results and play-offs at once.
+
+### Rules that change by season
+
+A league's rules are not fixed for all time: Ligue 1 went from 20 clubs to 18 and
+changed its relegation places five times, and both Ligue 1 and Serie A changed
+their tiebreakers.
+
+- **`rule_changes`**: a config states the rules at the start of its data and then
+  each change, with its season, reason and source. Everything that works on one
+  season (tables, the simulator, the season backtest, the data checks) asks for
+  that season's rules (`config.for_season`), so a backtest of 2016-17 uses 2016-17's
+  team count, zones and tiebreakers. Every rule version is validated when the
+  config loads.
+- **Rule types**, each general and tested: `away_wins` (a tiebreaker);
+  `ranking: points_per_match` and `completed_early` (Ligue 1 2019-20, stopped by
+  COVID); `head_to_head_needs_all_meetings` (France uses head-to-head criteria only
+  once both meetings are played); `position_playoffs`, a match for one particular
+  place (Serie A's title and 17th v 18th), simulated as one match at a neutral
+  ground, one at the higher-ranked club's ground, or two legs on aggregate; and
+  `playoff_match`, the last criterion of the Premier League and the Bundesliga
+  (below).
+- **Results as data**: results awarded off the pitch
+  (`configs/awarded_results.yaml`; the table uses the awarded result, the match
+  model the real one, including France's rule that a forfeit counts the win but not
+  the goals), and play-offs that were actually played
+  (`configs/playoff_results.yaml`).
+
+**The play-off at the end of the chain.** The last Premier League and Bundesliga
+tiebreaker is a one-off match on a neutral ground. When a simulated season
+reaches it, the simulator plays the match with the match model and no home
+advantage, a draw settled 50/50 for extra time and penalties. A displayed table
+lists such clubs alphabetically. Two clubs level on all earlier criteria is
+vanishingly rare.
+
+### Points deductions
+
+A table is normally the sum of results, but a league can also take points away (or
+give them back on appeal). Those decisions live in a data file,
+[configs/points_deductions.yaml](../configs/points_deductions.yaml): one entry per
+official decision, with the season, competition, team, points, the date it took
+effect and a link to the official statement. No deduction appears in Python.
+
+- **Only the overall total changes.** Head-to-head tiebreakers count points won
+  in the matches between the tied teams, which a deduction does not touch (a test
+  checks exactly that).
+- **Dates matter.** A replay from a date (`--as-of`, and every season-backtest
+  checkpoint) applies only decisions dated before it, like results. An appeal is
+  its own dated entry, so Everton's 10 points (17 November 2023) become 6 on 26
+  February 2024, then 8 with the second deduction (8 April 2024).
+- **A typo fails loudly**: a deduction naming a team not in that season raises an
+  error instead of being ignored.
+
+It matters to the backtest: at the 75% checkpoint of 2023-24 (30 March 2024), the
+real table had Nottingham Forest 18th on 21 points. A table built without
+deductions had them on 25 and safe, so the "table as it stands" baseline would
+have been using a table nobody saw at the time.
+
+### Premier League
+
+Checked 2026-09-26: 20 teams, 38 matches each, 3/1/0 points; tiebreakers goal
+difference, goals scored, head-to-head points, head-to-head away goals
+(Handbook Rule C.17), then a play-off on a neutral ground; bottom three relegated
+with no play-off. Deductions in one loaded season, 2023-24: Everton −8 and
+Nottingham Forest −4 (without them, Everton would be 12th instead of 15th).
+Earlier Premier League deductions predate the data, and Leicester City's six
+points in 2025-26 were in the Championship, which is never tabulated.
+
+Reported zones are **league positions** (title, top four, top five, top half,
+relegation), not "qualifies for the Champions League". Which European place a
+position earns depends on UEFA coefficients and on domestic cup winners; neither
+is modelled while the scope is domestic leagues, so quoting a qualification
+probability would overstate what the model knows.
+
+### Bundesliga
+
+From the DFL's rulebook, the Spielordnung (SpOL), editions of 22 August 2019 and
+6 March 2026, identical on these points; recorded with sources in
+[configs/competitions/bundesliga.yaml](../configs/competitions/bundesliga.yaml).
+
+| rule | Bundesliga | source |
+|---|---|---|
+| clubs, matches | 18, 34 each | the data (every season 2010-11 to 2026-27) |
+| points | 3 / 1 / 0 | SpOL § 2 Nr. 3 a) |
+| tiebreakers | goal difference, goals scored, **aggregate score of the two meetings**, away goals in those meetings, **all away goals**, then a play-off on a neutral ground | SpOL § 2 Nr. 3 c) |
+| relegation | 17th and 18th | SpOL § 3 Nr. 2 |
+| relegation play-off | 16th v the 2. Bundesliga's 3rd, two legs | SpOL § 3 Nr. 2; held every season since 2008-09 |
+| points deductions | none in any loaded season | last ones 1993-94, 1999-2000, 2003-04 |
+
+England uses head-to-head *points*; Germany uses the head-to-head *aggregate
+score* (a 3-0 win and a 0-1 defeat beats a 1-0 win and a 0-3 defeat), then away
+goals, including away goals over the whole season. Tests build tables where each
+Bundesliga criterion decides and the Premier League chain would decide
+differently.
+
+Flagged:
+
+- **Not confirmed by a rule text:** "18 clubs" (the SpOL only fixes 32 to 36 clubs
+  across both divisions), and the tiebreaker text before 2019-20 (no older edition
+  found; the same order is assumed). Every final table matches the official one,
+  which confirms goal difference and goals scored; no real tie went further, so
+  the head-to-head criteria are tested on hand-built tables only.
+- **Assumption:** for three or more clubs level on points, goal difference and
+  goals, the head-to-head criteria use the mini-table of all their meetings (the
+  rule is written for two clubs).
+- **Assumption:** during a season the DFL applies head-to-head criteria only once
+  both meetings have been played; TableTalk's *mid-season* table always applies
+  the full chain. Simulated final tables are unaffected.
+- The relegation play-off is reported as its own zone, "finishes 16th"; the
+  play-off against the second-tier side is not simulated.
+
+Data notes: "ß" and numbered prefixes ("1. FC Köln", "TSG 1899 Hoffenheim") need
+aliases; accents don't (the matching key strips them). Clubs promoted through the
+play-off count as promoted: they are simply the clubs not in last season's
+Bundesliga.
+
+### La Liga
+
+From the RFEF's *Bases de Competición* for Primera and Segunda División (editions
+for 2019-20, 2020-21 and 2025-26), recorded with sources in
+[configs/competitions/la_liga.yaml](../configs/competitions/la_liga.yaml): 20 clubs,
+38 matchdays, 3/1/0, 18th to 20th relegated, no relegation play-off.
+
+**Head-to-head comes first in Spain**, before overall goal difference:
+
+| clubs level | criteria, in order |
+|---|---|
+| two | goal difference in their two meetings, overall goal difference, goals scored, fair play, play-off on a neutral ground |
+| three or more | points in a mini-league of their meetings, goal difference in it, overall goal difference, goals scored, fair play, play-off |
+
+One configured chain covers both (for two clubs, "head-to-head points, then
+head-to-head goal difference" always orders them the same way as head-to-head goal
+difference alone), with head-to-head re-applied to any smaller group left level.
+Flagged:
+
+- **Fair play is not modelled** (it needs card and sanction data); it and the
+  neutral-ground play-off become a coin flip.
+- **Three-way ties.** The 2025-26 text can be read as going back to the pair
+  straight after mini-league points, where the engine applies the whole
+  head-to-head block to the group first. La Liga had 14 three-way ties on points in
+  these 16 seasons and the two readings never gave a different order.
+- **Positions, not outcomes.** In 2014-15 Elche finished 13th and were relegated
+  for unpaid debts, and Eibar, in the drop zone, stayed up. Zones are finishing
+  positions, so "relegation" means "finishes 18th to 20th".
+
+Data notes: reserve sides are different clubs ("Barcelona B"), and
+football-data.co.uk spells one club two ways ("Cultural Leonesa" and "Leonesa").
+
+### Serie A
+
+The FIGC sets Serie A's tie rules each season by a ruling that departs from its
+general rules (art. 51 NOIF); the rulings for 2019-20, 2023-24, 2024-25, 2025-26
+and 2026-27 were read. Ties go to the *classifica avulsa* (points, then goal
+difference, in the matches among the clubs level; then overall goal difference,
+goals, and a drawing of lots). From 2022-23 a tie on points **for the title or
+for 17th v 18th** is settled by a play-off instead: in 2022-23 one match at a
+neutral ground (the only one played so far: Verona 3-1 Spezia); from 2023-24 one
+match at the higher-ranked club's ground for the title, and two legs on aggregate
+for 17th v 18th.
+
+Flagged: the 2022-23 ruling and those before 2019-20 were not found (the formats
+are taken from the play-off played and the 2019-20 ruling); play-offs use
+best-estimate ratings; and from 2026-27 no play-off is held if a club is in a
+European final, which is not modelled.
+
+Found by the official-table check: eleven deductions (Bologna 2010-11; Atalanta
+2011-12; Siena, Atalanta, Sampdoria and Torino in 2012-13, after the betting
+scandal; Parma 2014-15; Chievo 2018-19; Juventus 2022-23, recorded as it happened:
+−15, restored, then −10), Verona v Roma 2020-21 (played 0-0, awarded 3-0), and two
+errors in Wikipedia's tables (a Lazio deduction in 2017-18 and 2018-19 that never
+happened, and the 2022-23 order before the play-off). One date is not found (part
+of Bologna's 2010-11 deduction) and Parma's split between February and March 2015
+is uncertain; neither season is in the report seasons.
+
+### Ligue 1
+
+Rules (LFP, as reported by ligue1.com and Orange; the regulations before 2025 were
+not found): overall goal difference first, then head-to-head (only once both
+meetings are played), then goals; until 2024-25 head-to-head goals and away goals
+and overall away goals, from 2025-26 wins and away wins (away goals dropped). The
+fair-play and fewest-cards criteria are not modelled (coin flip). Format by season:
+
+| seasons | clubs | relegated | relegation play-off |
+|---|---|---|---|
+| 2010-11 to 2015-16 | 20 | 18th-20th | none |
+| 2016-17 to 2021-22 | 20 | 19th-20th | 18th (none in 2019-20) |
+| 2022-23 | 20 | 17th-20th | none (league shrinking to 18) |
+| 2023-24 on | 18 | 17th-18th | 16th |
+
+2019-20 was stopped on 30 April 2020 after 28 matchdays and ranked on points per
+match; clubs level on that were separated on head-to-head where both meetings had
+been played (Nice above Reims) and on goal difference otherwise (Lyon above
+Montpellier). That reading reproduces the official table exactly; the LFP's text
+was not found.
+
+Found by the official-table check: four deductions (AC Ajaccio 2012-13; Nice and
+Lyon 2021-22, both after crowd trouble; Montpellier 2023-24) and two forfeits
+counted as a win without goals (Nantes v Bastia 2013-14, Bastia v Lyon 2016-17).
+La Liga's check found one (Almería 2014-15).
 
 ## Reference
 

@@ -159,7 +159,7 @@ Tests for stale data and kick-offs move the clock on.
 | sitemap.xml (no stubs) and robots.txt                                           | `team-page.test.ts` |                                     |
 | Accessibility, keyboard, phones: one team page per data state (`TEAM_PAGES`)    |                     | `a11y-matrix`, `keyboard`, `mobile` |
 
-## The look (Step 4): where it is tested
+## The look: where it is tested
 
 | What                                                                           | Unit test                             | Browser test                                  |
 | ------------------------------------------------------------------------------ | ------------------------------------- | --------------------------------------------- |

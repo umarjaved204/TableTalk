@@ -2,7 +2,7 @@
 // code ("main" is left out on purpose). The deploy job puts the built site
 // (web/dist from the build job) into ./dist and runs `wrangler deploy` here.
 // Every hosting setting lives in this file, reviewed as code; nothing is set
-// by hand in the Cloudflare dashboard. See web/DEPLOYMENT.md.
+// by hand in the Cloudflare dashboard. See docs/runbook.md.
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "tabletalk",

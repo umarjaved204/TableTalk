@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The go-live check (web/DEPLOYMENT.md): asks the live site for five kinds of
+# The go-live check (docs/runbook.md): asks the live site for five kinds of
 # address and checks every response header that web/public/_headers sets.
 # The deploy job (.github/workflows/site.yml) runs it after every deploy; by
 # hand:

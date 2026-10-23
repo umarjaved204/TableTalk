@@ -11,34 +11,26 @@ the Python code.
   tabs and local times.
 - **No trackers, no cookies, no analytics scripts, no third-party requests.**
   (The host, Cloudflare, counts requests on its own servers; see
-  [`DEPLOYMENT.md`](DEPLOYMENT.md#visitor-numbers-without-tracking).) Fonts are
+  [the runbook](../docs/runbook.md#visitor-numbers-without-tracking).) Fonts are
   self-hosted: Latin and Latin Extended only, as WOFF2 (`src/styles/fonts.css`). The visitor's theme, table choices and favourite team are
   kept in their own browser (`localStorage`) only.
 - **Content Security Policy** as a `<meta>` tag, because its script hashes
   change with every build. Only the site's own hashed scripts can run, so
   inline `style=""` attributes are not allowed anywhere. The other security
   headers, and the cache rules, are in `public/_headers`, sent by the host
-  (Cloudflare Workers static assets, see [`DEPLOYMENT.md`](DEPLOYMENT.md)).
+  (Cloudflare Workers static assets, see [the runbook](../docs/runbook.md#deploying-the-website)).
 
 ## Status
 
-Website stage 2, Step 4 (the look), awaiting review. Steps 2 (favourite
-teams) and 3 (team pages) are done. This was the stage's last step. Built on the first frontend
-plan's Steps 1-5. On `main` since the website merge. Deployment (Cloudflare
-Workers, built by the nightly run and on every website change) is set up
-but not live yet: see [`DEPLOYMENT.md`](DEPLOYMENT.md).
+Live at https://tabletalk.fyi since 22 Oct 2026, rebuilt and deployed by the
+nightly run and on every website change on `main`
+([the runbook](../docs/runbook.md#deploying-the-website)). Speed and page sizes
+are measured on the live site once a month ([below](#monthly-live-check)). How
+it got here: [the changelog](../CHANGELOG.md).
 
-Speed (Lighthouse, median of 3, simulated slow phone, today's data, 6 Oct
-2026 after Step 4, nothing else running): with files gzip-compressed as a
-real host serves them (`npm run lighthouse`, the default; the budgets apply
-to this), every page is within budget: largest paint 1.5-1.8 s (budget 2.5 s),
-layout shift 0.000-0.003 (budget 0.1), blocking time 1-110 ms (budget
-200 ms); performance 97-100, accessibility 100. In the worst case, a host
-that doesn't compress (`npm run lighthouse -- --uncompressed`), the matches
-page is 57 ms over the 2.5 s largest-paint budget (before Step 4, the Premier
-League page was 53 ms over). Blocking time depends on how busy the computer
-is: run it with other servers and builds stopped (the same pages gave 0 ms
-and over 300 ms on a busy machine).
+Measure speed with other servers and builds stopped: blocking time depends on
+how busy the computer is (the same pages gave 0 ms and over 300 ms on a busy
+machine).
 
 ## The site's address (one setting)
 
@@ -199,9 +191,9 @@ the favourite and sets `data-fav="<slug>"`, `data-fav-league` and
 for that team into a constructed stylesheet (`favouriteCss()` in
 `src/scripts/favourite-core.js`), which switches on its star and row tint.
 (A constructed stylesheet is CSSOM, not an inline `<style>`, so the Content
-Security Policy allows it. An earlier version generated a rule for every team
-into the site's CSS: about 25 KB of render-blocking CSS on every page, so it
-was replaced.) A one-line inline script right after each `<template>` block
+Security Policy allows it. One rule written in the browser costs less than a
+rule for every team in the site's CSS, which would be about 25 KB of
+render-blocking CSS on every page.) A one-line inline script right after each `<template>` block
 (`FavouriteSlot.astro`, `fillAll()`) copies the favourite's version in while the page is
 still loading, so it is in place at the first paint. That's why the home
 page's "Your team" space has no fixed height: a fixed height would have to fit
@@ -218,11 +210,9 @@ canonical names the pipeline knows: no two clash. The build fails on a clash
 or on a slug that equals a page name (`matches`). If the pipeline ever renames
 a team, `TEAM_SLUG_RENAMES` maps the old slug to the new one.
 
-**No personal links.** Earlier builds had `/?team=<slug>` links (with QR
-codes) to set a favourite on another device. They were removed before the
-site was announced (23 Oct 2026), so no shared link depends on them. A
-`?team=` parameter is now ignored. To keep a team across devices, bookmark
-its team page.
+**No personal links.** A `?team=` parameter is ignored (personal links were
+removed before the site was announced). To keep a team across devices,
+bookmark its team page.
 
 **Every state:** none (prompt), dismissed ("Not now"), chosen, paused (the
 team's league has no data in this build: kept, not dropped), gone (the team
@@ -295,10 +285,9 @@ the test data, more on real data (see the monthly live check).
 only when `SITE_URL` is set, and `robots.txt` then has
 the `Sitemap:` line.
 
-## The look (stage 2, Step 4)
+## The look
 
-The approved Step 1 plan's visual upgrade, with the same themes, tokens, data
-colours and contrast rules:
+On top of the themes, tokens, data colours and contrast rules:
 
 - **Title races at a glance** (`LeagueCard.astro`, `src/data/home.ts`): each
   home card shows the three teams most likely to win the title and the three
@@ -323,7 +312,7 @@ colours and contrast rules:
   `src/data/race.ts`): updates between matchdays only add simulation noise,
   so a season has about 38 rows instead of about 250. The charts still plot
   every day.
-- Team colour chips: not built (decided to wait for contract request R14).
+- Team colour chips: not built (waiting for contract request R14).
 
 ## Browser support
 
@@ -389,7 +378,7 @@ the same race as faint lines behind. Every chart has a "Show the numbers" table.
   last update with each "results up to" date).
 - **Too early:** the charts appear once the runs cover results up to **3
   different dates**. Runs with the same results differ only by simulation
-  noise. (On 1 Oct 2026 every run so far has results up to 20 Sep.)
+  noise.
 
 **Build time** (measured 1 Oct 2026 on this laptop, `astro build` without the
 type check; `npm run build` adds about 14 s of `astro check`):
@@ -401,21 +390,9 @@ type check; `npm run build` adds about 14 s of `astro check`):
 
 So each nightly run adds about 13 ms to the build, about 4 s over a season.
 Each file is still parsed in full (150-190 KB); R2's compact series would
-make this one small file per league.
-
-Baseline before team pages (6 Oct 2026, commit 069ba57, today's data, median
-of 3): `npm run build` about 23.5 s in all: `astro check` 18.5 s, `astro
-build` 4.3 s (15 pages generated in 1.8 s), the build check 0.1 s.
-
-With team pages (6 Oct 2026, same data, median of 3): `npm run build` about
-22.3 s, the same within noise; `astro build` 4.6 s (111 pages generated in
-2.0 s). The 96 team pages add about 0.3 s, because each league's files are
-read once for all its team pages.
-
-After Step 4 (6 Oct 2026, same data, median of 3, nothing else running):
-`npm run build` 16.9 s, `astro build` 4.4 s. The build itself is unchanged
-(4.3 s before team pages); the total is lower because `astro check` is
-faster on an idle machine (12-14 s instead of 18), not because of the site.
+make this one small file per league. The 96 team pages add about 0.3 s,
+because each league's files are read once for all its team pages; most of
+`npm run build` is `astro check` (12-18 s).
 
 ## Nothing moves while the page loads
 
@@ -447,17 +424,7 @@ Measured with Lighthouse on a simulated slow phone (layout shift was 0.12 to
 - Also: the times the browser rewrites in the visitor's zone change length,
   so on phones each "Updated" fact has its own line and can't re-wrap.
 
-Lighthouse results (2 Oct 2026, median of 3 runs, real data):
-
-| Page                   | Performance | Accessibility | Best practices | SEO | LCP   | CLS   | TBT  |
-| ---------------------- | ----------- | ------------- | -------------- | --- | ----- | ----- | ---- |
-| Home                   | 99          | 100           | 100            | 91  | 1.8 s | 0.001 | 0 ms |
-| Premier League         | 97          | 100           | 100            | 91  | 2.1 s | 0.005 | 0 ms |
-| Premier League matches | 97          | 100           | 100            | 91  | 2.1 s | 0.044 | 0 ms |
-| Track record           | 99          | 100           | 100            | 91  | 1.7 s | 0.004 | 0 ms |
-| Methodology            | 100         | 100           | 100            | 91  | 1.4 s | 0.002 | 0 ms |
-
-SEO is 91 only because Lighthouse fetches `robots.txt` from inside the page,
+Lighthouse's SEO score is 91-92 only because Lighthouse fetches `robots.txt` from inside the page,
 which the Content Security Policy (`connect-src 'none'`) blocks; search
 engines fetch it directly. INP needs real visitors' clicks, so a lab run
 reports total blocking time (TBT) instead.
@@ -479,5 +446,6 @@ Every difference is shown as difference ± 95% interval; if the interval
 includes zero the verdict shown is "no detectable difference", whatever the
 file says (`displayVerdict` in `src/format/track-record.ts`).
 
-See `CONTRACT_REQUESTS.md` for what the site needs from the contract, and
-`tests/README.md` for what the tests cover.
+What the site needs from the contract is in the GitHub issues labelled
+`contract`; each title starts with the request's id ("R14: ..."), which the
+code's comments use. What the tests cover: `tests/README.md`.

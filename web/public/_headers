@@ -1,4 +1,4 @@
-# Response headers for Cloudflare Workers static assets (see DEPLOYMENT.md).
+# Response headers for Cloudflare Workers static assets (see docs/runbook.md, "Response headers").
 # Not served itself. Every rule that matches a path adds its headers, and a
 # header set by two rules gets both values joined with a comma, so the
 # /_astro/* rule detaches ("! ") the Cache-Control from /* before setting its

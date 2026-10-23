@@ -6,6 +6,7 @@ Contents:
 
 - [The match model: validation](#the-match-model-validation)
 - [Results: does it work?](#results-does-it-work)
+- [The other four leagues](#the-other-four-leagues)
 
 [Back to the README](../README.md)
 
@@ -262,7 +263,7 @@ matches (the home-win bins that miss are mostly still inside their 95% intervals
 
 \* Both Phase 1 numbers and the first clean-split run (−43.5%) built tables
 without points deductions, so in 2023-24 the "table as it stands" was not the table
-that was actually standing. See [points deductions](leagues.md#points-deductions): with the
+that was actually standing. See [points deductions](how-it-works.md#points-deductions): with the
 real table, the naive baseline gets 2023-24 wrong and the model is ahead on this
 cell. The season-level numbers here are from the corrected run; match-level ones
 are unaffected, since a deduction changes no match result.
@@ -464,3 +465,92 @@ and in October 2026 removed from the code (this table is the record of it).
   observations are not independent (the same team appears at four checkpoints,
   and exactly one team wins each title), so the calibration intervals are
   narrower than they should be.
+
+## The other four leagues
+
+All four use the Premier League's settings unchanged (365-day half-life, ridge
+sd 1, `prior`, rating uncertainty): none were re-tuned. Report seasons 2018-19
+and 2021-22 to 2025-26. The headline numbers, side by side, are in the
+[README](../README.md#phase-2-the-five-leagues-side-by-side); each league's
+rules are in [how it works](how-it-works.md#leagues-rules-and-data).
+
+### Bundesliga
+
+1,836 matches:
+
+| | log loss | vs base rates | vs market |
+|---|---|---|---|
+| base rates | 1.070 | | |
+| model | 0.990 | −7.5% | market better by 0.019 ± 0.008 |
+| market (closing odds) | 0.971 | | |
+
+- **Market.** The model closes **81% of the gap** between knowing nothing and the
+  market (England: 83%), between 73% and 95% per season. Pinnacle priced every
+  report-season match but one until January 2026; the rest of 2025-26 uses the
+  market average.
+- **Calibration.** Average gap from the diagonal 3.2 / 1.2 / 2.4 points (home /
+  draw / away); market 2.2 / 1.7 / 1.3.
+- **Home advantage** is larger than in England: +0.22 (home sides score ×1.24)
+  against +0.17.
+- **Season level.** Ahead of "knows nothing" in every cell, and ahead of "the table
+  as it stands" in all but one: relegation at 50% played, where the table as it
+  stood was exactly right in all six seasons. The model's title favourite won 5 of
+  6 titles from the first three checkpoints and 6 of 6 from 75% played; the miss
+  was Bayern, favoured until midway through 2023-24, when Leverkusen won the
+  league. Pooled calibration gap 1.2 points.
+- **The relegation play-off place is hard to call.** Skill against "knows nothing"
+  is small (1% pre-season, 22% at 75% played): one exact position is a narrow
+  target, and 14th to 18th are often close.
+- **Promoted teams: no detectable difference between `prior` and `second_tier`.**
+  On promoted-team matches, `prior` minus `second_tier` is +0.0098 ± 0.0101 on the
+  tuning seasons and −0.0004 ± 0.0110 on the report seasons; `prior` minus `none`
+  is +0.0002 ± 0.0179 and −0.0173 ± 0.0120. Applied to the Bundesliga's own tuning
+  seasons, the Premier League's selection rule would have chosen `second_tier`,
+  but by a margin inside the noise. `prior` is kept as the cross-league default;
+  choosing per league would need a rule stated before running. The prior is also
+  thinner here: usually only two clubs are promoted, so it rests on 2 teams for
+  2012-13, 5 to 13 over the tuning seasons and 15 to 30 over the report seasons
+  (England: 3 to 45).
+
+### La Liga
+
+2,280 matches:
+
+- **7.6% better than base rates** in log loss (0.988 against 1.069); the model
+  closes **83% of the gap to the market** (0.971), between 77% and 94% per season.
+- **Calibration** 3.0 / 2.1 / 3.0 points (home / draw / away); market 2.7 / 1.4 /
+  2.3.
+- **Season level:** ahead of both baselines everywhere except the title at 75%
+  played, where the table as it stood was right in all six seasons (Brier 0.0018
+  for the model: it did worse only by hedging). The pre-season favourite won only
+  2 of 6 titles. Pooled calibration gap 1.0 points.
+- **Promoted teams:** no detectable difference between the three strategies
+  (`prior` minus `second_tier` on promoted-team matches: +0.0017 ± 0.0071 tuning,
+  −0.0025 ± 0.0060 report; minus `none`: −0.0066 ± 0.0101 and −0.0063 ± 0.0070).
+  Three clubs are promoted every season, so the prior rests on 3 to 45 teams, as
+  in England.
+
+### Serie A
+
+2,280 matches: 9.6% better than base rates; the model closes **85% of the gap to
+the market**. Season level: ahead of "knows nothing" everywhere, ahead of "the
+table as it stands" everywhere except the title at 50% played (−45%); the
+pre-season favourite won 2 of 6. Promoted teams: no detectable difference
+between the strategies.
+
+### Ligue 1
+
+2,058 matches: 6.4% better than base rates, the smallest margin of the five, and
+**77% of the gap to the market**, the lowest (2018-19 only 51%). PSG's dominance
+makes the title easy (the favourite won all six from every checkpoint); the
+relegation play-off place is barely predictable at all (skill against "knows
+nothing" between −2% and 8%).
+
+### Caveats for all four
+
+- The Premier League's settings are used unchanged; a league's own tuning
+  seasons might prefer a different half-life or promoted-team strategy.
+- A relegation play-off is a zone ("finishes 16th"), not a simulated tie.
+- Ratings are fitted per league and **must not be compared across leagues**: a
+  Bundesliga attack rating of +0.3 and a Premier League one of +0.3 are each
+  relative to their own league's average.
