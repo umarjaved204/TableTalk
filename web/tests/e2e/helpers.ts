@@ -3,7 +3,6 @@ import { LEAGUES } from "../../src/data/leagues.ts";
 import { STORAGE_KEY, THEMES } from "../../src/themes.ts";
 
 export const THEME_IDS = THEMES.map((t) => t.id);
-export const WIDTHS = [360, 390, 768, 1024, 1440] as const;
 export const LIGHT = "matchday";
 export const DARK = "floodlights";
 

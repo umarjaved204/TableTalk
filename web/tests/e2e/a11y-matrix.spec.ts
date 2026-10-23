@@ -1,23 +1,32 @@
-// The full accessibility matrix (agreed in the plan). axe-core checks every
-// rule tagged WCAG 2.0, 2.1 and 2.2 A and AA. Two overlapping matrices, so
-// every page and every theme is covered without running every combination:
+// The full accessibility matrix. axe-core checks every rule tagged WCAG 2.0,
+// 2.1 and 2.2 A and AA. Two overlapping matrices (chosen 23 Oct 2026, 195
+// runs; it was 265 with High Contrast on three pages only):
 //
-//   A: every theme   3 representative pages (a league page, a matches page,
-//                    the track record: together they contain every component)
-//                    x all 8 themes x 5 widths. Colour problems are per theme.
-//   B: every page    every built page x Matchday (light) and Floodlights (dark)
-//                    x 5 widths. Structure problems (headings, labels,
-//                    landmarks, reflow) are per page, not per theme.
+//   A: every page    every built page x Matchday (light), Floodlights (dark)
+//                    and High Contrast x 3 widths (phone, tablet, desktop).
+//                    "System" shows Matchday by day and Floodlights by night,
+//                    so these are what most visitors see. Structure problems
+//                    (headings, labels, landmarks, reflow) are per page.
+//   B: other themes  Tactics Board, Programme, Night Game and Terrace on 3
+//                    representative pages (a league page, a matches page, the
+//                    track record: together they contain every component)
+//                    x phone and desktop. Colour problems are per theme; the
+//                    contrast of every theme's colour pairs is also checked
+//                    without a browser (tests/unit/themes.test.ts).
 //
-// Combinations already in A are not repeated in B. Each run also checks that
-// the page never scrolls sideways and logs no console errors (which includes
-// any Content Security Policy violation). Every "Show the numbers" table is
-// opened first, so axe checks those too.
+// axe results rarely depend on width, so 3 widths are enough here; reflow
+// and 200% text on real phone sizes are checked by mobile.spec.ts. Each run
+// also checks that the page never scrolls sideways and logs no console errors
+// (which includes any Content Security Policy violation). Every "Show the
+// numbers" table is opened first, so axe checks those too.
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { ALL_PAGES, DARK, LIGHT, THEME_IDS, WIDTHS, hasSidewaysScroll, openAs } from "./helpers.ts";
+import { ALL_PAGES, DARK, LIGHT, THEME_IDS, hasSidewaysScroll, openAs } from "./helpers.ts";
 import { expect, test } from "./test.ts";
 
+const CONTRAST = "contrast";
+const MAIN_THEMES = [LIGHT, DARK, CONTRAST];
+const OTHER_THEMES = THEME_IDS.filter((id) => !MAIN_THEMES.includes(id));
 const REPRESENTATIVE = ["/premier-league/", "/premier-league/matches/", "/track-record/"];
 
 async function check(page: Page, path: string, theme: string, width: number): Promise<void> {
@@ -33,10 +42,15 @@ async function check(page: Page, path: string, theme: string, width: number): Pr
   expect(errors, "console errors (including CSP violations)").toEqual([]);
 }
 
-test.describe("matrix A: every theme on the representative pages", () => {
-  for (const path of REPRESENTATIVE) {
-    for (const theme of THEME_IDS) {
-      for (const width of WIDTHS) {
+test("the matrix covers every theme", () => {
+  expect(OTHER_THEMES).toEqual(["tactics", "programme", "nightgame", "terrace"]);
+  expect([...MAIN_THEMES, ...OTHER_THEMES].sort()).toEqual([...THEME_IDS].sort());
+});
+
+test.describe("matrix A: every page, light, dark and High Contrast", () => {
+  for (const path of ALL_PAGES) {
+    for (const theme of MAIN_THEMES) {
+      for (const width of [360, 768, 1440]) {
         test(`${path} ${theme} ${width}px`, async ({ page }) => {
           await check(page, path, theme, width);
         });
@@ -45,10 +59,10 @@ test.describe("matrix A: every theme on the representative pages", () => {
   }
 });
 
-test.describe("matrix B: every page, light and dark", () => {
-  for (const path of ALL_PAGES.filter((p) => !REPRESENTATIVE.includes(p))) {
-    for (const theme of [LIGHT, DARK]) {
-      for (const width of WIDTHS) {
+test.describe("matrix B: the other themes on the representative pages", () => {
+  for (const path of REPRESENTATIVE) {
+    for (const theme of OTHER_THEMES) {
+      for (const width of [360, 1440]) {
         test(`${path} ${theme} ${width}px`, async ({ page }) => {
           await check(page, path, theme, width);
         });
