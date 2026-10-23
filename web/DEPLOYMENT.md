@@ -173,7 +173,7 @@ some web versions load them straight into the browser). Every other file stays
 `same-origin`; the build check and the go-live check both check this.
 
 Files outside `/_astro/` that aren't pages (icons, `manifest.webmanifest`,
-`robots.txt`, `sitemap.xml`, the QR codes) get the `/*` value too: their
+`robots.txt`, `sitemap.xml`) get the `/*` value too: their
 names don't change when their content does, so they must be checked as well.
 
 **No `no-transform` (removed 23 Oct 2026).** It was there so Cloudflare

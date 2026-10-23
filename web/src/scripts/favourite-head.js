@@ -8,7 +8,6 @@
 //   data-fav="arsenal"               only for a team in this season's data
 //   data-fav-league="premier_league" the favourite's league (also when paused)
 //   data-fav-state="chosen"          none | dismissed | newer | chosen | paused | gone
-//   data-fav-offer="offer"           a personal link is waiting: offer | replace | same | unknown
 // CSS uses these to show the right home-page block from the first paint, and
 // a constructed stylesheet with one rule for the favourite (favouriteCss in
 // favourite-core.js) shows its star and tint. Page parts that differ per team
@@ -33,19 +32,6 @@
   var saved = parseStored(readRaw());
   var current = resolveFavourite(saved, index);
   var dismissed = saved.kind === "saved" && saved.dismissed;
-  var offer = null;
-
-  // A personal link: work out what to ask, then take ?team= out of the
-  // address bar straight away (a reload, bookmark or screenshot won't carry it).
-  var link = readLink(location.search);
-  if (link !== null) {
-    offer = linkOffer(link, current, index);
-    try {
-      history.replaceState(history.state, "", withoutTeamParam(location.href));
-    } catch {
-      // Not possible here (rare); the question is still asked.
-    }
-  }
 
   var slots = [];
   var leagueIds = (DATA.names || []).map(function (pair) {
@@ -82,7 +68,6 @@
     set("data-fav", current.state === "chosen" ? current.team : null);
     set("data-fav-league", current.state === "chosen" || current.state === "paused" ? current.league : null);
     set("data-fav-state", current.state);
-    set("data-fav-offer", offer ? offer.kind : null);
     if (sheet) {
       var league = current.state === "chosen" || current.state === "paused" ? current.league : null;
       sheet.replaceSync(favouriteCss(current.state === "chosen" ? current.team : null, league, leagueIds));
@@ -110,8 +95,6 @@
   function text(what) {
     if (what === "name") return current.name || "your team";
     if (what === "league") return (current.league && index.leagueNames.get(current.league)) || "its league";
-    if (what === "offer-name") return offer && offer.name ? offer.name : "";
-    if (what === "replacing") return offer && offer.replacing ? offer.replacing : "your current team";
     if (what === "was-in") {
       var was = current.league && index.leagueNames.get(current.league);
       return was ? "It was in " + was + " when you picked it." : "";
@@ -123,9 +106,7 @@
   //   data-fav-slot="state"  the template for the current state (data-for="none", "gone", ...);
   //                          for "chosen", the shared "@card" template filled from the data block
   //   data-fav-slot="team"   the favourite's own template, if this slot has one
-  //   data-fav-slot="offer"  the template for the waiting personal link
   function key(kind) {
-    if (kind === "offer") return offer ? offer.kind : "";
     if (kind === "state") return current.state;
     return current.state === "chosen" ? current.team : "";
   }
@@ -234,9 +215,6 @@
     current: function () {
       return current;
     },
-    offer: function () {
-      return offer;
-    },
     /** False when this browser refused to store the choice (private mode, settings). */
     storageWorks: function () {
       return storageWorks;
@@ -246,7 +224,6 @@
       var team = findTeam(index, slug);
       if (!team) return false;
       current = { state: "chosen", team: team.slug, name: team.name, league: team.league };
-      offer = null;
       write();
       changed();
       return true;
@@ -255,7 +232,6 @@
     remove: function () {
       current = { state: "dismissed" };
       dismissed = true;
-      offer = null;
       write();
       changed();
     },
@@ -264,13 +240,6 @@
       dismissed = true;
       if (current.state === "none") current = { state: "dismissed" };
       write();
-      changed();
-    },
-    acceptOffer: function () {
-      return offer && offer.team ? this.choose(offer.team) : false;
-    },
-    declineOffer: function () {
-      offer = null;
       changed();
     },
     /** Fill every pre-built block parsed so far that hasn't been filled yet.

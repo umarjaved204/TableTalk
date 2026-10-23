@@ -3,7 +3,6 @@
 // by playwright.rollover.config.ts (npm run test:rollover).
 //   - a favourite relegated last season: said plainly, with a way to pick another;
 //   - a favourite promoted this season: works like any other team;
-//   - personal links to relegated teams change nothing; to promoted teams, they work;
 //   - the picker lists this season's teams only;
 //   - last season's teams that left keep a stub page ("not covered this
 //     season", noindex) that can be left with the site's own links; promoted
@@ -55,15 +54,6 @@ test("a promoted team works like any other: card, star, league first", async ({ 
   await page.goto("/bundesliga/", { waitUntil: "networkidle" });
   expect(await stars(page.locator('[data-league-table] tr[data-team="fortuna-dusseldorf"]'))).toBe(1);
   await expect(page.getByText("Too early to show a trend.")).toBeVisible();
-});
-
-test("personal links: a relegated team's changes nothing; a promoted team's works", async ({ page }) => {
-  await page.goto("/?team=coventry-city", { waitUntil: "networkidle" });
-  await expect(page.getByText("This link's team isn't one we cover this season.")).toBeVisible();
-  expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBeNull();
-  await page.goto("/?team=leicester-city", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Make it my team" }).click();
-  await expect(page.getByRole("article", { name: "Leicester City" })).toBeVisible();
 });
 
 test("the picker lists this season's teams only", async ({ page }) => {

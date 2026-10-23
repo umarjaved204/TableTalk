@@ -136,7 +136,7 @@
   }
 }
 
-/* Buttons in the favourite blocks (prompt, offer, dialog). */
+/* Buttons in the favourite blocks (prompt, dialog). */
 .button {
   display: inline-flex;
   align-items: center;
@@ -163,44 +163,4 @@
    "your team" filter) are hidden without it, like the table's Short/Full switch. */
 :root:not([data-js]) [data-needs-js] {
   display: none !important;
-}
-
-/* The personal-link question at the top of every page. Shown from the first
-   paint only when the early script found a link (data-fav-offer), so it never
-   pushes the page down later. The title has room for two lines before its
-   names are filled in. */
-.offer-slot {
-  display: none;
-}
-
-:root[data-js][data-fav-offer] .offer-slot {
-  display: block;
-  padding-top: var(--space-5);
-}
-
-.offer {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: 2px solid var(--accent);
-  border-radius: var(--radius-2);
-  background: var(--surface);
-}
-
-.offer-title {
-  min-height: 2.1em;
-  font-size: var(--step-1);
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.offer-title.small-title {
-  min-height: 0;
-  font-weight: 600;
-}
-
-.offer-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
 }

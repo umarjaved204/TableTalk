@@ -1,6 +1,6 @@
 ---
-// A block that differs per visitor (the home page's "Your team" card, the
-// personal-link question). Every version is pre-built at build time inside a
+// A block that differs per visitor (the home page's "Your team" card).
+// Every version is pre-built at build time inside a
 // <template data-for="...">, which the browser parses but doesn't show or
 // count as part of the page. The one-line script right after the block
 // (FILL_SCRIPT) copies the right version in while the page is still loading,
@@ -8,13 +8,12 @@
 //
 // kind="state": the template for the favourite's state ("none", "gone",
 //               "paused"), or the team's own (data-for="<slug>") when one is chosen.
-// kind="offer": the template for a waiting personal link ("offer", "replace", ...).
 //
 // Without JavaScript the block is hidden (data-needs-js) and nothing is copied.
 import { FILL_SCRIPT } from "../scripts/theme-script.ts";
 
 interface Props {
-  kind: "state" | "offer";
+  kind: "state";
   class?: string;
   /** Class for the element the chosen version is copied into. */
   targetClass?: string;

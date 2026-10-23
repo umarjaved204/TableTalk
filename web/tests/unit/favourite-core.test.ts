@@ -1,5 +1,5 @@
 // The favourite team's logic (src/scripts/favourite-core.js): what is stored,
-// how a stored value or a personal link is read, and what is never trusted.
+// how a stored value is read, and what is never trusted.
 // The same file is copied into the early script on every page, so these
 // tests check the code that runs in the browser.
 import { describe, expect, it } from "vitest";
@@ -8,13 +8,10 @@ import {
   favouriteCss,
   findTeam,
   isSlug,
-  linkOffer,
   makeIndex,
   parseStored,
-  readLink,
   resolveFavourite,
   serialize,
-  withoutTeamParam,
   STALE_HOURS,
   ageText,
   staleCss,
@@ -138,23 +135,13 @@ describe("where the visitor stands", () => {
   });
 });
 
-describe("personal links (?team=...)", () => {
-  it("reads exactly one well-formed value", () => {
-    expect(readLink("")).toBeNull();
-    expect(readLink("?other=1")).toBeNull();
-    expect(readLink("?team=arsenal")).toEqual({ slug: "arsenal" });
-    expect(readLink("?team=arsenal&team=chelsea")).toEqual({ slug: null });
-    expect(readLink("?team=")).toEqual({ slug: null });
-    expect(readLink(`?team=${"a".repeat(61)}`)).toEqual({ slug: null });
-  });
-
-  // Attempts to get text from the address bar into the page. Each must be
-  // rejected before it is compared with anything, and none is ever shown.
+describe("slugs that are never trusted", () => {
+  // Text that could reach the lookup from a stored value someone edited. Each
+  // must be rejected before it is compared with anything.
   it.each([
     "<script>alert(1)</script>",
     '"><img src=x onerror=alert(1)>',
     "%3Cscript%3Ealert(1)%3C%2Fscript%3E",
-    "%253Cscript%253E",
     "javascript:alert(1)",
     "arsenal<b>",
     "Arsenal",
@@ -162,64 +149,17 @@ describe("personal links (?team=...)", () => {
     "arsenal\n",
     "../../etc/passwd",
     "__proto__",
-    "constructor",
-    "toString",
-    "hasOwnProperty",
     "x".repeat(10_000),
   ])("rejects %j", (payload) => {
-    const link = readLink(`?team=${encodeURIComponent(payload)}`);
-    const offer = linkOffer(link, { state: "none" }, index);
-    expect(offer).toEqual({ kind: "unknown" });
-    expect(JSON.stringify(offer)).not.toContain("<");
+    expect(isSlug(payload)).toBe(false);
+    expect(findTeam(index, payload)).toBeNull();
   });
 
   it("the lookup can't be fooled by object property names", () => {
-    for (const name of ["__proto__", "constructor", "prototype", "valueOf"]) {
+    for (const name of ["__proto__", "constructor", "prototype", "valueOf", "toString", "hasOwnProperty"]) {
       expect(findTeam(index, name)).toBeNull();
     }
     expect(isSlug("__proto__")).toBe(false);
-  });
-
-  it("offers, replaces, or says it's already set", () => {
-    const link = readLink("?team=chelsea");
-    expect(linkOffer(link, { state: "none" }, index)).toEqual({
-      kind: "offer",
-      team: "chelsea",
-      name: "Chelsea",
-    });
-    expect(
-      linkOffer(
-        link,
-        { state: "gone", team: "hull-city", name: "Hull City", league: "premier_league" },
-        index,
-      ),
-    ).toMatchObject({ kind: "offer" });
-    expect(
-      linkOffer(link, { state: "chosen", team: "arsenal", name: "Arsenal", league: "premier_league" }, index),
-    ).toEqual({
-      kind: "replace",
-      team: "chelsea",
-      name: "Chelsea",
-      replacing: "Arsenal",
-    });
-    expect(
-      linkOffer(link, { state: "chosen", team: "chelsea", name: "Chelsea", league: "premier_league" }, index),
-    ).toEqual({
-      kind: "same",
-      team: "chelsea",
-      name: "Chelsea",
-    });
-  });
-
-  it("a team not covered this season is 'unknown' (its name is never repeated from the link)", () => {
-    expect(linkOffer(readLink("?team=hull-city"), { state: "none" }, index)).toEqual({ kind: "unknown" });
-  });
-
-  it("removes only the team parameter from the address", () => {
-    expect(withoutTeamParam("https://x.test/?team=arsenal")).toBe("/");
-    expect(withoutTeamParam("https://x.test/premier-league/?a=1&team=arsenal&b=2#table")).toBe(
-      "/premier-league/?a=1&b=2#table",
-    );
   });
 });
 

@@ -9,9 +9,9 @@
 //
 // What is stored (localStorage["tabletalk-favourite"]):
 //   { "v": 1, "team": "arsenal" | null, "name": "Arsenal", "league": "premier_league", "prompt": "dismissed" }
-// Nothing read from storage or from the address bar is ever written into the
-// page as HTML: slugs are only compared with the site's own team list, and
-// names are shown with textContent.
+// Nothing read from storage is ever written into the page as HTML: slugs are
+// only compared with the site's own team list, and names are shown with
+// textContent.
 
 export var FAV_VERSION = 1;
 export var SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -132,52 +132,6 @@ export function serialize(team, dismissed) {
 }
 
 /**
- * The personal link's team parameter, from a query string ("?team=arsenal").
- *   null              no team parameter
- *   { slug: "x" }     exactly one value that looks like a slug
- *   { slug: null }    anything else (bad characters, too long, repeated)
- */
-export function readLink(search) {
-  var values;
-  try {
-    values = new URLSearchParams(search).getAll("team");
-  } catch {
-    return { slug: null };
-  }
-  if (values.length === 0) return null;
-  if (values.length > 1) return { slug: null };
-  return { slug: isSlug(values[0]) ? values[0] : null };
-}
-
-/**
- * What to ask when a personal link is opened:
- *   { kind: "offer",   team, name }              no favourite yet (or one no longer covered)
- *   { kind: "replace", team, name, replacing }   a different favourite is set
- *   { kind: "same",    team, name }              already the favourite: nothing to ask
- *   { kind: "unknown" }                          not a team we cover (the link text is never shown)
- */
-export function linkOffer(link, current, index) {
-  if (link === null) return null;
-  var team = link.slug === null ? null : findTeam(index, link.slug);
-  if (!team) return { kind: "unknown" };
-  if (current.state === "chosen" && current.team === team.slug) {
-    return { kind: "same", team: team.slug, name: team.name };
-  }
-  if (current.state === "chosen" || current.state === "paused") {
-    return { kind: "replace", team: team.slug, name: team.name, replacing: current.name };
-  }
-  return { kind: "offer", team: team.slug, name: team.name };
-}
-
-/** The address without the team parameter (other parameters and #hash kept),
- *  for history.replaceState. */
-export function withoutTeamParam(href) {
-  var url = new URL(href);
-  url.searchParams.delete("team");
-  return url.pathname + url.search + url.hash;
-}
-
-/**
  * The CSS for the current favourite: one rule for its team, and the rules
  * for its league (first on the home page, outlined, starred in the switcher).
  * The early script puts this in a constructed stylesheet before the page
@@ -189,7 +143,7 @@ export function withoutTeamParam(href) {
  * --fav-col-md; see the .cards rules in src/pages/index.astro).
  *
  * `team` and `league` are only ever a slug and a league id from the site's
- * own list (never text from storage or the address bar), so they are safe in
+ * own list (never text from storage), so they are safe in
  * a selector; they are checked again here anyway.
  */
 export function favouriteCss(team, league, leagueIds) {

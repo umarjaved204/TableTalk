@@ -258,14 +258,14 @@ describe("stub pages for last season's teams", () => {
 });
 
 describe("sitemap.xml and robots.txt", () => {
-  it("lists every real page and never a stub, the 404 page or a QR image", () => {
+  it("lists every real page and never a stub or the 404 page", () => {
     const pl = { league: info("premier_league"), data: ready("premier_league"), history: [] };
     const paths = sitemapPaths(buildTeamPages([pl]));
     expect(paths.slice(0, 3)).toEqual(["/", "/premier-league/", "/premier-league/matches/"]);
     expect(paths).toContain("/premier-league/brighton-and-hove-albion/");
     expect(paths).toContain("/la-liga/matches/");
     expect(paths.slice(-3)).toEqual(["/track-record/", "/methodology/", "/about/"]);
-    expect(paths.filter((p) => p.includes("404") || p.includes("/qr/"))).toEqual([]);
+    expect(paths.filter((p) => p.includes("404"))).toEqual([]);
     expect(new Set(paths).size).toBe(paths.length);
   });
 

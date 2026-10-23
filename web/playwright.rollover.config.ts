@@ -3,7 +3,7 @@ import { ROLLOVER_DATA_DIR, ROLLOVER_OUT_DIR, ROLLOVER_PORT } from "./tests/fixt
 
 // The season-rollover test: the site built from a simulated NEXT season
 // (tests/fixtures/make-rollover-data.ts: teams relegated and promoted), to
-// check favourites and personal links across the change. A separate config,
+// check favourites and team pages across the change. A separate config,
 // because it needs its own build of the site. Run: npm run test:rollover
 export default defineConfig({
   testDir: "tests/e2e",

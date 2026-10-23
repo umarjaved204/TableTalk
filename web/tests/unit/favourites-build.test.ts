@@ -1,8 +1,7 @@
-// Build-time pieces of the favourite team: the home page's "Your team" card data, the QR codes, and the race chart's
+// Build-time pieces of the favourite team: the home page's "Your team" card data and the race chart's
 // pre-built panels for teams outside the race.
 import { describe, expect, it } from "vitest";
 import type { ReadyLeague, Zone } from "../../src/data/models.ts";
-import { QUIET_ZONE, qrSvg } from "../../src/data/qr.ts";
 import { buildRace, chartPoints, loadLeagueHistory, type RunPoint } from "../../src/data/race.ts";
 import { cardZones, yourTeamCards } from "../../src/data/your-team.ts";
 import { writeIllustratedHistory } from "../fixtures/illustrated.ts";
@@ -44,32 +43,6 @@ describe('"Your team" card', () => {
       ],
     } as unknown as ReadyLeague;
     expect(yourTeamCards(league)[0]!.next?.home).toBe("Nottingham Forest");
-  });
-});
-
-describe("QR codes", () => {
-  const svg = qrSvg("https://tabletalk.example/?team=borussia-monchengladbach");
-  const size = Number(/viewBox="0 0 (\d+) \1"/.exec(svg)![1]);
-
-  it("are dark modules on a white background, whatever the theme", () => {
-    expect(svg).toContain(`<rect width="${size}" height="${size}" fill="#fff"/>`);
-    expect(svg).toContain('fill="#000"');
-    expect(svg).not.toMatch(/var\(|currentcolor/i);
-  });
-
-  it("keep a quiet zone of 4 modules on every side", () => {
-    const starts = [...svg.matchAll(/M(\d+) (\d+)h(\d+)/g)].map((m) => [
-      Number(m[1]),
-      Number(m[2]),
-      Number(m[3]),
-    ]);
-    expect(starts.length).toBeGreaterThan(0);
-    for (const [x, y, run] of starts) {
-      expect(x).toBeGreaterThanOrEqual(QUIET_ZONE);
-      expect(y).toBeGreaterThanOrEqual(QUIET_ZONE);
-      expect(x! + run!).toBeLessThanOrEqual(size - QUIET_ZONE);
-      expect(y).toBeLessThan(size - QUIET_ZONE);
-    }
   });
 });
 

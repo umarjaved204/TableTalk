@@ -10,12 +10,8 @@
 //   - some browsers delete site storage after a while without a visit
 //     (Safari: 7 days of Safari use), so the team's own page is the bookmark to keep
 //     (it needs no stored data; shown once team pages exist, Step 3);
-//   - the personal link (?team=...) restores the favourite on another device;
 //   - an app added to the home screen keeps its own settings.
 import { FAV_STORAGE_KEY } from "../scripts/theme-script.ts";
-
-/** QR codes need the site's full address (SITE_URL), so they are made only when it is set. */
-const QR = Boolean(Astro.site);
 ---
 
 <button type="button" class="open" data-open-favourite aria-haspopup="dialog" data-needs-js>
@@ -23,7 +19,7 @@ const QR = Boolean(Astro.site);
   Your team
 </button>
 
-<dialog id="favourite" aria-labelledby="favourite-title" data-qr={QR ? "" : undefined}>
+<dialog id="favourite" aria-labelledby="favourite-title">
   <div class="panel">
     <div class="head">
       <h2 id="favourite-title">Your team</h2>
@@ -66,26 +62,6 @@ const QR = Boolean(Astro.site);
         </a>{" "}
         to keep it.
       </p>
-      <details>
-        <summary>Use on another device</summary>
-        <p>Open this link on your other phone or computer. It asks before changing anything there.</p>
-        <p class="link-row">
-          <code data-personal-link></code>
-          <button type="button" class="button" data-fav-action="copy-link">
-            Copy link
-          </button>
-        </p>
-        <p class="copy-status" role="status" data-copy-status></p>
-        {QR && (
-          <p class="qr-row">
-            <img class="qr" data-qr-image alt="" width="148" height="148" />
-            <span>Or scan this with your phone's camera.</span>
-          </p>
-        )}
-        <p class="muted">
-          Tip: bookmark the link. If your browser syncs bookmarks, your other devices get it too.
-        </p>
-      </details>
     </div>
 
     <details>
@@ -193,17 +169,14 @@ const QR = Boolean(Astro.site);
     font-weight: 600;
   }
 
-  .actions,
-  .link-row,
-  .qr-row {
+  .actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2) var(--space-3);
   }
 
-  .status:empty,
-  .copy-status:empty {
+  .status:empty {
     display: none;
   }
 
@@ -248,30 +221,12 @@ const QR = Boolean(Astro.site);
     padding-bottom: var(--space-2);
   }
 
-  code {
-    flex: 1 1 16rem;
-    min-width: 0;
-    padding: var(--space-2) var(--space-3);
+  .note code {
+    padding: 0 var(--space-1);
     border-radius: var(--radius-1);
     background: var(--surface-2);
     font-family: var(--font-mono);
     font-size: var(--step--1);
-    overflow-wrap: anywhere;
-    user-select: all;
-  }
-
-  .note code {
-    padding: 0 var(--space-1);
-    user-select: auto;
-  }
-
-  /* Always dark modules on white with a quiet zone (part of the image), in every theme. */
-  .qr {
-    display: block;
-    width: 148px;
-    height: 148px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-1);
   }
 
   .muted,
