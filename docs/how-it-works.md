@@ -189,12 +189,13 @@ saw each team through only about 24 recent matches, which is worth about ±0.14
 on a single rating (the 365-day half-life roughly doubles that sample). It is much less sure of each team than its confident
 single-match forecasts suggest.
 
-A second option, **drift**, lets ratings wander through the season as a random
+A second option, **drift**, let ratings wander through the season as a random
 walk, with the step size derived from the half-life (exponential down-weighting
 is what the optimal tracker of a random-walk strength, a Kalman filter,
-produces). It is implemented and tested, but switched off: in the backtest it
-added nothing, which suggests strength changes mostly *between* seasons
-(transfers, pre-season) rather than steadily within them.
+produces). It was built and backtested, and it added nothing, which suggests
+strength changes mostly *between* seasons (transfers, pre-season) rather than
+steadily within them. It was removed from the code in October 2026; the
+comparison is kept in [results.md](results.md).
 
 `--fixed-strengths` switches uncertainty off, for comparison.
 

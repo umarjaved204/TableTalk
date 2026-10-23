@@ -432,7 +432,8 @@ condition: forecasts made mid-to-late season become slightly *under*-confident
 error, the trade is lopsided: the early-season miss was about 3.5 standard errors
 and is now inside one; the new later-season miss is inside the noise at 50%
 played and about two standard errors at 75%, where the fixed version was already
-under-confident. Drift added nothing on any pooled measure, so it stays off.
+under-confident. Drift added nothing on any pooled measure, so it was left off,
+and in October 2026 removed from the code (this table is the record of it).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../reports/figures/season-calibration-dark.png">

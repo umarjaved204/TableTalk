@@ -441,9 +441,6 @@ def _describe_uncertainty(uncertainty) -> str:
     parts = []
     if uncertainty.parameter_uncertainty:
         parts.append("each season draws its ratings from the fit's uncertainty")
-    if uncertainty.drift_variance_per_day > 0:
-        season_sd = (uncertainty.drift_variance_per_day * 280) ** 0.5
-        parts.append(f"and ratings drift during it (about +/-{season_sd:.2f} over a season)")
     return " ".join(parts)
 
 
@@ -554,8 +551,7 @@ SPLIT_HELP = ("which of the config's backtest seasons: report (headline results,
 #: Strength-uncertainty variants for comparing in the season backtest.
 UNCERTAINTY_VARIANTS: dict[str, dict | None] = {
     "fixed": None,
-    "parameter": {"enabled": True, "parameter_uncertainty": True, "drift": "none"},
-    "parameter+drift": {"enabled": True, "parameter_uncertainty": True, "drift": "implied"},
+    "parameter": {"enabled": True, "parameter_uncertainty": True},
 }
 
 

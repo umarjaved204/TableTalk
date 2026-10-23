@@ -355,6 +355,9 @@ def test_real_run_writes_a_snapshot_that_follows_the_contract(real_run):
     assert len(snapshot["table"]) == 20 and len(snapshot["teams"]) == 20
     assert snapshot["run"]["seed"] == run_seed("2026-09-29", "premier_league")
     assert snapshot["run"]["pipeline_hash"] == pipeline_hash()
+    # Only the sources this run used: not the openfootball cross-check or the
+    # Championship, which the nightly update no longer loads.
+    assert {source["role"] for source in snapshot["sources"]} == {"results", "fixtures"}
     for match in snapshot["upcoming_matches"]:
         total = sum(match["probabilities"].values())
         assert abs(total - 1) < 1e-5
@@ -498,3 +501,78 @@ def test_backup_run_skips_only_after_a_complete_run_today(tmp_path):
 
     write_outputs([LeagueOutcome("aa", "A", error="boom")], out_dir=tmp_path, generated_at=morning)
     assert not done_today(tmp_path, ["aa"], backup)  # a failed league means the backup tries again
+
+
+# ---------------------------------------------------------------------------
+# What the nightly update downloads
+# ---------------------------------------------------------------------------
+
+
+class _Stop(Exception):
+    """Raised by a stub to end run_league once the loading under test is done."""
+
+
+def _start_run_league(monkeypatch, strategy: str) -> dict:
+    """Run run_league up to its first fixture download, recording what it loaded."""
+    from types import SimpleNamespace
+
+    from tabletalk.pipeline import update
+
+    seen: dict = {"context": False}
+
+    def load_matches(config, **kwargs):
+        seen["load_matches"] = kwargs
+        return pd.DataFrame()
+
+    def load_context_matches(config, **kwargs):
+        seen["context"] = True
+        return pd.DataFrame()
+
+    def build_loaders(config, **kwargs):
+        raise _Stop
+
+    monkeypatch.setattr(update, "load_matches", load_matches)
+    monkeypatch.setattr(update, "load_context_matches", load_context_matches)
+    monkeypatch.setattr(update, "build_loaders", build_loaders)
+    config = SimpleNamespace(id="aa", current_season="2026-27", model={"promoted_teams": {"strategy": strategy}})
+    with pytest.raises(_Stop):
+        update.run_league(config, run_date="2026-10-23")
+    return seen
+
+
+def test_the_nightly_update_skips_the_cross_check_and_second_tier_data_it_does_not_use(monkeypatch):
+    # Every league uses the `prior` promoted-team strategy, which never reads
+    # second-tier results; and football-data.org and football-data.co.uk must
+    # already agree, so the openfootball cross-check is left to `data check`.
+    seen = _start_run_league(monkeypatch, "prior")
+    assert seen["load_matches"]["cross_check"] is False
+    assert seen["context"] is False
+
+
+def test_the_second_tier_strategy_still_gets_its_data(monkeypatch):
+    assert _start_run_league(monkeypatch, "second_tier")["context"] is True
+
+
+def test_every_league_loads_only_results_and_fixtures_each_night():
+    from tabletalk.config import available_competitions, load_competition
+    from tabletalk.pipeline.update import nightly_roles
+
+    for competition in available_competitions():
+        assert nightly_roles(load_competition(competition)) == {"results", "fixtures"}, competition
+
+
+def test_load_matches_runs_the_cross_check_unless_told_not_to(monkeypatch):
+    from tabletalk.data import dataset
+
+    roles = []
+
+    def build_loaders(config, role=None, **kwargs):
+        roles.append(role)
+        return []
+
+    monkeypatch.setattr(dataset, "build_loaders", build_loaders)
+    dataset.load_matches("premier_league", save=False)
+    assert "check" in roles
+    roles.clear()
+    dataset.load_matches("premier_league", save=False, cross_check=False)
+    assert "check" not in roles

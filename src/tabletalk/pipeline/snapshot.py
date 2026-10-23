@@ -147,6 +147,9 @@ class LeagueRun:
     provisional: bool
     notices: list[str]
     fixtures: pd.DataFrame | None = None
+    # The source roles this run loaded (update.nightly_roles); None = every
+    # source in the config. Only those are listed in the snapshot's `sources`.
+    source_roles: frozenset[str] | None = None
 
 
 def build_snapshot(run: LeagueRun, *, generated_at: pd.Timestamp) -> dict:
@@ -190,6 +193,7 @@ def build_snapshot(run: LeagueRun, *, generated_at: pd.Timestamp) -> dict:
         "sources": [
             {"loader": source.loader, "role": source.role, "params": _jsonable(dict(source.params))}
             for source in config.data_sources
+            if run.source_roles is None or source.role in run.source_roles
         ],
         "zones": [
             {"id": zone.id, "label": zone.label, "positions": [int(p) for p in zone.positions]}

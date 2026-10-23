@@ -127,8 +127,7 @@ to notice:
   rewarding near misses, checkpoint dates, and the persistence baseline.
 - **Strength uncertainty:** the score sampler reproducing the model's score matrix
   over 400,000 draws, a team with no data being exactly as uncertain as its prior,
-  the drift worked example, and uncertainty widening outcomes without moving the
-  average.
+  and uncertainty widening outcomes without moving the average.
 - **CLI:** every command runs end to end on the real data and exits cleanly.
 
 Knockout aggregate and penalty handling will get the same treatment in Phase 3.

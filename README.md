@@ -12,7 +12,7 @@ checked against what actually happened.
 
 ```mermaid
 flowchart LR
-    A["Results and fixtures<br/>(3 sources, cross-checked)"] --> B["Match model<br/>(Dixon-Coles)"]
+    A["Results and fixtures<br/>(2 sources, cross-checked)"] --> B["Match model<br/>(Dixon-Coles)"]
     B --> C["Season simulator<br/>(10,000 seasons)"]
     C --> D["Nightly run<br/>(GitHub Actions)"]
     D --> E["Published data<br/>(data branch)"]

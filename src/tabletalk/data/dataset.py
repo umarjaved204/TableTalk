@@ -35,6 +35,7 @@ def load_matches(
     refresh: bool = False,
     strict_names: bool = True,
     save: bool = True,
+    cross_check: bool = True,
 ) -> pd.DataFrame:
     """Every match this competition's sources provide, in the standard schema.
 
@@ -45,6 +46,9 @@ def load_matches(
         strict_names: fail on team names missing from the alias map. Set False
             only for diagnostics (``tabletalk data check``).
         save: also write the assembled frame to ``data/processed/``.
+        cross_check: also load the ``role: check`` sources and require their
+            scores to agree. The nightly update turns this off: a third source
+            there would only add a download that can fail a league.
     """
     if isinstance(config, str):
         config = load_competition(config)
@@ -57,7 +61,7 @@ def load_matches(
     # Cross-check sources: their scores must agree with the results, nothing more.
     checks = [
         (loader.name, loader.load(refresh=refresh, strict_names=strict_names))
-        for loader in build_loaders(config, role="check")
+        for loader in (build_loaders(config, role="check") if cross_check else [])
     ]
     if checks:
         check_scores_agree([("results", results), *checks], label=f"{config.id} cross-check")
