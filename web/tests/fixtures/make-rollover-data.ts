@@ -2,7 +2,7 @@
 //
 // The season-rollover test (tests/e2e/rollover.spec.ts, run with
 // `npm run test:rollover`) builds the site from this, to check what happens
-// to favourites and personal links when teams are relegated and promoted.
+// to favourites and team pages when teams are relegated and promoted.
 // Based on the real files at data-16a5512, with:
 //   - every league's season moved on a year (2026-27 -> 2027-28);
 //   - Premier League: Coventry City, Ipswich Town and Hull City relegated,

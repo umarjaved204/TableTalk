@@ -45,7 +45,7 @@ and over 300 ms on a busy machine).
 The public address is https://tabletalk.fyi. It is one setting, the
 `SITE_URL` environment variable (set in `../.github/workflows/site.yml` for
 every deploy), used for each page's canonical link and `og:url`, and needed
-for the sitemap, `robots.txt`'s sitemap line and the QR codes:
+for the sitemap and `robots.txt`'s sitemap line:
 
 ```sh
 SITE_URL=https://example.org npm run build
@@ -185,13 +185,11 @@ canonical names the pipeline knows: no two clash. The build fails on a clash
 or on a slug that equals a page name (`matches`). If the pipeline ever renames
 a team, `TEAM_SLUG_RENAMES` maps the old slug to the new one.
 
-**Personal link** (`/?team=<slug>`): opening it asks before setting or
-replacing the favourite, and the parameter is removed from the address bar
-straight away. The link's text is only ever compared with the site's own team
-list; it is never written into the page. The "Your team" dialog shows the link
-with a Copy button and, once `SITE_URL` is set, a QR code made at build time
-(`/qr/<slug>.svg`, `src/data/qr.ts`: black on white with a 4-module quiet zone,
-error correction M).
+**No personal links.** Earlier builds had `/?team=<slug>` links (with QR
+codes) to set a favourite on another device. They were removed before the
+site was announced (23 Oct 2026), so no shared link depends on them. A
+`?team=` parameter is now ignored. To keep a team across devices, bookmark
+its team page.
 
 **Every state:** none (prompt), dismissed ("Not now"), chosen, paused (the
 team's league has no data in this build: kept, not dropped), gone (the team
@@ -261,7 +259,7 @@ the test data (budget 760).
 
 **sitemap.xml and robots.txt** are built by `src/pages/[sitemap].xml.ts` and
 `src/pages/robots.txt.ts`. The sitemap needs full addresses, so it is built
-only when `SITE_URL` is set (as the QR codes are), and `robots.txt` then has
+only when `SITE_URL` is set, and `robots.txt` then has
 the `Sitemap:` line.
 
 ## The look (stage 2, Step 4)
@@ -304,17 +302,16 @@ Chromium (desktop and Android profiles) and WebKit (iPhone profiles).
 
 **Modern features it relies on, and what happens without them:**
 
-| Feature                                                                                       | Used for                                                                             | Without it                                                                                  |
-| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| Range media queries (`@media (width >= 900px)`)                                               | Every layout breakpoint                                                              | The phone layout at every width: one column, still complete                                 |
-| Container queries (`@container`)                                                              | The header on phones when text is enlarged (links wrap, "Your team" on its own line) | At 200% text the header links scroll sideways instead of wrapping                           |
-| `<dialog>` with `showModal()`                                                                 | The Appearance and Your team dialogs                                                 | The dialog opens in place, without the backdrop (scripted fallback; tested)                 |
-| `:has()`                                                                                      | Hiding a match day left empty by "Your team only"                                    | The empty day's heading stays visible (tested)                                              |
-| `color-mix()`                                                                                 | The favourite's row tint, dialog backdrop, lighter zone edge                         | The tint falls back to the striped-row colour; the star and accent rules still mark the row |
-| CSS `mask`                                                                                    | The star icons                                                                       | No star; the hidden "your team" label and the row tint remain                               |
-| `<template>`, `replaceChildren()`, `CustomEvent`, `URLSearchParams`, `history.replaceState()` | Favourite blocks and the personal link                                               | Favourites don't apply (the rest of the site works, as without JavaScript)                  |
-| `navigator.clipboard`                                                                         | "Copy link"                                                                          | The link is selected for the visitor to copy (scripted fallback)                            |
-| `text-wrap: balance`, `accent-color`, `display-mode` media query                              | Nicer headings, the checkbox colour, the home-screen note                            | Ordinary wrapping, the default checkbox, no home-screen note                                |
+| Feature                                                          | Used for                                                                             | Without it                                                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| Range media queries (`@media (width >= 900px)`)                  | Every layout breakpoint                                                              | The phone layout at every width: one column, still complete                                 |
+| Container queries (`@container`)                                 | The header on phones when text is enlarged (links wrap, "Your team" on its own line) | At 200% text the header links scroll sideways instead of wrapping                           |
+| `<dialog>` with `showModal()`                                    | The Appearance and Your team dialogs                                                 | The dialog opens in place, without the backdrop (scripted fallback; tested)                 |
+| `:has()`                                                         | Hiding a match day left empty by "Your team only"                                    | The empty day's heading stays visible (tested)                                              |
+| `color-mix()`                                                    | The favourite's row tint, dialog backdrop, lighter zone edge                         | The tint falls back to the striped-row colour; the star and accent rules still mark the row |
+| CSS `mask`                                                       | The star icons                                                                       | No star; the hidden "your team" label and the row tint remain                               |
+| `<template>`, `replaceChildren()`, `CustomEvent`                 | Favourite blocks                                                                     | Favourites don't apply (the rest of the site works, as without JavaScript)                  |
+| `text-wrap: balance`, `accent-color`, `display-mode` media query | Nicer headings, the checkbox colour, the home-screen note                            | Ordinary wrapping, the default checkbox, no home-screen note                                |
 
 Without JavaScript at all, every page shows all its numbers; the controls
 that need JavaScript (tabs, table switch, favourites) are hidden.

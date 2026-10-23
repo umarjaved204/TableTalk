@@ -40,7 +40,6 @@ at the address bar and press Tab.
 | Every page                     | Nothing is reachable that you can't see; the order follows the page                              |
 | Home, first visit              | "Pick your team": the list, Save, Not now; after Save, focus lands on the new card's heading     |
 | Your team → Enter              | Dialog opens on the current team; arrowing the list never saves; Save does; Escape returns focus |
-| `/?team=chelsea`               | The question at the top of the page is reached first after the skip link; both buttons work      |
 | Matches page with a favourite  | "Your team only" checkbox toggles with Space                                                     |
 | League page, team names        | Each name in the table, heatmap, race panels and cards is a link; Enter opens the team page      |
 | Team page                      | Breadcrumb first after the header; "Show the numbers" opens under both charts                    |
@@ -72,7 +71,6 @@ Tab (next control).
 | Stale data (only when it happens)          | The "Updated" line is read with "(2 days ago): these numbers may be out of date" after it                                                                                                                    |
 | Favourite's row in a table (T)             | The row header reads "Arsenal (your team)"; no other row says "your team"; the star itself is silent                                                                                                         |
 | Your team dialog                           | "Your team, button, has popup dialog"; the list announces its league groups ("Premier League, grouping"); Save announces "Saved. Arsenal is your team on this device."                                       |
-| Personal link question                     | Read as a heading "Make Chelsea your team on this device?" with two buttons; after answering, the result is announced                                                                                        |
 | Matches, Your team only                    | Ticking it announces "Showing 12 of 330 matches: Brentford only."                                                                                                                                            |
 | Team page, D (landmarks)                   | "Breadcrumb, navigation"; its last link is announced as current page                                                                                                                                         |
 | Team page, finishing position              | The bar chart is skipped; "Most likely: 2nd (42%)" is read; the table under "Show the numbers" reads position, chance and zone                                                                               |

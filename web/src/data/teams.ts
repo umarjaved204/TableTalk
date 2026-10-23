@@ -3,8 +3,8 @@
 // The published data identifies a team only by its name ("Arsenal", the
 // canonical name from configs/team_aliases.yaml); there is no id. Until the
 // contract has permanent ids (contract request R14), the site makes a slug
-// from the name with a fixed rule. Slugs are used for favourites, personal
-// links (?team=arsenal) and, from Step 3, team pages.
+// from the name with a fixed rule. Slugs are used for favourites and team
+// pages.
 //
 // The risk: if the pipeline ever renames a team, its slug changes. Stored
 // favourites, links and URLs would then point at the old slug. TEAM_SLUG_RENAMES
@@ -46,7 +46,7 @@ export const SLUG_MAX_LENGTH = 60;
 export const RESERVED_SLUGS: readonly string[] = ["matches"];
 
 /** Old slug -> new slug, for a team the pipeline has renamed. Stored
- *  favourites and personal links with the old slug are upgraded quietly.
+ *  favourites with the old slug are upgraded quietly.
  *  Empty today: no canonical name has changed since 2010-11. */
 export const TEAM_SLUG_RENAMES: Readonly<Record<string, string>> = {};
 

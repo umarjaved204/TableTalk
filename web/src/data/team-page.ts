@@ -153,7 +153,7 @@ export function teamHref(name: string): string | undefined {
   return hrefCache.get(name);
 }
 
-/** The sitemap's pages: every real page, never a stub, the 404 page or a QR image. */
+/** The sitemap's pages: every real page, never a stub or the 404 page. */
 export function sitemapPaths(pages: readonly TeamPageEntry[] = teamPages()): string[] {
   return [
     "/",

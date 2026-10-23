@@ -1,7 +1,6 @@
 // Favourite team, in a real browser (desktop Chrome project): every state,
-// the picker by keyboard, the personal link (including attempts to inject
-// HTML through it), no layout shift, blocked storage, the matches filter,
-// accessibility (axe) in light and dark, and graceful fallbacks.
+// the picker by keyboard, an old ?team= link changing nothing, no layout
+// shift, blocked storage, the matches filter, accessibility (axe) in light and dark, and graceful fallbacks.
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { DARK, LIGHT, hasSidewaysScroll, stars } from "./helpers.ts";
@@ -279,84 +278,16 @@ test.describe("matches page: Your team only", () => {
   });
 });
 
-test.describe("personal links", () => {
-  test("asks before setting, then removes ?team= from the address bar (other parameters kept)", async ({
-    page,
-  }) => {
-    await open(page, "/premier-league/?view=x&team=chelsea#table");
-    expect(new URL(page.url()).search).toBe("?view=x");
-    expect(new URL(page.url()).hash).toBe("#table");
-    const offer = page.getByRole("heading", { name: "Make Chelsea your team on this device?" });
-    await expect(offer).toBeVisible();
-    expect(await stored(page)).toBeNull(); // nothing saved before the answer
-    await page.getByRole("button", { name: "Make it my team" }).click();
-    await expect(offer).toBeHidden();
-    await expect(page.locator("[data-fav-status]")).toHaveText("Saved. Chelsea is your team on this device.");
-    expect(JSON.parse((await stored(page))!).team).toBe("chelsea");
-    await expect.poll(() => stars(page.locator('[data-league-table] tr[data-team="chelsea"]'))).toBe(1);
-  });
-
-  test("replacing a different favourite asks first; 'Keep' changes nothing", async ({ page }) => {
-    await seed(page, { [KEY]: saved("arsenal") });
-    await open(page, "/?team=liverpool");
-    await expect(
-      page.getByRole("heading", { name: "Replace Arsenal with Liverpool as your team on this device?" }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Keep Arsenal" }).click();
-    expect(JSON.parse((await stored(page))!).team).toBe("arsenal");
-    await expect(page.getByRole("article", { name: "Arsenal" })).toBeVisible();
-  });
-
-  test("the same team: no question, just says so", async ({ page }) => {
-    await seed(page, { [KEY]: saved("arsenal") });
-    await open(page, "/?team=arsenal");
-    await expect(page.getByText("Arsenal is already your team on this device.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Make it my team" })).toHaveCount(0);
-  });
-
-  test("a team not covered this season: says so, changes nothing, and never repeats the link", async ({
-    page,
-  }) => {
-    await seed(page, { [KEY]: saved("arsenal") });
-    await open(page, "/?team=hull-city-1904");
-    await expect(page.getByText("This link's team isn't one we cover this season.")).toBeVisible();
-    await expect(page.locator("main")).not.toContainText("hull-city-1904");
-    expect(JSON.parse((await stored(page))!).team).toBe("arsenal");
-  });
-
-  const ATTACKS = [
-    "<script>window.__pwned=1</script>",
-    '"><img src=x onerror="window.__pwned=1">',
-    "<svg onload=window.__pwned=1>",
-    "javascript:window.__pwned=1",
-    'arsenal"><b id=injected>x</b>',
-    "__proto__",
-    "constructor",
-    "%3Cimg%20src%3Dx%20onerror%3Dwindow.__pwned%3D1%3E",
-  ];
-  for (const attack of ATTACKS) {
-    test(`an injection attempt does nothing: ${attack.slice(0, 40)}`, async ({ page }) => {
-      const dialogs: string[] = [];
-      page.on("dialog", (d) => {
-        dialogs.push(d.message());
-        void d.dismiss();
-      });
-      await page.goto("/", { waitUntil: "networkidle" });
-      const before = await page.evaluate(
-        () => document.querySelectorAll("img, script, svg, b#injected").length,
-      );
-      await page.goto(`/?team=${encodeURIComponent(attack)}`, { waitUntil: "networkidle" });
-      await expect(page.getByText("This link's team isn't one we cover this season.")).toBeVisible();
-      expect(await page.evaluate(() => (window as unknown as { __pwned?: number }).__pwned)).toBeUndefined();
-      expect(
-        await page.evaluate(() => document.querySelectorAll("img, script, svg, b#injected").length),
-      ).toBe(before);
-      expect(dialogs).toEqual([]);
-      expect(await page.locator("main").innerText()).not.toContain("pwned");
-      expect(new URL(page.url()).search).toBe("");
-      expect(await stored(page)).toBeNull();
-    });
-  }
+// Personal links (?team=...) were removed before the site was announced. A
+// link made while they existed must still open the page and change nothing.
+test("an old ?team= link is ignored: no question, nothing saved, the address is left alone", async ({
+  page,
+}) => {
+  await open(page, "/premier-league/?team=chelsea");
+  expect(new URL(page.url()).search).toBe("?team=chelsea");
+  await expect(page.getByRole("heading", { name: /your team on this device\?/ })).toHaveCount(0);
+  await expect(page.locator("html")).not.toHaveAttribute("data-fav-offer");
+  expect(await stored(page)).toBeNull();
 });
 
 test.describe("stored values that can't be used as they are", () => {
@@ -455,23 +386,6 @@ test.describe("the Your team dialog", () => {
     await expect.poll(() => stars(page.locator('[data-league-table] tr[data-team="chelsea"]'))).toBe(1);
   });
 
-  test("shows the personal link; Copy puts it on the clipboard", async ({ page, context }) => {
-    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-    await seed(page, { [KEY]: saved("arsenal") });
-    await open(page, "/");
-    await page.locator("[data-open-favourite]").click();
-    await page.getByText("Use on another device").click();
-    const link = page.locator("[data-personal-link]");
-    await expect(link).toHaveText(new URL("/?team=arsenal", page.url()).href);
-    await page.getByRole("button", { name: "Copy link" }).click();
-    await expect(page.locator("[data-copy-status]")).toHaveText("Link copied.");
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-      new URL("/?team=arsenal", page.url()).href,
-    );
-    // The test site has no SITE_URL, so there is no QR code (it needs the public address).
-    await expect(page.locator("[data-qr-image]")).toHaveCount(0);
-  });
-
   test("Remove my team: back to no favourite, prompt stays away", async ({ page }) => {
     await seed(page, { [KEY]: saved("arsenal") });
     await open(page, "/");
@@ -509,7 +423,6 @@ test.describe("no layout shift", () => {
       "/",
     ],
     ["dismissed", { [KEY]: JSON.stringify({ v: 1, team: null, prompt: "dismissed" }) }, "/"],
-    ["personal link", {}, "/?team=arsenal"],
     ["league page, favourite", { [KEY]: saved("arsenal") }, "/premier-league/"],
     ["race panel, favourite outside the race", { [KEY]: saved("mainz-05") }, "/bundesliga/"],
   ];
@@ -587,7 +500,6 @@ test.describe("accessibility (axe), light and dark", () => {
     ["home, prompt", {}, "/", null],
     ["home, favourite", { [KEY]: saved("arsenal") }, "/", null],
     ["home, no longer covered", { [KEY]: saved("hull-city-1904") }, "/", null],
-    ["personal link question", { [KEY]: saved("arsenal") }, "/?team=liverpool", null],
     ["league page, favourite", { [KEY]: saved("mainz-05") }, "/bundesliga/", null],
     [
       "matches, Your team only",

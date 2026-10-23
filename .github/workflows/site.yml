@@ -61,7 +61,7 @@ on:
 permissions: {}
 
 # The site's public address: the one setting for canonical links, og:url, the
-# sitemap, robots.txt and the QR codes.
+# sitemap and robots.txt.
 env:
   SITE_URL: https://tabletalk.fyi
 

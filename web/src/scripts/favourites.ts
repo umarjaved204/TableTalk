@@ -1,7 +1,6 @@
 // The favourite team's controls, on every page: the "Your team" dialog, the
-// buttons in the pre-built blocks (prompt, personal-link question, "no
-// longer covered"), copying the personal link, and the matches page's
-// "Your team only" filter.
+// buttons in the pre-built blocks (prompt, "no longer covered"), and the
+// matches page's "Your team only" filter.
 //
 // The state itself lives in the early script (window.tabletalkFavourite,
 // src/scripts/favourite-head.js): it stores the choice, sets the attributes
@@ -19,21 +18,13 @@ interface Current {
   name?: string | null;
   league?: string | null;
 }
-interface Offer {
-  kind: "offer" | "replace" | "same" | "unknown";
-  team?: string;
-  name?: string;
-}
 interface FavouriteApi {
   teams(): [string, string, [string, string][]][];
   current(): Current;
-  offer(): Offer | null;
   storageWorks(): boolean;
   choose(slug: string): boolean;
   remove(): void;
   dismiss(): void;
-  acceptOffer(): boolean;
-  declineOffer(): void;
 }
 declare global {
   interface Window {
@@ -71,12 +62,6 @@ function fillTeamOptions(select: HTMLSelectElement): void {
   select.dataset["filled"] = "yes";
 }
 
-/** The personal link for this site and team: location.origin, so it is right
- *  wherever the site is served (the QR image, made at build time, uses SITE_URL). */
-function personalLink(slug: string): string {
-  return `${location.origin}/?team=${encodeURIComponent(slug)}`;
-}
-
 function refreshDialog(): void {
   if (!dialog || !api) return;
   const current = api.current();
@@ -88,10 +73,6 @@ function refreshDialog(): void {
   const warning = dialog.querySelector<HTMLElement>("[data-storage-warning]");
   if (warning) warning.hidden = api.storageWorks();
   if (current.state !== "chosen" || !current.team) return;
-  const link = dialog.querySelector<HTMLElement>("[data-personal-link]");
-  if (link) link.textContent = personalLink(current.team);
-  const qr = dialog.querySelector<HTMLImageElement>("[data-qr-image]");
-  if (qr) qr.src = `/qr/${current.team}.svg`;
   const page = dialog.querySelector<HTMLAnchorElement>("[data-team-page-link]");
   const league = LEAGUES.find((l) => l.id === current.league);
   if (page && league) page.href = `/${league.slug}/${current.team}/`;
@@ -115,25 +96,6 @@ function focusAfterChange(preferred: Element | null): void {
   if (!target) return;
   if (!target.hasAttribute("tabindex") && !(target instanceof HTMLButtonElement)) target.tabIndex = -1;
   target.focus();
-}
-
-async function copyLink(button: HTMLElement): Promise<void> {
-  const code = dialog?.querySelector<HTMLElement>("[data-personal-link]");
-  const status = dialog?.querySelector<HTMLElement>("[data-copy-status]") ?? null;
-  if (!code) return;
-  try {
-    await navigator.clipboard.writeText(code.textContent ?? "");
-    announce(status, "Link copied.");
-  } catch {
-    // Clipboard refused (older browser, or permission): select the text instead.
-    const range = document.createRange();
-    range.selectNodeContents(code);
-    const selection = window.getSelection();
-    selection?.removeAllRanges();
-    selection?.addRange(range);
-    announce(status, "The link is selected. Copy it with your device's copy command.");
-  }
-  button.focus();
 }
 
 function saveFromSelect(button: HTMLElement): void {
@@ -186,19 +148,6 @@ function handle(action: string, button: HTMLElement): void {
       else focusAfterChange(opener);
       break;
     }
-    case "accept-offer": {
-      const offer = api.offer();
-      if (api.acceptOffer() && offer?.name) announce(pageStatus, savedMessage(offer.name));
-      focusAfterChange(null);
-      break;
-    }
-    case "decline-offer":
-      api.declineOffer();
-      focusAfterChange(null);
-      break;
-    case "copy-link":
-      void copyLink(button);
-      break;
   }
 }
 
