@@ -543,6 +543,13 @@ export function matureSummary(): Record<string, unknown> {
       ]),
     ],
     matches: [...(base["matches"] as unknown[]), ...extra],
+    // The live pipeline's note names a field in `backticks`. Shown as <code>,
+    // `matches_needed` at 200% text was wider than an iPhone SE (22 Oct 2026),
+    // so the phone tests need a code word this long.
+    notes: [
+      ...(base["notes"] as string[]),
+      "With few matches the intervals are wide; `matches_needed` is roughly how many matches it would take to detect a gap the size the backtest found.",
+    ],
   };
 }
 

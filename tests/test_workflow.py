@@ -180,6 +180,22 @@ def test_the_deploy_job_holds_the_token_builds_nothing_and_skips_without_it():
     assert "continue-on-error" not in yaml.safe_dump(deploy)
 
 
+def test_every_deploy_ends_with_the_go_live_check_on_the_live_site():
+    steps = _load(SITE)["jobs"]["deploy"]["steps"]
+    deployed = next(i for i, step in enumerate(steps) if "wrangler deploy" in step.get("run", ""))
+    wait, check = steps[-2], steps[-1]
+    assert steps.index(wait) > deployed
+    # Waits until the live home page is the one just built, then fails if it never is.
+    assert '"$SITE_URL/"' in wait["run"] and "cmp -s - dist/index.html" in wait["run"]
+    assert "exit 1" in wait["run"]
+    # The check itself: curl only, no secrets, and nothing that could hide a failure.
+    assert check["run"] == 'bash check-live.sh "$SITE_URL"'
+    assert check["working-directory"] == "src/deploy"
+    for step in (wait, check):
+        assert "env" not in step and "continue-on-error" not in step
+    assert _load(SITE)["env"]["SITE_URL"] == "https://tabletalk.fyi"
+
+
 def test_both_callers_pass_the_cloudflare_token_by_name_and_nothing_else():
     # A reusable workflow sees only the secrets its caller passes, even environment secrets:
     # without this the token is an empty string and the deploy silently skips (22 Oct 2026).

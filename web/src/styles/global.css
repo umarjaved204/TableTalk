@@ -118,6 +118,13 @@ main:focus {
   outline: none;
 }
 
+/* A field name from the pipeline (`matches_needed`) is one long word: at 200%
+   text it was wider than an iPhone SE. `break-word` on body doesn't help, as it
+   leaves the word's minimum width unchanged; `anywhere` lets it wrap. */
+code {
+  overflow-wrap: anywhere;
+}
+
 abbr[title] {
   text-decoration: none;
   cursor: help;
