@@ -225,7 +225,9 @@ jobs:
       # they have, the live home page is byte for byte the built one
       # (Cloudflare changes nothing in the HTML; checked 23 Oct 2026), so wait
       # for that, for up to three minutes, before checking. A home page that
-      # didn't change since the last deploy matches at once.
+      # didn't change since the last deploy matches at once, so a deploy that
+      # changes only headers or other files isn't waited for here: the check
+      # below retries for that.
       - name: Wait for the new site to be served
         if: steps.gate.outputs.go == 'true'
         working-directory: src/deploy
@@ -241,12 +243,27 @@ jobs:
           exit 1
 
       # The go-live check on the live site: curl only, no secrets (the token
-      # is only in the "Deploy to Cloudflare" step's env). A failure fails the
-      # job, and GitHub emails you.
+      # is only in the "Deploy to Cloudflare" step's env). Some requests can
+      # still get the old version for a short while after a deploy: on 23 Oct
+      # 2026 a headers-only change was checked 2 seconds after the deploy and
+      # failed, then passed by hand minutes later. So a failed check is tried
+      # again, 30 seconds apart, up to 4 times (about 2 minutes); if the last
+      # try fails too, the job fails and GitHub emails you.
       - name: Check the live site (deploy/check-live.sh)
         if: steps.gate.outputs.go == 'true'
         working-directory: src/deploy
-        run: bash check-live.sh "$SITE_URL"
+        run: |
+          for attempt in 1 2 3 4; do
+            if bash check-live.sh "$SITE_URL"; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 4 ]; then
+              echo "Try $attempt of 4 failed; trying again in 30 seconds."
+              sleep 30
+            fi
+          done
+          echo "::error::The go-live check failed 4 times in a row: $SITE_URL"
+          exit 1
 
   # A workflow_dispatch made with the workflow's own token does start a run
   # (one of GitHub's two exceptions to "the GITHUB_TOKEN starts no workflows").
