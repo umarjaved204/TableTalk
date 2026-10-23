@@ -13,7 +13,7 @@
 //      twice gets both values joined with a comma; "! Name" removes it from
 //      the rules before), every built file, and a page that doesn't exist
 //      (the 404 page), gets each security header exactly once and exactly one
-//      Cache-Control: "no-cache, no-transform" for pages and other files,
+//      Cache-Control: "no-cache" for pages and other files,
 //      "public, max-age=31536000, immutable" for /_astro/ (hashed names).
 //
 // Usage: node scripts/check-build.mjs [folder]   (default: dist)
@@ -40,7 +40,7 @@ const SECURITY = {
 };
 // One day at first; a year once HTTPS on the domain is known to be stable.
 const HSTS = /^max-age=(86400|31536000)$/;
-const PAGE_CACHE = "no-cache, no-transform";
+const PAGE_CACHE = "no-cache";
 const HASHED_CACHE = "public, max-age=31536000, immutable";
 // Each rule's lines: exact text, or a pattern for the one value that may change.
 const REQUIRED = {
