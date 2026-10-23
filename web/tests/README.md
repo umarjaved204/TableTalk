@@ -142,7 +142,6 @@ Tests for stale data and kick-offs move the clock on.
 | Every team's card complete and within the screen (320, 768, 1280px) |                            | `favourites.spec.ts`               |
 | Without JavaScript: nothing shown or reserved                       |                            | `no-js.spec.ts`                    |
 | Without `:has()` or `showModal()`: graceful fallback                |                            | `favourites.spec.ts`               |
-| Elements per page type, with and without a favourite (budgets)      |                            | `dom-budget.spec.ts`               |
 | A new season: relegated and promoted favourites, the picker         |                            | `rollover.spec.ts` (test:rollover) |
 
 ## Team pages: where they are tested
@@ -158,7 +157,6 @@ Tests for stale data and kick-offs move the clock on.
 | Every page reachable from `/` and can be left with the site's own links         |                     | `navigation.spec.ts`                |
 | Stub pages for last season's teams: wording, noindex, links out, axe            | `team-page.test.ts` | `rollover.spec.ts` (test:rollover)  |
 | sitemap.xml (no stubs) and robots.txt                                           | `team-page.test.ts` |                                     |
-| Elements per team page (budget)                                                 |                     | `dom-budget.spec.ts`                |
 | Accessibility, keyboard, phones: one team page per data state (`TEAM_PAGES`)    |                     | `a11y-matrix`, `keyboard`, `mobile` |
 
 ## The look (Step 4): where it is tested
@@ -169,7 +167,7 @@ Tests for stale data and kick-offs move the clock on.
 | Bars grow only when motion is allowed                                          |                                       | `pages.spec.ts`                               |
 | Scoreboard tiles on team pages ("%" at half size)                              |                                       | `team-pages.spec.ts`                          |
 | Numbers tables: one row per round of results                                   | `race.test.ts`                        | `pages.spec.ts`, `team-pages.spec.ts`         |
-| Heatmap: runs of blank cells merged                                            | `heat.test.ts`                        | `a11y-matrix`, `dom-budget.spec.ts`           |
+| Heatmap: runs of blank cells merged                                            | `heat.test.ts`                        | `a11y-matrix`                                 |
 | No layout shift with every font 1.5 s late; out-of-date warning at first paint | `favourite-core.test.ts` (`staleCss`) | `layout-shift.spec.ts`                        |
 
 ## Browser tests: accessibility coverage
@@ -182,17 +180,19 @@ checks that the page never scrolls sideways and that there are no console
 errors, which includes any Content Security Policy violation.
 
 **Two overlapping matrices** (`e2e/a11y-matrix.spec.ts`), so that every page
-and every theme is covered without running every combination. Widths: 360,
-390, 768, 1024 and 1440 px. Each run opens every "Show the numbers" table
-first, so axe checks those too.
+and every theme is covered without running every combination (195 runs since
+23 Oct 2026; 265 before, with High Contrast on three pages only). Each run
+opens every "Show the numbers" table first, so axe checks those too.
 
-| Matrix         | Pages                                                                   | Themes                                  | Runs | Why                                                                                  |
-| -------------- | ----------------------------------------------------------------------- | --------------------------------------- | ---- | ------------------------------------------------------------------------------------ |
-| A: every theme | 3 representative pages: a league page, a matches page, the track record | all 7 colour themes                     | 105  | Colour problems are per theme; these three pages contain every component             |
-| B: every page  | the other 16 pages (every page type; team pages by one per data state)  | Matchday (light) and Floodlights (dark) | 160  | Structure problems (headings, labels, landmarks, reflow) are per page, not per theme |
+| Matrix          | Pages                                                                   | Themes                                                 | Widths (px)    | Runs | Why                                                                      |
+| --------------- | ----------------------------------------------------------------------- | ------------------------------------------------------ | -------------- | ---- | ------------------------------------------------------------------------ |
+| A: every page   | all 19 (every page type; team pages by one per data state)              | Matchday (light), Floodlights (dark) and High Contrast | 360, 768, 1440 | 171  | Structure problems (headings, labels, landmarks, reflow) are per page    |
+| B: other themes | 3 representative pages: a league page, a matches page, the track record | Tactics Board, Programme, Night Game, Terrace          | 360, 1440      | 24   | Colour problems are per theme; these three pages contain every component |
 
 The picker's 8th choice, System, is not a theme of its own: it shows Matchday,
-Floodlights or High Contrast, all in matrix A.
+Floodlights or High Contrast, all in matrix A. axe results rarely depend on
+width; reflow and 200% text on real phone sizes are in `mobile.spec.ts`, and
+every theme's colour pairs are checked in `themes.test.ts`.
 
 **Keyboard walk** (`e2e/keyboard.spec.ts`): every page at 1440 and 390 px,
 Tab from the top until focus comes back round. The skip link is first and

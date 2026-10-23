@@ -83,20 +83,53 @@ by its exit code only, so "it printed no errors" never counts as a pass. It
 takes about a minute. The browser tests (`npm run test:e2e`, about 10
 minutes) are separate.
 
-| Command              | What it does                                                                                                                                                                                                                               |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run data`       | Copy the published files from `origin/data` into `web/.data/` (read-only: `git fetch` + `git cat-file`; never checks out or writes to `data`). Add `-- --offline` to skip the fetch                                                        |
-| `npm run types`      | Regenerate `src/data/contract.gen.ts` from `../contracts/*.schema.json` (after a contract change)                                                                                                                                          |
-| `npm run dev`        | Development server (no CSP in dev mode)                                                                                                                                                                                                    |
-| `npm run verify`     | Before every commit: type check, lint, unit tests, build; stops at the first failure (non-zero exit)                                                                                                                                       |
-| `npm run check`      | Type check only (`astro check`)                                                                                                                                                                                                            |
-| `npm run build`      | Type-check, build `dist/`, then check the build (`scripts/check-build.mjs`)                                                                                                                                                                |
-| `npm run preview`    | Serve `dist/` at http://localhost:4321 (with the CSP, as deployed)                                                                                                                                                                         |
-| `npm test`           | Unit tests                                                                                                                                                                                                                                 |
-| `npm run test:e2e`   | Browser and accessibility tests. Builds its own test site from fixed test data first (see tests/README.md)                                                                                                                                 |
-| `npm run lighthouse` | Lighthouse (mobile) on 6 pages of the built site (a team page among them), gzip-compressed, median of 3 runs; fails over budget (LCP 2.5 s, CLS 0.1, TBT 200 ms). `-- --uncompressed`: worst case, reported only. Reports in `lighthouse/` |
-| `npm run lint`       | ESLint, Stylelint, Prettier check. Prettier accepts each file's own line endings (`endOfLine: "auto"`): this checkout has both CRLF and LF files, and the check must not fail on that alone                                                |
-| `npm run format`     | Prettier, fix formatting                                                                                                                                                                                                                   |
+| Command              | What it does                                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run data`       | Copy the published files from `origin/data` into `web/.data/` (read-only: `git fetch` + `git cat-file`; never checks out or writes to `data`). Add `-- --offline` to skip the fetch                                                                                                                                                                                             |
+| `npm run types`      | Regenerate `src/data/contract.gen.ts` from `../contracts/*.schema.json` (after a contract change)                                                                                                                                                                                                                                                                               |
+| `npm run dev`        | Development server (no CSP in dev mode)                                                                                                                                                                                                                                                                                                                                         |
+| `npm run verify`     | Before every commit: type check, lint, unit tests, build; stops at the first failure (non-zero exit)                                                                                                                                                                                                                                                                            |
+| `npm run check`      | Type check only (`astro check`)                                                                                                                                                                                                                                                                                                                                                 |
+| `npm run build`      | Type-check, build `dist/`, then check the build (`scripts/check-build.mjs`)                                                                                                                                                                                                                                                                                                     |
+| `npm run preview`    | Serve `dist/` at http://localhost:4321 (with the CSP, as deployed)                                                                                                                                                                                                                                                                                                              |
+| `npm test`           | Unit tests                                                                                                                                                                                                                                                                                                                                                                      |
+| `npm run test:e2e`   | Browser and accessibility tests. Builds its own test site from fixed test data first (see tests/README.md)                                                                                                                                                                                                                                                                      |
+| `npm run lighthouse` | Lighthouse (mobile) on 8 pages of the built site (one of each page type), gzip-compressed, median of 3 runs; fails over budget (LCP 2.5 s, CLS 0.1, TBT 200 ms) and reports each page's element count (no limit). `-- --uncompressed`: worst case, reported only. `-- --live https://tabletalk.fyi`: the live site instead (the monthly check, below). Reports in `lighthouse/` |
+| `npm run lint`       | ESLint, Stylelint, Prettier check. Prettier accepts each file's own line endings (`endOfLine: "auto"`): this checkout has both CRLF and LF files, and the check must not fail on that alone                                                                                                                                                                                     |
+| `npm run format`     | Prettier, fix formatting                                                                                                                                                                                                                                                                                                                                                        |
+
+## Monthly live check
+
+Once a month, measure the live site and add a column here:
+
+```sh
+npm run lighthouse -- --live https://tabletalk.fyi
+```
+
+It fails if a page misses a speed budget (LCP 2.5 s, CLS 0.1, TBT 200 ms) and
+reports each page's element count (Lighthouse's DOM size) with no limit. The
+counts replace the browser tests' per-page element budgets (removed 23 Oct
+2026): those were measured on the test data, which the real pages outgrew, so
+they passed in the tests while being false on the live site. Recording the
+live counts shows growth without blocking it. Lighthouse counts at load, so
+its numbers are not comparable with the old budgets.
+
+Elements per page (live, median of 3 runs):
+
+| Page                       | 23 Oct 2026 |
+| -------------------------- | ----------- |
+| `/`                        | 562         |
+| `/premier-league/`         | 1,955       |
+| `/bundesliga/`             | 1,887       |
+| `/premier-league/matches/` | 1,951       |
+| `/premier-league/arsenal/` | 680         |
+| `/track-record/`           | 1,256       |
+| `/methodology/`            | 322         |
+| `/about/`                  | 222         |
+
+The same run, 23 Oct 2026: performance 98-100, accessibility 100, best
+practices 100, SEO 92 (the known `robots.txt` fetch, see
+`scripts/lighthouse.mjs`); LCP 1.40-1.55 s, CLS 0.000-0.003, TBT 0-154 ms.
 
 ## How it fits together
 
@@ -233,7 +266,7 @@ lists its teams as links.
 **Links.** Team names link to their pages from the league table, the heatmap,
 the race panels, every match card and the Your team card. A name is a link
 only when the page exists (`teamHref()`). Linking every name added no
-element to the league page (see the star above): its DOM budget is unchanged.
+element to the league page (see the star above).
 The Your team dialog links "Bookmark your team's page".
 
 **Stub pages for last season's teams.** A team that left the covered leagues
@@ -255,7 +288,7 @@ from the home page. `tests/e2e/navigation.spec.ts` walks the built site from
 **Cost.** All the team pages of a league read the same files, so each
 league's data, history and the track record are read once per build, not once
 per page (cached in `team-page.ts`). Team pages are 208 to 710 elements on
-the test data (budget 760).
+the test data, more on real data (see the monthly live check).
 
 **sitemap.xml and robots.txt** are built by `src/pages/[sitemap].xml.ts` and
 `src/pages/robots.txt.ts`. The sitemap needs full addresses, so it is built
@@ -285,7 +318,7 @@ colours and contrast rules:
 - **Lighter league page:** the race panels reuse one drawing of the race's
   faint lines (`<use>`) instead of drawing them in every panel, and runs of
   blank heatmap cells are one cell each (`heatCells` in `src/format/heat.ts`).
-  About 120 fewer elements; the budgets were lowered to match.
+  About 120 fewer elements.
 - **"Show the numbers" tables, one row per round of results** (`tableRows` in
   `src/data/race.ts`): updates between matchdays only add simulation noise,
   so a season has about 38 rows instead of about 250. The charts still plot

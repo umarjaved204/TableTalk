@@ -342,8 +342,10 @@ back (below).
 
 The browser tests are written for the test data, so they are not run against
 the live site (many of their checks would fail on real data). To check the
-live site's speed, run Lighthouse against `https://tabletalk.fyi` itself
-(`npm run lighthouse` measures the local build, not the live site).
+live site's speed and page sizes, run
+`npm run lighthouse -- --live https://tabletalk.fyi` (plain
+`npm run lighthouse` measures the local build). Do it once a month and record
+the results in README.md ("Monthly live check").
 
 ## Replacing the token before it expires
 
