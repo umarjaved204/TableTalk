@@ -32,7 +32,7 @@ const FONTS = new Set([".woff2", ".woff", ".ttf", ".otf", ".eot"]);
 const LOCAL = /localhost|127\.0\.0\.1/;
 const ALLOWED_SUBSETS = /-(latin|latin-ext)-/;
 
-// The planned headers (web/DEPLOYMENT.md). deploy/check-live.sh checks the
+// The planned headers (docs/runbook.md, "Response headers"). deploy/check-live.sh checks the
 // same values on the live site.
 const SECURITY = {
   "Content-Security-Policy": "frame-ancestors 'none'",

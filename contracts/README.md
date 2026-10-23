@@ -213,4 +213,4 @@ by the `second_tier` promoted-team strategy), so from this date they are no
 longer listed. `state/results_seen.json` is frozen. `pipeline_hash` and each
 league's `config_hash` change once on this date (the rating-drift option was
 removed, and these loading changes); no published number changes because of it
-(see docs/daily-update.md).
+(see docs/runbook.md and CHANGELOG.md).

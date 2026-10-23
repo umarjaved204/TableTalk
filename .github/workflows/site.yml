@@ -36,7 +36,7 @@
 # Actions are pinned to full commit SHAs (version in the comment) and values
 # reach the shell only through `env:`, as in daily-update.yml. Needs, in the
 # "production" environment: the secret CLOUDFLARE_API_TOKEN and the variable
-# CLOUDFLARE_ACCOUNT_ID (web/DEPLOYMENT.md).
+# CLOUDFLARE_ACCOUNT_ID (docs/runbook.md, "One-time set-up").
 
 name: Site
 

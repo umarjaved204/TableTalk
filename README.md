@@ -90,7 +90,7 @@ a hash-chained, append-only log on the `data` branch, whose history is protected
 and scores it once the result is in, against the base rates and the betting
 market. Current standing:
 [track_record/report.md](https://github.com/umarjaved204/TableTalk/blob/data/track_record/report.md).
-How the locking works: [the daily update](docs/daily-update.md).
+How the locking works: [the runbook](docs/runbook.md#locking-predictions-before-kick-off).
 
 ## Quick start
 
@@ -121,7 +121,7 @@ ratings, backtests and charts in one place.
 | Bundesliga, La Liga, Serie A, Ligue 1 (every official final table since 2010-11 reproduced) | ✅ done |
 | Nightly update, published data, locked predictions, live track record | ✅ running since 29 Sep 2026 |
 | Security hardening (exact library versions, split publish job, checked caches) | ✅ done |
-| Website (built and tested, all five leagues, team pages) | built, not live yet |
+| Website: all five leagues, team pages, the live track record | ✅ live at [tabletalk.fyi](https://tabletalk.fyi) since 22 Oct 2026 |
 | European competitions | deferred until the domestic leagues are validated |
 
 ## Limitations, in short
@@ -140,10 +140,11 @@ The full list, and what comes next: [limitations and roadmap](docs/limitations.m
 
 | Page | What is in it |
 |---|---|
-| [How it works](docs/how-it-works.md) | The three-layer design, the match model in plain English, the season simulator, tiebreakers, rating uncertainty |
-| [Results](docs/results.md) | How the settings were chosen, calibration, season forecasts, the betting market, promoted teams, what is still wrong |
-| [Leagues, rules and data](docs/leagues.md) | Data sources, each league's rules (verified and assumed), points deductions, adding a league |
-| [The daily update](docs/daily-update.md) | The nightly run, published files, locking before kick-off, the track record, safety checks |
+| [How it works](docs/how-it-works.md) | The three-layer design, the match model in plain English, the season simulator, tiebreakers, rating uncertainty, data sources and each league's rules |
+| [Results](docs/results.md) | How the settings were chosen, calibration, season forecasts, the betting market, promoted teams, each league's backtest, what is still wrong |
+| [Runbook](docs/runbook.md) | The nightly run, locking before kick-off, the track record, deploying the website, what to do when something fails, routine tasks |
 | [Development](docs/development.md) | Getting the code, repository layout, tests |
+| [Website](web/README.md) | How the site is built, its pages and features, the monthly live check |
+| [Changelog](CHANGELOG.md) | What changed and why, by date |
 | [Limitations and roadmap](docs/limitations.md) | Everything the model does not know, and what is next |
 | [Data contract](contracts/README.md) | Every field of the published files, for anyone building on them |

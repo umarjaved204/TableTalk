@@ -26,5 +26,5 @@ notebooks/*.html
 # Local secrets (e.g. FOOTBALL_DATA_API_KEY). Never commit an API key.
 .env
 
-# Pipeline outputs (where they are published is decided in Step 4).
+# Pipeline outputs (the nightly run publishes them on the `data` branch).
 /outputs/

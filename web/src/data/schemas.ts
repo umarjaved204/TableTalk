@@ -1,17 +1,23 @@
-// Which copy of the contract schemas to check a published file against.
+// Which schemas to check a published file against.
 //
 // The site reads files written over many months: history/ keeps every run's
 // snapshot with the contract version it was written with. A MINOR version adds
 // fields and the schemas then require them, so a 1.1.0 snapshot would fail a
-// 1.2.0 schema. So the site keeps one copy of the schemas per version
-// (web/contracts/<version>/) and checks each file against the newest copy that
-// is not newer than the file. A file from a later MINOR than any copy is
-// checked against the newest copy; the relaxed schemas (load.ts) let its new
-// fields through. A file older than every copy uses the oldest (1.0.0 files
-// match 1.1.0: 1.1.0 only added the lock log and the track record).
-import { readdirSync } from "node:fs";
+// 1.2.0 schema. So each file is checked against the schemas of the newest
+// version that is not newer than the file:
+//   - the current version's schemas are read from the pipeline's own folder,
+//     ../contracts/ (one copy, so the site can't drift from the pipeline);
+//   - each earlier version that files still exist for is a frozen copy in
+//     web/contracts/<version>/. Before raising the contract version, copy the
+//     current schemas there (a test fails if a version in the contract's
+//     history has no frozen copy).
+// A file from a later MINOR than the current one is checked against the
+// current schemas; the relaxed schemas (load.ts) let its new fields through.
+// A file older than every version uses the oldest (1.0.0 files match 1.1.0:
+// 1.1.0 only added the lock log and the track record).
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { SCHEMA_COPIES_DIR } from "./paths.ts";
+import { CONTRACTS_DIR, SCHEMA_COPIES_DIR } from "./paths.ts";
 
 type Version = [number, number, number];
 
@@ -24,28 +30,43 @@ function compare(a: Version, b: Version): number {
   return a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
 }
 
-/** The copies that are real versions, parsed, oldest first. */
-function parsed(copies: string[]): { name: string; version: Version }[] {
+/** The names that are real versions, parsed, oldest first. */
+function parsed(names: string[]): { name: string; version: Version }[] {
   const out: { name: string; version: Version }[] = [];
-  for (const name of copies) {
+  for (const name of names) {
     const version = parse(name);
     if (version) out.push({ name, version });
   }
   return out.sort((a, b) => compare(a.version, b.version));
 }
 
-/** The versions with a schema copy, oldest first. */
-export function schemaCopies(dir: string = SCHEMA_COPIES_DIR): string[] {
+/** The pipeline's current contract version: contracts/README.md starts
+ *  "# TableTalk data contract, version X.Y.Z". */
+export function currentVersion(dir: string = CONTRACTS_DIR): string {
+  const first = readFileSync(join(dir, "README.md"), "utf8").split("\n")[0] ?? "";
+  const version = /version (\d+\.\d+\.\d+)/.exec(first)?.[1];
+  if (!version) throw new Error(`${join(dir, "README.md")} doesn't start with "... version X.Y.Z"`);
+  return version;
+}
+
+/** The frozen copies of earlier versions in web/contracts/, oldest first. */
+export function frozenCopies(dir: string = SCHEMA_COPIES_DIR): string[] {
+  if (!existsSync(dir)) return [];
   const folders = readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory());
   return parsed(folders.map((entry) => entry.name)).map((copy) => copy.name);
 }
 
-/** The newest copy that is not newer than `version` (the oldest if all are newer). */
-export function schemaVersionFor(version: string, copies: string[] = schemaCopies()): string {
+/** Every version with schemas: the frozen copies and the current one, oldest first. */
+export function schemaVersions(): string[] {
+  return parsed([...new Set([...frozenCopies(), currentVersion()])]).map((v) => v.name);
+}
+
+/** The newest version that is not newer than `version` (the oldest if all are newer). */
+export function schemaVersionFor(version: string, versions: string[] = schemaVersions()): string {
   const target = parse(version);
-  const known = parsed(copies);
+  const known = parsed(versions);
   const oldest = known[0];
-  if (!target || !oldest) throw new Error(`no schema copy for contract version "${version}"`);
+  if (!target || !oldest) throw new Error(`no schemas for contract version "${version}"`);
   let chosen = oldest.name;
   for (const copy of known) {
     if (compare(copy.version, target) <= 0) chosen = copy.name;
@@ -53,13 +74,6 @@ export function schemaVersionFor(version: string, copies: string[] = schemaCopie
   return chosen;
 }
 
-/** The newest copy: what the generated types (contract.gen.ts) are made from. */
-export function latestSchemaCopy(copies: string[] = schemaCopies()): string {
-  const latest = copies.at(-1);
-  if (!latest) throw new Error(`no schema copies in ${SCHEMA_COPIES_DIR}`);
-  return latest;
-}
-
 export function schemaPath(version: string, file: string): string {
-  return join(SCHEMA_COPIES_DIR, version, file);
+  return version === currentVersion() ? join(CONTRACTS_DIR, file) : join(SCHEMA_COPIES_DIR, version, file);
 }
