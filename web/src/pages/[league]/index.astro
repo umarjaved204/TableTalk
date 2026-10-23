@@ -59,7 +59,7 @@ const description =
     : `${league.name} season predictions from TableTalk.`;
 ---
 
-<Base title={title} description={description}>
+<Base title={title} description={description} league={league}>
   <LeagueSwitcher current={league.slug} />
   <div class="container page">
     {data.state !== "ready" && (

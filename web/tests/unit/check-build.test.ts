@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 /** A fake build folder with the given files (and the real _headers unless one is given; null leaves it out). */
-function build(files: Record<string, string | null>): string {
+function build(files: Record<string, string | Uint8Array | null>): string {
   dir = mkdtempSync(join(tmpdir(), "tabletalk-build-"));
   for (const [name, content] of Object.entries({ _headers: HEADERS, ...files })) {
     if (content === null) continue;
@@ -41,8 +41,52 @@ describe("build check", () => {
     });
     expect(checkBuild(local)).toEqual([
       'index.html:2: contains "localhost"',
+      "la-liga/index.html: has og:url but no og:image (share image)",
       'la-liga/index.html:1: contains "127.0.0.1"',
     ]);
+  });
+
+  describe("share images", () => {
+    /** The first 24 bytes of a PNG: signature, then the IHDR chunk's length, type, width and height. */
+    const png = (width: number, height: number) => {
+      const bytes = Buffer.alloc(24);
+      Buffer.from("89504e470d0a1a0a0000000d49484452", "hex").copy(bytes);
+      bytes.writeUInt32BE(width, 16);
+      bytes.writeUInt32BE(height, 20);
+      return bytes;
+    };
+    const page = (image: string) =>
+      `<meta property="og:url" content="https://tabletalk.example/la-liga/">\n<meta property="og:image" content="${image}">`;
+
+    it("pass when the page's image is a 1200 x 630 PNG in the build", () => {
+      const ok = build({
+        "la-liga/index.html": page("https://tabletalk.example/share/la-liga.png"),
+        "share/la-liga.png": png(1200, 630),
+      });
+      expect(checkBuild(ok)).toEqual([]);
+    });
+
+    it("fail when the image is missing, the wrong size, not a PNG, elsewhere, or not a full address", () => {
+      const problems = checkBuild(
+        build({
+          "a/index.html": page("https://tabletalk.example/share/none.png"),
+          "b/index.html": page("https://tabletalk.example/share/small.png"),
+          "c/index.html": page("https://tabletalk.example/share/fake.png"),
+          "d/index.html": page("https://other.example/share/la-liga.png"),
+          "e/index.html": page("/share/la-liga.png"),
+          "share/small.png": png(600, 315),
+          "share/fake.png": "not an image",
+          "share/la-liga.png": png(1200, 630),
+        }),
+      );
+      expect(problems).toEqual([
+        "a/index.html: og:image /share/none.png is not in the build",
+        "b/index.html: og:image /share/small.png is 600 x 315, expected 1200 x 630",
+        "c/index.html: og:image /share/fake.png is not a PNG",
+        'd/index.html: og:image "https://other.example/share/la-liga.png" is not on the page\'s site (https://tabletalk.example)',
+        'e/index.html: og:image "/share/la-liga.png" is not a full address',
+      ]);
+    });
   });
 
   it("fails on .woff fallbacks and on Cyrillic, Greek or Vietnamese subsets", () => {
@@ -102,5 +146,24 @@ describe("build check", () => {
     expect(cache("/_astro/source-sans-3-latin-wght-normal.abc.woff2")).toEqual([
       "public, max-age=31536000, immutable",
     ]);
+  });
+
+  it("lets other sites load the share images, and nothing else", () => {
+    const { rules } = parseHeaders(HEADERS);
+    const corp = (path: string) => headersFor(rules, path).get("cross-origin-resource-policy");
+    expect(corp("/share/premier-league.png")).toEqual(["cross-origin"]);
+    for (const path of ["/", "/premier-league/", "/icon-512.png", "/_astro/site.abc.css"])
+      expect(corp(path)).toEqual(["same-origin"]);
+  });
+
+  it("fails when the share images' rule is missing", () => {
+    const withoutShare = HEADERS.replace(/^\/share\/\*\r?\n(?: {2}.*\r?\n)+/m, "");
+    const problems = checkBuild(build({ "share/tabletalk.png": "", _headers: withoutShare }));
+    expect(problems).toContain(
+      '_headers: rule /share/* is missing "Cross-Origin-Resource-Policy: cross-origin"',
+    );
+    expect(problems).toContain(
+      '_headers: /share/tabletalk.png gets Cross-Origin-Resource-Policy "same-origin", expected "cross-origin"',
+    );
   });
 });

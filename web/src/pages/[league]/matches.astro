@@ -36,7 +36,7 @@ const title = `${league.name} matches and predictions`;
 const description = `${league.name}: predictions for the next matches, and how recent predictions turned out. Updated nightly.`;
 ---
 
-<Base title={title} description={description}>
+<Base title={title} description={description} league={league}>
   <LeagueSwitcher current={league.slug} section="matches/" />
   <div class="container page">
     {data.state !== "ready" && (

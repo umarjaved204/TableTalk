@@ -8,7 +8,8 @@
 #   bash deploy/check-live.sh https://tabletalk.<account>.workers.dev
 #
 # Addresses: the home page, a team page, a page that doesn't exist (must be a
-# 404 with the same headers), one /_astro/ file and one font. For each:
+# 404 with the same headers), one /_astro/ file and one font, plus a share
+# image (a PNG that other sites may load). For each of the first five:
 #   - every security header present exactly once, with the planned value;
 #   - exactly one Cache-Control, with the value for its kind of file (two
 #     values joined with a comma would mean two _headers rules both set it);
@@ -100,6 +101,16 @@ team="$(grep -o 'href="/premier-league/[a-z0-9-]*/"' "$work/league.b" | grep -v 
 [ -n "$team" ] && check "$team" team 200 "$PAGE_CACHE" page || bad "no team page linked from /premier-league/"
 
 check "/no-such-page-$RANDOM/" missing 404 "$PAGE_CACHE" page
+
+# A share image: other sites and apps show it, so it alone may be loaded by
+# other sites (Cross-Origin-Resource-Policy: cross-origin).
+status="$(fetch /share/tabletalk.png share)"
+echo /share/tabletalk.png
+[ "$status" = 200 ] && ok "status $status" || bad "status $status, expected 200"
+got="$(values share content-type)"
+[ "$got" = "image/png" ] && ok "content-type ($got)" || bad "content-type: got '$got', expected 'image/png'"
+got="$(values share cross-origin-resource-policy)"
+[ "$got" = "cross-origin" ] && ok "cross-origin-resource-policy ($got)" || bad "cross-origin-resource-policy: got '${got//$'\n'/ + }', expected 'cross-origin'"
 
 # A hashed file and a font: the home page's first stylesheet, and the first
 # font named in any of its stylesheets.

@@ -15,6 +15,11 @@
 //      (the 404 page), gets each security header exactly once and exactly one
 //      Cache-Control: "no-cache" for pages and other files,
 //      "public, max-age=31536000, immutable" for /_astro/ (hashed names).
+//      Share images (/share/) get Cross-Origin-Resource-Policy: cross-origin,
+//      so other sites can show them; every other file same-origin.
+//   4. Share images (src/data/share.ts): every page with a public address
+//      (og:url) names an og:image, and every og:image is a PNG in the build,
+//      1200 x 630, on the same site as the page.
 //
 // Usage: node scripts/check-build.mjs [folder]   (default: dist)
 // Exits with an error, listing every problem, if any check fails.
@@ -50,9 +55,12 @@ const REQUIRED = {
     `Cache-Control: ${PAGE_CACHE}`,
   ],
   "/_astro/*": ["! Cache-Control", `Cache-Control: ${HASHED_CACHE}`],
+  "/share/*": ["! Cross-Origin-Resource-Policy", "Cross-Origin-Resource-Policy: cross-origin"],
 };
 // Stands for any address with no file: Cloudflare answers with 404.html.
 const MISSING = "/no-such-page/";
+const SHARE_SIZE = { width: 1200, height: 630 };
+const PNG_SIGNATURE = "89504e470d0a1a0a";
 
 function files(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -135,7 +143,10 @@ function checkHeaders(dir, names) {
       const values = headers.get(name.toLowerCase()) ?? [];
       return values.length === 1 ? values[0] : `${values.length} values: ${values.join(" + ")}`;
     };
-    for (const [name, value] of Object.entries(SECURITY))
+    const expected = path.startsWith("/share/")
+      ? { ...SECURITY, "Cross-Origin-Resource-Policy": "cross-origin" }
+      : SECURITY;
+    for (const [name, value] of Object.entries(expected))
       if (one(name) !== value)
         problems.push(`_headers: ${path} gets ${name} "${one(name)}", expected "${value}"`);
     if (!HSTS.test(one("Strict-Transport-Security")))
@@ -144,6 +155,44 @@ function checkHeaders(dir, names) {
     if (one("Cache-Control") !== cache)
       problems.push(`_headers: ${path} gets Cache-Control "${one("Cache-Control")}", expected "${cache}"`);
   }
+  return problems;
+}
+
+/** A PNG's width and height (from its IHDR chunk), or null if the file isn't a PNG. */
+function pngSize(file) {
+  const head = readFileSync(file).subarray(0, 24);
+  if (head.length < 24 || head.subarray(0, 8).toString("hex") !== PNG_SIGNATURE) return null;
+  return { width: head.readUInt32BE(16), height: head.readUInt32BE(20) };
+}
+
+/** A meta tag's content, by property (og:...) or name (twitter:...). */
+function meta(html, key) {
+  const match = new RegExp(`<meta (?:property|name)="${key}" content="([^"]*)"`).exec(html);
+  return match ? match[1] : null;
+}
+
+/** A page's share image: named if the page has a public address, and a 1200 x 630 PNG in the build. */
+function checkShareImage(dir, name, html) {
+  const image = meta(html, "og:image");
+  const page = meta(html, "og:url");
+  if (!image) return page ? [`${name}: has og:url but no og:image (share image)`] : [];
+  let address;
+  try {
+    address = new URL(image);
+  } catch {
+    return [`${name}: og:image "${image}" is not a full address`];
+  }
+  const problems = [];
+  if (page && new URL(page).origin !== address.origin)
+    problems.push(`${name}: og:image "${image}" is not on the page's site (${new URL(page).origin})`);
+  const file = join(dir, decodeURIComponent(address.pathname));
+  if (!existsSync(file)) return [...problems, `${name}: og:image ${address.pathname} is not in the build`];
+  const size = pngSize(file);
+  if (!size) problems.push(`${name}: og:image ${address.pathname} is not a PNG`);
+  else if (size.width !== SHARE_SIZE.width || size.height !== SHARE_SIZE.height)
+    problems.push(
+      `${name}: og:image ${address.pathname} is ${size.width} x ${size.height}, expected ${SHARE_SIZE.width} x ${SHARE_SIZE.height}`,
+    );
   return problems;
 }
 
@@ -156,7 +205,9 @@ export function checkBuild(dir) {
     names.push(name);
     const extension = extname(path).toLowerCase();
     if (TEXT.has(extension)) {
-      const lines = readFileSync(path, "utf8").split("\n");
+      const text = readFileSync(path, "utf8");
+      if (extension === ".html") problems.push(...checkShareImage(dir, name, text));
+      const lines = text.split("\n");
       lines.forEach((line, i) => {
         const match = LOCAL.exec(line);
         if (match) problems.push(`${name}:${i + 1}: contains "${match[0]}"`);
@@ -181,6 +232,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
   console.log(
     `[check-build] ${dir}: no local addresses, fonts are Latin/Latin Extended WOFF2 only, ` +
-      "_headers complete with one Cache-Control per file",
+      "_headers complete with one Cache-Control per file, share images in place",
   );
 }
