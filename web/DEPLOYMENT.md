@@ -48,7 +48,8 @@ daily-update.yml (nightly)              deploy-site.yml (push to main
               npm ci --ignore-scripts (Wrangler, exact version),
               download dist/, wrangler deploy,
               wait until the live home page is the built one (max 3 min),
-              bash deploy/check-live.sh https://tabletalk.fyi
+              bash deploy/check-live.sh https://tabletalk.fyi (up to 4 tries,
+              30 s apart)
                  |
   redeploy    only if stale; actions: write, no secrets
               gh workflow run deploy-site.yml --ref main
@@ -320,9 +321,14 @@ as it should).
 `SITE_URL` as its last step, with curl only and no secrets. It first waits,
 for up to three minutes, until the live home page is byte for byte the
 `index.html` just built (Cloudflare changes nothing in the HTML), so it checks
-the new version, not the old one. A failed check, or a home page that never
-updates, fails the job and GitHub emails you; the new site stays up, so look
-at the failed lines and fix forward or roll back (below).
+the new version, not the old one. A deploy that changes only headers leaves the
+home page as it was, so that wait ends at once while some requests may still
+get the old version (the first headers-only deploy, 23 Oct 2026, failed its
+check 2 seconds after deploying and passed minutes later). So a failed check
+is tried again, 30 seconds apart, up to 4 times. A check that fails all 4
+times, or a home page that never updates, fails the job and GitHub emails you;
+the new site stays up, so look at the failed lines and fix forward or roll
+back (below).
 
 The browser tests are written for the test data, so they are not run against
 the live site (many of their checks would fail on real data). To check the
@@ -354,7 +360,7 @@ do steps 1 to 4.
 | `npm run verify` (types, lint, unit tests, build check)    | Nothing is deployed; the previous site stays up; the run fails and GitHub emails you            |
 | The deploy finds `main` or `data` moved on since its build | Not deployed (the job passes, with a notice); "Deploy site" is started to deploy the tips       |
 | The deploy itself (token, Cloudflare, network)             | The previous site stays up; the run fails; re-run the deploy job once the cause is fixed        |
-| The go-live check after a deploy                           | The new site is up; the run fails and GitHub emails you; the log shows each failed check        |
+| The go-live check after a deploy (4 tries in a row)        | The new site is up; the run fails and GitHub emails you; the log shows each failed check        |
 
 **Rolling back:** revert the bad commit on `main` (Deploy site then
 redeploys), or re-run an earlier run's deploy job. In an emergency,

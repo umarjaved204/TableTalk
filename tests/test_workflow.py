@@ -188,8 +188,11 @@ def test_every_deploy_ends_with_the_go_live_check_on_the_live_site():
     # Waits until the live home page is the one just built, then fails if it never is.
     assert '"$SITE_URL/"' in wait["run"] and "cmp -s - dist/index.html" in wait["run"]
     assert "exit 1" in wait["run"]
-    # The check itself: curl only, no secrets, and nothing that could hide a failure.
-    assert check["run"] == 'bash check-live.sh "$SITE_URL"'
+    # The check itself: curl only, no secrets, and nothing that could hide a failure. It is
+    # tried again while a deploy is still spreading, but the last failure fails the step.
+    assert 'bash check-live.sh "$SITE_URL"' in check["run"]
+    assert "for attempt in 1 2 3 4" in check["run"] and "sleep 30" in check["run"]
+    assert check["run"].rstrip().endswith("exit 1")
     assert check["working-directory"] == "src/deploy"
     for step in (wait, check):
         assert "env" not in step and "continue-on-error" not in step
