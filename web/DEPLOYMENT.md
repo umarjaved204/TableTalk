@@ -165,6 +165,13 @@ both values joined, `no-cache, public, max-age=31536000, immutable` (tested
 with `wrangler dev` on 22 Oct 2026, when the first value still had
 `no-transform`).
 
+**`/share/*` (the share images):** `! Cross-Origin-Resource-Policy`, then
+`Cross-Origin-Resource-Policy: cross-origin`. These are the pictures chat and
+social apps show for a link, so other sites must be allowed to load them (most
+apps fetch them on their own servers, where the header doesn't matter, but
+some web versions load them straight into the browser). Every other file stays
+`same-origin`; the build check and the go-live check both check this.
+
 Files outside `/_astro/` that aren't pages (icons, `manifest.webmanifest`,
 `robots.txt`, `sitemap.xml`, the QR codes) get the `/*` value too: their
 names don't change when their content does, so they must be checked as well.
@@ -312,6 +319,9 @@ each:
    injected Web Analytics beacon), and the page **compressed** (gzip or
    Brotli) when asked for as a browser asks.
 
+It also asks for the site's share image (`/share/tabletalk.png`): status 200,
+`image/png`, and `Cross-Origin-Resource-Policy: cross-origin`.
+
 It prints a line per check and exits 1 if any failed; the site isn't live
 until it passes. Tested on 22 Oct 2026 against `wrangler dev` (passing), and
 with the `! Cache-Control` line removed (failing on the two `/_astro/` files,
@@ -434,7 +444,23 @@ adds a third-party request (unless self-hosted), needs `script-src` and
 proposed: the request counts and Search Console answer "is anyone visiting,
 and how do they find it?" without any of this.
 
-## Still to decide
+## Share images
 
-- **Share images** (Open Graph cards per league): now possible, since the
-  public address is known; how they're made is still open.
+Decided 23 Oct 2026: **fixed images, no numbers**, in the Floodlights look.
+Chat and social apps keep a link's preview for days or weeks, so an image
+with that night's chances would go on showing old numbers. Six 1200 x 630
+PNGs in `public/share/`: `tabletalk.png` for the site, and one per league
+(`premier-league.png`, ...) used by its league page, matches page and team
+pages. `src/layouts/Base.astro` names each page's image (`og:image`, with
+size and alt text, and `twitter:card` `summary_large_image`), only when
+`SITE_URL` is set, since apps need the full address. The words on the images
+and their alt text both come from `src/data/share.ts`.
+
+They are drawn by `node scripts/make-share-images.mjs` (Playwright's
+Chromium, the site's own fonts) and committed; run it again only when the
+design or the list of leagues changes. The build check fails if a page with
+a public address names no image, or names one that isn't a 1200 x 630 PNG in
+the build; a unit test checks there is one image per league.
+
+Apps keep their copy of an image: after changing one, a link already shared
+keeps its old preview until the app fetches it again.

@@ -30,3 +30,10 @@
 /_astro/*
   ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
+
+# Share images (src/data/share.ts): shown by other sites and apps when someone
+# shares a link, so other sites may load them. Everything else stays
+# same-origin.
+/share/*
+  ! Cross-Origin-Resource-Policy
+  Cross-Origin-Resource-Policy: cross-origin
