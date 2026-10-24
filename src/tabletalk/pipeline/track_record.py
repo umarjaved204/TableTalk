@@ -244,10 +244,10 @@ def summarise(scored: pd.DataFrame, counts: dict, *, live_since: str | None, gen
         "notes": [
             "Only predictions locked before kick-off by the daily run are scored. Backtests and "
             "any retrospective predictions are never mixed in.",
-            "Differences are model minus the other forecaster in log loss (negative = model "
-            "better), with a 95% interval. With few matches the intervals are wide; "
-            "`matches_needed` is roughly how many matches it would take to detect a gap the "
-            "size the backtest found (0.08 against base rates, 0.02 against the market).",
+            "Differences are the model's log loss minus the other forecaster's (negative = model "
+            "better), with a 95% interval. With few matches the intervals are wide. Matches "
+            "needed is roughly how many matches it would take to detect a gap the size the "
+            "backtest found (0.08 in log loss against base rates, 0.02 against the market).",
             "Market probabilities come from closing odds with the margin removed proportionally "
             "(an assumption). They appear a few days after each match.",
         ],

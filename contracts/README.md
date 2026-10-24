@@ -124,6 +124,12 @@ Probabilities are numbers from 0 to 1, rounded to 6 decimals.
 | `expected_goals` | `home`, `away`: the match model's average goals for each side |
 | `likely_scorelines[]` | The 5 most likely scores, most likely first |
 
+A match stays in `upcoming_matches` until its final score is in the results,
+so a match that has kicked off, or is in play, when a run happens is still
+listed, with a prediction made after its kick-off. That prediction is never
+the one locked: the lock is the last prediction made before kick-off (see
+the lock log below).
+
 Match probabilities come from the model's best estimate of each team's
 strength. The season chances (`teams[]`) also allow for uncertainty in those
 strengths, which is why they are a little less extreme than repeating each
@@ -165,6 +171,7 @@ never rewritten, because that would break the chain.
 | `.verdict` | One of: `no scored matches yet`, `too few matches to compare`, `no detectable difference` (interval includes zero), `model better` / `model worse` (interval excludes zero and both halves agree), `consistently better but modest` / `consistently worse but modest` (interval excludes zero but one half disagrees) |
 | `calibration[]` | For home, draw and away forecasts: probability bin, how many, average forecast, how often it happened, 95% interval |
 | `matches[]` | Every scored match: lock id, teams, kick-off, when predicted, probabilities, score, log loss, code commit, and `pipeline_hash` (from the lock; null for locks made before 1.2.0) |
+| `notes[]` | Sentences explaining the report. They are shown to visitors as written, so they are plain English with no field names |
 
 Only live locks are scored. Backtest results and any predictions made after
 the fact are never included.
@@ -214,3 +221,10 @@ longer listed. `state/results_seen.json` is frozen. `pipeline_hash` and each
 league's `config_hash` change once on this date (the rating-drift option was
 removed, and these loading changes); no published number changes because of it
 (see docs/runbook.md and CHANGELOG.md).
+
+2026-10-24 (wording, still 1.2.0): a match that has kicked off can still be
+in `upcoming_matches`, and its prediction is never the one locked; the
+`notes` in `track_record/summary.json` are shown to visitors as written and
+no longer contain field names (one note reworded). No field changes.
+`pipeline_hash` changes once, because the note's text is in `src/tabletalk/`;
+no published number changes.

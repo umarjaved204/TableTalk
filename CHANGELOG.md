@@ -4,6 +4,24 @@ What changed and why, newest first. How things work today is in the
 [README](README.md) and [docs/](docs/); the detail of each change is in its
 commit and pull request.
 
+## 24 Oct 2026
+
+- **Track record notes in plain English**: the note about matches needed no
+  longer uses the field name `matches_needed`, and the contract says the
+  notes are shown to visitors as written. It also says a match that has
+  kicked off can still be listed as upcoming, with a prediction that is never
+  the one locked. Wording only; `pipeline_hash` changes once (the note's
+  text is pipeline code), no published number changes.
+- **Decision: no earlier nightly try.** The tries stay at 01:37-07:37 UTC.
+  The first-seen log can't measure how fast the results source is (its
+  delays were bounded by our own run times), and a 16 Oct result wasn't
+  available until about 08:00 UTC, so an earlier try would mostly find
+  results missing. Revisit only if a lock is ever made without the previous
+  day's results.
+- **Not planned: confirmed kick-off times** (contract request R9).
+  football-data.org can't tell a confirmed kick-off time from a default slot
+  that TV picks may still move: both are `TIMED`, with the same fields.
+
 ## 23 Oct 2026
 
 - **Simpler, before the announcement** (a review of what each part costs and
