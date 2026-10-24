@@ -28,6 +28,9 @@
 //      without flicker when the pointer rests on the name's bottom edge;
 //      other links on the card don't; a pressed button shrinks to 97%. With
 //      reduced motion the shadow still appears and nothing moves.
+//  10. Pitch lines (index.astro): drawn once on the home page, finished in
+//      0.6 s, and never over the heading or intro text at any width (hidden
+//      below 768px).
 //
 // Each run also fails on any Content Security Policy violation, with one
 // narrow exception: WebKit (Playwright's Windows build) refuses its own
@@ -670,6 +673,67 @@ test.describe("card hover and button press", () => {
     await page.mouse.up();
     expect(pressed).toBe("matrix(0.97, 0, 0, 0.97, 0, 0)");
   });
+});
+
+/** Whether the home page's pitch shows, and every line of intro text it overlaps. */
+const pitchClearance = (page: Page) =>
+  page.evaluate(() => {
+    const pitch = document.querySelector(".intro .pitch");
+    if (!pitch) throw new Error("no pitch");
+    const box = pitch.getBoundingClientRect();
+    const shown = getComputedStyle(pitch).display !== "none" && box.width > 0;
+    const overlaps: string[] = [];
+    for (const el of document.querySelectorAll(".intro > :not(.pitch)")) {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      for (const line of range.getClientRects()) {
+        const apart =
+          line.right <= box.left ||
+          line.left >= box.right ||
+          line.bottom <= box.top ||
+          line.top >= box.bottom;
+        if (shown && !apart)
+          overlaps.push(`${el.tagName}.${el.className}: ${Math.round(line.left)}-${Math.round(line.right)}`);
+      }
+    }
+    return { shown, overlaps };
+  });
+
+test.describe("pitch lines", () => {
+  test("the home page's pitch draws once, finished in 0.6 s, transform and opacity only", async ({
+    page,
+  }) => {
+    await open(page, "/", 1280);
+    const lines = (await running(page)).filter((a) => ["draw-x", "draw-y", "open-out"].includes(a.name));
+    expect(lines.length, "all 9 parts of the pitch are drawn").toBe(9);
+    expect(
+      lines.filter((a) => a.properties.some((p) => p !== "transform" && p !== "opacity")),
+      "only transform and opacity",
+    ).toEqual([]);
+    expect(
+      lines.filter((a) => a.iterations !== 1),
+      "once",
+    ).toEqual([]);
+    expect(Math.max(...lines.map((a) => a.endTime)), "finished in 0.6 s").toBe(600);
+  });
+
+  for (const width of [320, 390, 767, 768, 1024, 1280, 1920]) {
+    test(`${width}px: the pitch is clear of the heading and intro text`, async ({ page }) => {
+      await open(page, "/", width);
+      const { shown, overlaps } = await pitchClearance(page);
+      expect(shown, width < 768 ? "hidden below 768px" : "shown from 768px").toBe(width >= 768);
+      expect(overlaps, "no overlap with any line of text").toEqual([]);
+    });
+  }
+
+  for (const width of [768, 1280]) {
+    test(`${width}px, text at 200%: the pitch is clear of the heading and intro text`, async ({ page }) => {
+      await open(page, "/", width);
+      await page.evaluate(() => (document.documentElement.style.fontSize = "200%"));
+      const { overlaps } = await pitchClearance(page);
+      expect(overlaps, "no overlap with any line of text").toEqual([]);
+    });
+  }
 });
 
 test.describe("reduced motion", () => {
