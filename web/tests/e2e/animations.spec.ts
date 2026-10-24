@@ -16,6 +16,9 @@
 //   6. Page crossfades (global.css): following a link and Back each fade the
 //      whole page, with no element moving on its own and nothing but opacity
 //      changing; with reduced motion there is no page transition.
+//   7. Theme crossfade (theme-head.js): a theme chosen in Appearance fades in
+//      over the old one (240 ms, opacity only) and the page ends on it, even
+//      after quick changes; with reduced motion it changes at once.
 //
 // Each run also fails on any Content Security Policy violation, with one
 // narrow exception: WebKit (Playwright's Windows build) refuses its own
@@ -367,8 +370,107 @@ test.describe("page crossfades", () => {
   }
 });
 
+interface Fade {
+  pseudo: string;
+  changing: string[];
+  endTime: number;
+}
+
+/** Waits for a view transition on the current page to start and returns its
+ *  animations (with the properties whose value changes), or [] if none starts. */
+async function viewTransition(page: Page, timeout = 2000): Promise<Fade[]> {
+  const handle = await page
+    .waitForFunction(
+      () => {
+        const animations = document
+          .getAnimations()
+          .filter((a) => (a.effect as KeyframeEffect).pseudoElement?.startsWith("::view-transition"));
+        if (animations.length === 0) return null;
+        return animations.map((a) => {
+          const effect = a.effect as KeyframeEffect;
+          const frames = effect.getKeyframes() as Record<string, unknown>[];
+          const keys = [...new Set(frames.flatMap((frame) => Object.keys(frame)))].filter(
+            (key) => !["offset", "computedOffset", "easing", "composite"].includes(key),
+          );
+          return {
+            pseudo: effect.pseudoElement ?? "",
+            changing: keys.filter((key) => new Set(frames.map((frame) => String(frame[key]))).size > 1),
+            endTime: Number(effect.getComputedTiming().endTime ?? 0),
+          };
+        });
+      },
+      null,
+      { timeout, polling: "raf" },
+    )
+    .catch(() => null);
+  return handle ? ((await handle.jsonValue()) as Fade[]) : [];
+}
+
+const theme = (page: Page) =>
+  page.evaluate(() => ({
+    theme: document.documentElement.dataset["theme"],
+    choice: document.documentElement.dataset["themeChoice"],
+    fading: document.documentElement.hasAttribute("data-theme-fade"),
+  }));
+
+test.describe("theme crossfade", () => {
+  test("choosing a theme in Appearance crossfades to it, opacity only", async ({ page, browserName }) => {
+    const collected = await open(page, "/", 1280);
+    await page.locator("[data-open-appearance]").click();
+    await page.locator("#theme-floodlights").check();
+    const fade = await viewTransition(page);
+    expect(fade.length, "the page crossfaded").toBeGreaterThan(0);
+    const groups = new Set(fade.map((f) => f.pseudo).filter((p) => p.startsWith("::view-transition-group")));
+    expect([...groups], "only the whole page, no element moves on its own").toEqual([
+      "::view-transition-group(root)",
+    ]);
+    expect(
+      fade.flatMap((f) => f.changing.filter((c) => c !== "opacity").map((c) => `${f.pseudo}: ${c}`)),
+      "nothing but opacity changes",
+    ).toEqual([]);
+    // Each snapshot has the fade and the browser's constant blend-mode animation.
+    const oldAndNew = fade.filter((f) => /^::view-transition-(old|new)\(root\)$/.test(f.pseudo));
+    expect(oldAndNew.length, "the old and new page both animate").toBeGreaterThanOrEqual(2);
+    expect(
+      oldAndNew.filter((f) => f.endTime !== 240).map((f) => `${f.pseudo}: ${f.endTime} ms`),
+      "the old and new page fade in 240 ms",
+    ).toEqual([]);
+    await page.waitForFunction(() => !document.documentElement.hasAttribute("data-theme-fade"));
+    expect(await theme(page)).toEqual({ theme: "floodlights", choice: "floodlights", fading: false });
+
+    const left = unexplained(collected, browserName);
+    expect(left.violations, "Content Security Policy violations").toEqual([]);
+    expect(left.errors, "console errors (including CSP violations)").toEqual([]);
+  });
+
+  test("quick changes end on the last theme chosen", async ({ page }) => {
+    await open(page, "/", 1280);
+    await page.locator("[data-open-appearance]").click();
+    await page.locator("#theme-tactics").focus();
+    await page.keyboard.press("Space");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    await page.waitForFunction(() => !document.documentElement.hasAttribute("data-theme-fade"));
+    const checked = await page.locator('input[name="theme"]:checked').getAttribute("value");
+    expect(await theme(page)).toEqual({ theme: checked, choice: checked, fading: false });
+    expect(checked, "two steps on from Tactics Board: Programme, then Night Game").toBe("nightgame");
+  });
+});
+
 test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
+
+  test("choosing a theme changes it at once, without a crossfade", async ({ page }) => {
+    await open(page, "/", 1280);
+    await page.locator("[data-open-appearance]").click();
+    await page.locator("#theme-floodlights").check();
+    expect(await theme(page), "applied at once").toEqual({
+      theme: "floodlights",
+      choice: "floodlights",
+      fading: false,
+    });
+    expect(await viewTransition(page, 500), "no crossfade with reduced motion").toEqual([]);
+  });
 
   test("following a link changes the page without a transition", async ({ page }) => {
     await page.addInitScript(recordReveal);

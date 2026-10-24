@@ -190,6 +190,13 @@ abbr[title] {
   animation-duration: 180ms;
 }
 
+/* A theme change from the Appearance picker fades the same way, a little
+   slower (240 ms): theme-head.js sets data-theme-fade while it runs. */
+:root[data-theme-fade]::view-transition-old(root),
+:root[data-theme-fade]::view-transition-new(root) {
+  animation-duration: 240ms;
+}
+
 /* Windows High Contrast / forced colours: let the system colours win, and
    keep zone markers visible as borders. */
 @media (forced-colors: active) {
