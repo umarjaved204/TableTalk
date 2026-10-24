@@ -170,6 +170,26 @@ Tests for stale data and kick-offs move the clock on.
 | Heatmap: runs of blank cells merged                                            | `heat.test.ts`                        | `a11y-matrix`                                 |
 | No layout shift with every font 1.5 s late; out-of-date warning at first paint | `favourite-core.test.ts` (`staleCss`) | `layout-shift.spec.ts`                        |
 
+## Motion (`e2e/animations.spec.ts`)
+
+Every built page at 390 and 1280px, in Chromium (`desktop-chrome`) and WebKit
+(`desktop-webkit`, which runs only this file):
+
+| Rule                                                                 | How it is checked                                                                  |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Only transform and opacity are animated                              | The keyframes of every running animation, at load and after scrolling the page     |
+| Every animation plays once and is over within 1 s                    | Each animation's iteration count and end time                                      |
+| Each animation ends on the page's own style: opacity 1, no transform | Once played out, its end state is read, then it is cancelled and the style re-read |
+| Reduced motion: nothing animates                                     | `reducedMotion: "reduce"`: no animation on any page, before or after scrolling     |
+| No layout shift while the page loads and its animations play         | Layout-shift entries until every animation has finished (under 0.005)              |
+| No CSP violation and no console error                                | Violation events and console errors, collected from the first byte                 |
+
+One exception: Playwright's WebKit refuses its own built-in styles for a
+visible `<select>` under the site's `style-src` and logs a console message.
+It is allowed only in WebKit, only word for word, and only as often as the
+page reported a `style-src-attr` violation on a `<select>`. A test in the same
+file checks that nothing broader gets through.
+
 ## Browser tests: accessibility coverage
 
 The full record, with the manual keyboard and NVDA checklists still to do, is

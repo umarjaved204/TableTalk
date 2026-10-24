@@ -6,6 +6,18 @@ commit and pull request.
 
 ## 24 Oct 2026
 
+- **Website animations**: pages crossfade between pages of the site (Chrome,
+  Edge and Safari; Firefox changes page at once, as before), a theme chosen
+  in Appearance fades in, a saved team's stars pop once, hovering a league's
+  name on a home card lifts the card, a pressed button shrinks slightly, and
+  a faint pitch draws beside the home heading in 0.6 s. Only transform and
+  opacity are animated, each effect plays once, the page without animation
+  is the finished page, and everything is off with reduced motion.
+  `tests/e2e/animations.spec.ts` checks these rules on every page, in
+  Chromium and WebKit. Decided against: the team name moving from the table
+  into the team page heading (the browser animates its size as well, and it
+  needs a stylesheet with one name per team) and scroll-driven chart reveals
+  (the bars keep growing in once on load).
 - **Track record notes in plain English**: the note about matches needed no
   longer uses the field name `matches_needed`, and the contract says the
   notes are shown to visitors as written. It also says a match that has

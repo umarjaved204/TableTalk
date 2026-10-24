@@ -9,6 +9,7 @@ import { E2E_DATA_DIR, E2E_OUT_DIR, E2E_PORT } from "./tests/e2e/site.ts";
 //
 // Projects:
 //   desktop-chrome   the accessibility matrix and feature tests (league-page.spec.ts)
+//   desktop-webkit   animations.spec.ts only, so the motion rules are checked in Safari's engine too
 //   phone projects   mobile.spec.ts on real phone profiles: screen size, pixel
 //                    density, touch and mobile user agent. iPhones run in WebKit
 //                    (Safari's engine), Android phones in Chromium.
@@ -41,6 +42,13 @@ export default defineConfig({
       name: "desktop-chrome",
       testIgnore: [MOBILE, /rollover\.spec\.ts/],
       use: { ...devices["Desktop Chrome"] },
+    },
+    // animations.spec.ts also runs in WebKit (Safari's engine), whose animation
+    // and view-transition support differs from Chromium's.
+    {
+      name: "desktop-webkit",
+      testMatch: /animations\.spec\.ts/,
+      use: { ...devices["Desktop Safari"] },
     },
     phone("iphone-se", "iPhone SE"), // 320px: the narrowest common phone
     phone("iphone-13", "iPhone 13"),

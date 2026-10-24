@@ -56,6 +56,30 @@
     meta.setAttribute("content", getComputedStyle(document.body).backgroundColor);
   }
 
+  // A theme the visitor picks fades in over the old one (240 ms): the browser
+  // crossfades a snapshot of the page, so only opacity changes. Without view
+  // transitions, or when the device asks for less motion, it changes at once.
+  // data-theme-fade gives this fade its own length (global.css); only the
+  // latest of several quick changes removes it.
+  var reduceMotion = query("(prefers-reduced-motion: reduce)");
+  var fades = 0;
+  function applyWithFade(choice) {
+    if (typeof document.startViewTransition !== "function" || (reduceMotion && reduceMotion.matches)) {
+      apply(choice);
+      return;
+    }
+    var fade = ++fades;
+    root.setAttribute("data-theme-fade", "");
+    var done = function () {
+      if (fade === fades) root.removeAttribute("data-theme-fade");
+    };
+    document
+      .startViewTransition(function () {
+        apply(choice);
+      })
+      .finished.then(done, done);
+  }
+
   window.tabletalkTheme = {
     current: saved,
     choose: function (choice) {
@@ -66,7 +90,7 @@
       } catch {
         // Not remembered (private window or blocked storage), but still applied.
       }
-      apply(choice);
+      applyWithFade(choice);
     },
   };
 

@@ -13,6 +13,7 @@ level AA.
 | **Phones**        | 7 phone profiles (WebKit and Chromium): no sideways scroll, tap targets ≥ 24 px (main controls 44 px), no text under 12 px, 200% text, wider text spacing                                                                                                                                                                                                                               | `tests/e2e/mobile.spec.ts`      |
 | **No JavaScript** | Every section and number still shown; no controls that can't work                                                                                                                                                                                                                                                                                                                       | `tests/e2e/no-js.spec.ts`       |
 | **Contrast**      | Every theme's token pairs, recomputed from the CSS (text 4.5:1, controls and data marks 3:1)                                                                                                                                                                                                                                                                                            | `tests/unit/themes.test.ts`     |
+| **Motion**        | Every page at 390 and 1280 px, Chromium and WebKit: only transform and opacity animated, each animation once and within 1 s, ending on the page's own style; with reduced motion nothing animates (page loads, page changes, theme changes, saving a team, hovering a card, pressing a button)                                                                                          | `tests/e2e/animations.spec.ts`  |
 
 Each axe run also fails on sideways scroll and on any console error, which
 includes a Content Security Policy violation. Every "Show the numbers" table
@@ -96,6 +97,26 @@ home-screen app.
 | Your team dialog, "Bookmark your team's page"                                                  | Opens the favourite's team page                                                         |
 | Reduce Motion on (iPhone: Settings, Accessibility, Motion), then the home page and a team page | The bars are simply there, nothing grows; with it off they grow in once                 |
 
+## Manual pass 4: reduced motion (to do)
+
+Turn on the device's reduced-motion setting: Windows, Settings › Accessibility ›
+Visual effects › Animation effects off (Chrome, Edge and Firefox follow it);
+macOS, System Settings › Accessibility › Display › Reduce motion; iPhone,
+Settings › Accessibility › Motion › Reduce Motion; Android, Settings ›
+Accessibility › Remove animations. Reload the site after changing it.
+
+| Step                                                   | Expected with reduced motion on                                   |
+| ------------------------------------------------------ | ----------------------------------------------------------------- |
+| Home page, load it                                     | The pitch beside the heading and the card bars are simply there   |
+| Home → a league card's name, then the browser's Back   | The page changes at once, with no fade                            |
+| Appearance → another theme                             | The colours change at once, with no fade                          |
+| Your team → pick a team → Save                         | Its stars appear at once; nothing pops                            |
+| Hover a league's name on a home card (mouse)           | The card's shadow appears; the card doesn't move                  |
+| Hold a button down (e.g. Save)                         | It dims, as every pressed control does; it doesn't shrink         |
+| A team page                                            | The finishing-position bars are simply there                      |
+| **Then turn the setting off,** reload and repeat these | Each effect plays once and stops; nothing loops or keeps moving   |
+| Firefox, setting off                                   | Pages change without a fade (Firefox has no page transitions yet) |
+
 ## Results
 
 | Date       | Tester    | Setup                                             | Pass                       | Issues found |
@@ -104,6 +125,7 @@ home-screen app.
 |            |           |                                                   | Manual keyboard            |              |
 |            |           | NVDA … with …                                     | Manual screen reader       |              |
 |            |           | iPhone … / Android …                              | Real phones                |              |
+|            |           | Windows … / iPhone …                              | Reduced motion             |              |
 
 Write each issue with the page, what happened, what was expected, and how
 serious it is (blocks a task / confusing / cosmetic).

@@ -64,6 +64,18 @@ const cardData = scriptJson(
         )}
         {simulations && <span>{simulations}</span>}
       </p>
+      <!-- Decorative: a faint pitch beside the intro, drawn once per visit. -->
+      <svg class="pitch" viewBox="0 0 400 260" width="176" height="114" aria-hidden="true" focusable="false">
+        <line class="touch" x1="10" y1="10" x2="390" y2="10"></line>
+        <line class="touch" x1="10" y1="250" x2="390" y2="250"></line>
+        <line class="goal" x1="10" y1="10" x2="10" y2="250"></line>
+        <line class="goal" x1="390" y1="10" x2="390" y2="250"></line>
+        <line class="halfway" x1="200" y1="10" x2="200" y2="250"></line>
+        <circle class="centre" cx="200" cy="130" r="40"></circle>
+        <circle class="spot" cx="200" cy="130" r="4"></circle>
+        <rect class="box-left" x="10" y="70" width="60" height="120"></rect>
+        <rect class="box-right" x="330" y="70" width="60" height="120"></rect>
+      </svg>
     </header>
 
     {"unsupported" in index && (
@@ -178,6 +190,101 @@ const cardData = scriptJson(
     gap: var(--space-2);
   }
 
+  /* The pitch: in its own grid column beside the text, so it can never
+     overlap the heading or the intro at any width; hidden below 768px, where
+     there's no room beside them. Its width and height attributes reserve its
+     space from the first paint (no layout shift). The colour is each theme's
+     --pitch-line. */
+  .pitch {
+    display: none;
+  }
+
+  @media (width >= 768px) {
+    .intro {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .intro > :not(.pitch) {
+      grid-column: 1;
+    }
+
+    .pitch {
+      display: block;
+      grid-column: 2;
+      grid-row: 1 / span 3;
+      align-self: center;
+      overflow: visible;
+    }
+  }
+
+  .pitch :is(line, rect, circle) {
+    fill: none;
+    stroke: var(--pitch-line);
+    stroke-width: 3;
+    transform-box: fill-box;
+  }
+
+  .pitch .spot {
+    fill: var(--pitch-line);
+    stroke: none;
+  }
+
+  /* Drawn once per visit to the home page, in 0.6 s: the halfway line grows
+     from the centre spot, the centre circle opens out, the touchlines and goal
+     lines grow from their middles, then the penalty boxes from each goal
+     line. Transform and opacity only; the finished pitch is the page's own
+     style, so without motion it is simply there. */
+  @keyframes draw-x {
+    from {
+      transform: scaleX(0);
+    }
+  }
+
+  @keyframes draw-y {
+    from {
+      transform: scaleY(0);
+    }
+  }
+
+  @keyframes open-out {
+    from {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .pitch .halfway {
+      transform-origin: 50% 50%;
+      animation: draw-y 300ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    }
+
+    .pitch :is(.centre, .spot) {
+      transform-origin: 50% 50%;
+      animation: open-out 300ms cubic-bezier(0.2, 0.7, 0.2, 1) 80ms both;
+    }
+
+    .pitch .touch {
+      transform-origin: 50% 50%;
+      animation: draw-x 300ms cubic-bezier(0.2, 0.7, 0.2, 1) 120ms both;
+    }
+
+    .pitch .goal {
+      transform-origin: 50% 50%;
+      animation: draw-y 260ms cubic-bezier(0.2, 0.7, 0.2, 1) 220ms both;
+    }
+
+    .pitch .box-left {
+      transform-origin: 0 50%;
+      animation: draw-x 300ms cubic-bezier(0.2, 0.7, 0.2, 1) 300ms both;
+    }
+
+    .pitch .box-right {
+      transform-origin: 100% 50%;
+      animation: draw-x 300ms cubic-bezier(0.2, 0.7, 0.2, 1) 300ms both;
+    }
+  }
+
   .lede {
     font-size: var(--step-1);
   }
@@ -236,11 +343,54 @@ const cardData = scriptJson(
   /* The favourite's league card comes first and is outlined; the generated
      rules set these properties (favouriteCss in src/scripts/favourite-core.js). */
   .cards li {
+    position: relative;
     display: grid;
     order: var(--fav-order, 0);
     border-radius: var(--radius-2);
     outline: 2px solid var(--fav-league-ring, transparent);
     outline-offset: 2px;
+  }
+
+  /* Hovering a league's name, the card's own link, fades in a shadow and
+     lifts the card 3px (with the favourite's outline), so it's clear the name
+     leads to that league. Only the name: the card holds other links too. The
+     shadow is drawn once and only its opacity changes. With a mouse only
+     (hover: hover); with reduced motion the shadow appears and nothing moves.
+     The lift is --card-lift, which LeagueCard.astro also uses to keep the
+     name's hover area still while it moves (no flicker at its bottom edge). */
+  .cards li::after {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: var(--shadow-2);
+    content: "";
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-2) ease-out;
+  }
+
+  @media (hover: hover) {
+    .cards li:has(:global(.title-link):hover) {
+      z-index: 1;
+    }
+
+    .cards li:has(:global(.title-link):hover)::after {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .cards li {
+      --card-lift: 3px;
+
+      transition: transform var(--dur-2) cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+
+    @media (hover: hover) {
+      .cards li:has(:global(.title-link):hover) {
+        transform: translateY(calc(-1 * var(--card-lift)));
+      }
+    }
   }
 
   @media (width >= 640px) {
