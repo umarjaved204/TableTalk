@@ -108,20 +108,25 @@ its numbers are not comparable with the old budgets.
 
 Elements per page (live, median of 3 runs):
 
-| Page                       | 23 Oct 2026 |
-| -------------------------- | ----------- |
-| `/`                        | 562         |
-| `/premier-league/`         | 1,955       |
-| `/bundesliga/`             | 1,887       |
-| `/premier-league/matches/` | 1,951       |
-| `/premier-league/arsenal/` | 680         |
-| `/track-record/`           | 1,256       |
-| `/methodology/`            | 322         |
-| `/about/`                  | 222         |
+| Page                       | 23 Oct 2026 | 24 Oct 2026 |
+| -------------------------- | ----------- | ----------- |
+| `/`                        | 562         | 572         |
+| `/premier-league/`         | 1,955       | 1,980       |
+| `/bundesliga/`             | 1,887       | 1,917       |
+| `/premier-league/matches/` | 1,951       | 1,956       |
+| `/premier-league/arsenal/` | 680         | 687         |
+| `/track-record/`           | 1,256       | 1,256       |
+| `/methodology/`            | 322         | 322         |
+| `/about/`                  | 222         | 219         |
 
 The same run, 23 Oct 2026: performance 98-100, accessibility 100, best
 practices 100, SEO 92 (the known `robots.txt` fetch, see
 `scripts/lighthouse.mjs`); LCP 1.40-1.55 s, CLS 0.000-0.003, TBT 0-154 ms.
+
+24 Oct 2026, the first check with the animations live (October's entry; 23
+Oct is the record from before them): performance 99-100, accessibility 100,
+best practices 100, SEO 92 (the same `robots.txt` fetch); LCP 1.41-1.84 s,
+CLS 0.000-0.003, TBT 0-105 ms.
 
 ## How it fits together
 
