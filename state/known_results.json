@@ -612,6 +612,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "bundesliga|2026-27|VfB Stuttgart|Borussia Mönchengladbach": {
+   "away_goals": 3,
+   "away_team": "Borussia Mönchengladbach",
+   "competition": "bundesliga",
+   "date": "2026-10-23",
+   "home_goals": 2,
+   "home_team": "VfB Stuttgart",
+   "kickoff_utc": "2026-10-23T18:30:00Z",
+   "match_id": "fdorg:565833",
+   "recorded_at": "2026-10-24T06:26:16Z",
+   "season": "2026-27"
+  },
   "bundesliga|2026-27|Werder Bremen|FC Augsburg": {
    "away_goals": 2,
    "away_team": "FC Augsburg",
@@ -670,6 +682,18 @@
    "kickoff_utc": "2026-08-15T17:30:00Z",
    "match_id": "fdorg:564634",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "la_liga|2026-27|Alavés|Málaga": {
+   "away_goals": 1,
+   "away_team": "Málaga",
+   "competition": "la_liga",
+   "date": "2026-10-23",
+   "home_goals": 1,
+   "home_team": "Alavés",
+   "kickoff_utc": "2026-10-23T19:00:00Z",
+   "match_id": "fdorg:564719",
+   "recorded_at": "2026-10-24T06:26:16Z",
    "season": "2026-27"
   },
   "la_liga|2026-27|Alavés|Osasuna": {
@@ -1812,6 +1836,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "ligue_1|2026-27|Brest|Nice": {
+   "away_goals": 2,
+   "away_team": "Nice",
+   "competition": "ligue_1",
+   "date": "2026-10-23",
+   "home_goals": 1,
+   "home_team": "Brest",
+   "kickoff_utc": "2026-10-23T18:45:00Z",
+   "match_id": "fdorg:559654",
+   "recorded_at": "2026-10-24T06:26:16Z",
+   "season": "2026-27"
+  },
   "ligue_1|2026-27|Brest|Paris Saint-Germain": {
    "away_goals": 1,
    "away_team": "Paris Saint-Germain",
@@ -2952,6 +2988,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "premier_league|2026-27|Ipswich Town|Nottingham Forest": {
+   "away_goals": 1,
+   "away_team": "Nottingham Forest",
+   "competition": "premier_league",
+   "date": "2026-10-23",
+   "home_goals": 1,
+   "home_team": "Ipswich Town",
+   "kickoff_utc": "2026-10-23T19:00:00Z",
+   "match_id": "fdorg:560620",
+   "recorded_at": "2026-10-24T06:26:16Z",
+   "season": "2026-27"
+  },
   "premier_league|2026-27|Ipswich Town|Sunderland": {
    "away_goals": 1,
    "away_team": "Sunderland",
@@ -4030,6 +4078,18 @@
    "kickoff_utc": "2026-08-23T18:45:00Z",
    "match_id": "fdorg:558634",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "serie_a|2026-27|Torino|Monza": {
+   "away_goals": 2,
+   "away_team": "Monza",
+   "competition": "serie_a",
+   "date": "2026-10-23",
+   "home_goals": 3,
+   "home_team": "Torino",
+   "kickoff_utc": "2026-10-23T18:45:00Z",
+   "match_id": "fdorg:558567",
+   "recorded_at": "2026-10-24T06:26:16Z",
    "season": "2026-27"
   },
   "serie_a|2026-27|Torino|Roma": {
