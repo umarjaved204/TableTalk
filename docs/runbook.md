@@ -16,6 +16,7 @@ Contents:
 - [When something fails](#when-something-fails)
 - [One-time set-up](#one-time-set-up)
 - [Routine tasks](#routine-tasks)
+- [Dated follow-ups](#dated-follow-ups)
 - [Visitor numbers without tracking](#visitor-numbers-without-tracking)
 - [Share images](#share-images)
 
@@ -699,13 +700,41 @@ check Cloudflare's and GitHub's docs again.
 - **Weekly: Dependabot pull requests.** Pull requests have no checks of their
   own in this repository, so test one before merging (the website's with
   `npm run verify` and the browser suite; the deploy tool's with
-  `npm ci --ignore-scripts` and `wrangler deploy --dry-run` in `deploy/`).
+  `npm ci --ignore-scripts` and `wrangler deploy --dry-run` in `deploy/`; an
+  action's by checking each new commit SHA is the one its release tag points
+  to, e.g. `gh api repos/<owner>/<action>/commits/<tag> --jq .sha`).
 - **Once HTTPS on the domain has been stable for a few weeks:** raise
   `Strict-Transport-Security` to `max-age=31536000` in `web/public/_headers`.
   `www.tabletalk.fyi` isn't set up; if wanted, it would be a second Custom
   Domain plus a redirect.
-- **Before announcing the site:** the manual keyboard, NVDA and real-phone
-  passes in [web/docs/accessibility-review.md](../web/docs/accessibility-review.md).
+- **Before announcing the site:** the manual keyboard, NVDA, real-phone and
+  reduced-motion passes in [web/docs/accessibility-review.md](../web/docs/accessibility-review.md).
+
+## Dated follow-ups
+
+One-off checks with a date, so none depends on memory. Strike each one out
+here (or move it into the changelog) once done.
+
+- **Mon 26 Oct 2026: the first Dependabot pull requests.** Test each as in
+  "Weekly: Dependabot pull requests" above: the website's with
+  `npm run verify` and the browser suite, an action's by checking its SHAs
+  match the release tags.
+- **Mid-November 2026: Premier League kick-off times.** TV picks move the
+  default 15:00 slots; check the fixture list has the moved times before
+  those weekends' predictions lock.
+- **From 22 Nov 2026: Serie A dates.** 39 matches from 22 Nov to 11 Jan were
+  listed on different dates by openfootball and football-data.org (13 Oct);
+  check which was right as they are played. So far football-data.org has
+  been right (La Liga, 23 Oct).
+- **After 2 or 3 weekends of the done rule (from mid-November):** review the
+  emails from last tries with results still missing, and decide whether that
+  case should be a warning only rather than a failed run.
+- **A few weeks after launch, HTTPS stable:** raise `Strict-Transport-Security`
+  to `max-age=31536000` (see Routine tasks).
+- **Monthly:** the live Lighthouse check (see Routine tasks); next by
+  late November 2026.
+- **Wed 6 Jan 2027: replace the Cloudflare token**, which expires on
+  20 Jan 2027 (steps in Routine tasks).
 
 ## Visitor numbers without tracking
 
