@@ -177,6 +177,18 @@
   cursor: pointer;
 }
 
+/* Pressed: shrinks to 97% (120 ms), so the press is felt. Off with reduced
+   motion, where the shared :active opacity (global.css) still shows it. */
+@media (prefers-reduced-motion: no-preference) {
+  .button {
+    transition: transform var(--dur-1) ease-out;
+  }
+
+  .button:active {
+    transform: scale(0.97);
+  }
+}
+
 .button.primary {
   border-color: var(--accent);
   background: var(--accent);

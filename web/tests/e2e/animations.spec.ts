@@ -23,6 +23,11 @@
 //      stars once, transform and opacity only, ending on the star's own
 //      style; saving again pops again; a page load never does; with reduced
 //      motion the stars simply appear.
+//   9. Card hover and press (index.astro, LeagueCard.astro, favourites.css):
+//      hovering a league's name lifts its card 3px and fades in a shadow,
+//      without flicker when the pointer rests on the name's bottom edge;
+//      other links on the card don't; a pressed button shrinks to 97%. With
+//      reduced motion the shadow still appears and nothing moves.
 //
 // Each run also fails on any Content Security Policy violation, with one
 // narrow exception: WebKit (Playwright's Windows build) refuses its own
@@ -461,8 +466,58 @@ test.describe("theme crossfade", () => {
   });
 });
 
-/** The star-pop animations running now. */
-const pops = async (page: Page) => (await running(page)).filter((a) => a.name === "star-pop");
+/** From now on, records on the page every CSS animation and transition as it
+ *  starts (animationstart, transitionrun), with what it animates. Short
+ *  effects (a 200 ms hover, a pop removed after 700 ms) can be over before the
+ *  test's next look at the page when the machine is busy; this record can't miss them. */
+async function recordStarts(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as { __starts: Running[] };
+    w.__starts = [];
+    const record = (event: AnimationEvent | TransitionEvent) => {
+      const target = event.target as Element;
+      const pseudo = event.pseudoElement || null;
+      const animation = document.getAnimations().find((a) => {
+        const effect = a.effect as KeyframeEffect;
+        if (effect.target !== target || (effect.pseudoElement ?? null) !== pseudo) return false;
+        return event instanceof AnimationEvent
+          ? a instanceof CSSAnimation && a.animationName === event.animationName
+          : a instanceof CSSTransition && a.transitionProperty === event.propertyName;
+      });
+      const effect = animation?.effect as KeyframeEffect | undefined;
+      w.__starts.push({
+        name: event instanceof AnimationEvent ? event.animationName : `transition of ${event.propertyName}`,
+        target: `${target.tagName}.${target.getAttribute("class") ?? ""}${pseudo ?? ""}`,
+        properties: effect
+          ? [
+              ...new Set(
+                effect
+                  .getKeyframes()
+                  .flatMap((frame) => Object.keys(frame))
+                  .filter((key) => !["offset", "computedOffset", "easing", "composite"].includes(key)),
+              ),
+            ]
+          : event instanceof TransitionEvent
+            ? [event.propertyName]
+            : ["(not found)"],
+        iterations: effect?.getComputedTiming().iterations ?? 1,
+        endTime: Number(effect?.getComputedTiming().endTime ?? 0),
+      });
+    };
+    document.addEventListener("animationstart", record, true);
+    document.addEventListener("transitionrun", record, true);
+  });
+}
+
+/** What recordStarts has seen so far, after giving the first effect up to `timeout` ms to start. */
+async function started(page: Page, timeout = 2000): Promise<Running[]> {
+  await page
+    .waitForFunction(() => (window as unknown as { __starts: Running[] }).__starts.length > 0, null, {
+      timeout,
+    })
+    .catch(() => undefined);
+  return page.evaluate(() => (window as unknown as { __starts: Running[] }).__starts);
+}
 
 test.describe("star pop", () => {
   test("saving a team pops its stars once; again on a second save; never on a page load", async ({
@@ -471,8 +526,9 @@ test.describe("star pop", () => {
   }) => {
     const collected = await open(page, "/", 1280);
     await page.locator("#pick-team").selectOption("arsenal");
+    await recordStarts(page);
     await page.locator('[data-fav-action="save-select"][data-select="pick-team"]').click();
-    const popped = await pops(page);
+    const popped = (await started(page)).filter((a) => a.name === "star-pop");
     expect(popped.length, "the new team's stars pop").toBeGreaterThan(0);
     expect(
       popped.filter((a) => a.properties.some((p) => p !== "transform" && p !== "opacity")),
@@ -491,11 +547,18 @@ test.describe("star pop", () => {
 
     // The same team again, from the Your team dialog: it pops again.
     await page.locator("[data-open-favourite]").click();
+    await recordStarts(page);
     await page.locator('#favourite [data-fav-action="save-select"]').click();
-    expect((await pops(page)).length, "saving again pops again").toBeGreaterThan(0);
+    expect(
+      (await started(page)).filter((a) => a.name === "star-pop").length,
+      "saving again pops again",
+    ).toBeGreaterThan(0);
 
     await page.reload({ waitUntil: "networkidle" });
-    expect(await pops(page), "no pop on a page load").toEqual([]);
+    expect(
+      (await running(page)).filter((a) => a.name === "star-pop"),
+      "no pop on a page load",
+    ).toEqual([]);
     expect(await stars(page.locator("body")), "the stars still show").toBeGreaterThan(0);
 
     const left = unexplained(collected, browserName);
@@ -504,8 +567,134 @@ test.describe("star pop", () => {
   });
 });
 
+const LIFTED = "matrix(1, 0, 0, 1, 0, -3)";
+const flat = (transform: string) => (transform === "matrix(1, 0, 0, 1, 0, 0)" ? "none" : transform);
+
+/** The first league card on the home page: its lift, its shadow and whether its name is hovered. */
+const card = (page: Page) =>
+  page.evaluate(() => {
+    const item = document.querySelector(".cards li");
+    const link = item?.querySelector(".title-link");
+    if (!item || !link) throw new Error("no league card");
+    return {
+      transform: getComputedStyle(item).transform,
+      shadow: getComputedStyle(item, "::after").opacity,
+      hovered: link.matches(":hover"),
+    };
+  });
+
+/** The card's state on each of the next `frames` frames. */
+const cardOverFrames = (page: Page, frames: number) =>
+  page.evaluate(async (count) => {
+    const item = document.querySelector(".cards li");
+    const link = item?.querySelector(".title-link");
+    if (!item || !link) throw new Error("no league card");
+    const seen: string[] = [];
+    for (let i = 0; i < count; i++) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      seen.push(`${getComputedStyle(item).transform} ${link.matches(":hover") ? "hovered" : "not hovered"}`);
+    }
+    return seen;
+  }, frames);
+
+test.describe("card hover and button press", () => {
+  test("hovering a league's name lifts its card and fades in its shadow; other links don't", async ({
+    page,
+  }) => {
+    await open(page, "/", 1280);
+    await page.evaluate(() =>
+      Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))),
+    );
+    await recordStarts(page);
+    await page.locator(".cards li .title-link").first().hover();
+    const moving = (await started(page)).filter((a) => a.name.startsWith("transition"));
+    expect(moving.length, "the lift and the shadow are transitions").toBeGreaterThan(0);
+    expect(
+      moving.filter((a) => a.properties.some((p) => p !== "transform" && p !== "opacity")),
+      "only transform and opacity",
+    ).toEqual([]);
+    await page.waitForTimeout(400);
+    expect(await card(page)).toEqual({ transform: LIFTED, shadow: "1", hovered: true });
+
+    await page.locator(".cards li .fav-name").first().hover();
+    await page.waitForTimeout(400);
+    const other = await card(page);
+    expect({ ...other, transform: flat(other.transform) }, "another link on the card: no lift").toEqual({
+      transform: "none",
+      shadow: "0",
+      hovered: false,
+    });
+  });
+
+  test("a pointer resting on the name's bottom edge keeps the card lifted, without flicker", async ({
+    page,
+  }) => {
+    await open(page, "/", 1280);
+    const box = await page.locator(".cards li .title-link").first().boundingBox();
+    if (!box) throw new Error("no league name");
+    const x = box.x + box.width / 2;
+    const bottom = box.y + box.height;
+    // Clearly below the name: no hover, no lift.
+    await page.mouse.move(x, bottom + 3);
+    await page.waitForTimeout(400);
+    expect(new Set(await cardOverFrames(page, 10)), "below the name").toEqual(new Set(["none not hovered"]));
+    // Just inside its bottom edge: lifted, and it stays that way on every frame.
+    await page.mouse.move(x, bottom - 1);
+    await page.waitForTimeout(400);
+    expect(new Set(await cardOverFrames(page, 30)), "on the bottom edge").toEqual(
+      new Set([`${LIFTED} hovered`]),
+    );
+    // Just outside it, where the edge is rounded to whole pixels, and 2px out:
+    // each settles into one state and holds it.
+    for (const offset of [1, 2]) {
+      await page.mouse.move(x, bottom + 3);
+      await page.waitForTimeout(400);
+      await page.mouse.move(x, bottom + offset);
+      await page.waitForTimeout(600);
+      const states = new Set(await cardOverFrames(page, 30));
+      expect(states.size, `${offset}px below the edge: no flicker (${[...states].join(" | ")})`).toBe(1);
+      expect([`${LIFTED} hovered`, "none not hovered"]).toContain([...states][0]);
+    }
+  });
+
+  test("a pressed button shrinks to 97%", async ({ page }) => {
+    await open(page, "/", 1280);
+    const box = await page.locator('[data-fav-action="save-select"][data-select="pick-team"]').boundingBox();
+    if (!box) throw new Error("no Save button");
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(300);
+    const pressed = await page
+      .locator('[data-fav-action="save-select"][data-select="pick-team"]')
+      .evaluate((el) => getComputedStyle(el).transform);
+    await page.mouse.up();
+    expect(pressed).toBe("matrix(0.97, 0, 0, 0.97, 0, 0)");
+  });
+});
+
 test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
+
+  test("hovering a league's name shows the shadow without a lift; a press doesn't shrink", async ({
+    page,
+  }) => {
+    await open(page, "/", 1280);
+    await page.locator(".cards li .title-link").first().hover();
+    expect(await running(page), "no animation with reduced motion").toEqual([]);
+    const hovered = await card(page);
+    expect({ ...hovered, transform: flat(hovered.transform) }).toEqual({
+      transform: "none",
+      shadow: "1",
+      hovered: true,
+    });
+    const save = page.locator('[data-fav-action="save-select"][data-select="pick-team"]');
+    const box = await save.boundingBox();
+    if (!box) throw new Error("no Save button");
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    expect(flat(await save.evaluate((el) => getComputedStyle(el).transform)), "no shrink").toBe("none");
+    await page.mouse.up();
+  });
 
   test("saving a team shows its stars without a pop", async ({ page }) => {
     await open(page, "/", 1280);

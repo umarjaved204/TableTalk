@@ -117,12 +117,24 @@ const length = (chance: number) => Math.round(chance * 1000) / 10;
   }
 
   .title-link {
+    position: relative; /* for its hover area, below */
     color: var(--text);
     text-decoration: none;
   }
 
   .title-link:hover {
     text-decoration: underline;
+  }
+
+  /* While its card is lifted (--card-lift, set on the home page), the name
+     moves up under the pointer. Its hover area reaches that far further down
+     meanwhile, plus 2px because the edge is rounded to whole pixels, so a pointer
+     on the name's bottom edge stays on it instead of flickering between lifted
+     and not. Only while hovered, so it never starts a hover from below. */
+  .title-link:hover::after {
+    position: absolute;
+    inset: 0 0 calc(-1 * var(--card-lift, 0px) - 2px);
+    content: "";
   }
 
   .season {

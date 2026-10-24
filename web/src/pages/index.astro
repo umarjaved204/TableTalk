@@ -236,11 +236,54 @@ const cardData = scriptJson(
   /* The favourite's league card comes first and is outlined; the generated
      rules set these properties (favouriteCss in src/scripts/favourite-core.js). */
   .cards li {
+    position: relative;
     display: grid;
     order: var(--fav-order, 0);
     border-radius: var(--radius-2);
     outline: 2px solid var(--fav-league-ring, transparent);
     outline-offset: 2px;
+  }
+
+  /* Hovering a league's name, the card's own link, fades in a shadow and
+     lifts the card 3px (with the favourite's outline), so it's clear the name
+     leads to that league. Only the name: the card holds other links too. The
+     shadow is drawn once and only its opacity changes. With a mouse only
+     (hover: hover); with reduced motion the shadow appears and nothing moves.
+     The lift is --card-lift, which LeagueCard.astro also uses to keep the
+     name's hover area still while it moves (no flicker at its bottom edge). */
+  .cards li::after {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: var(--shadow-2);
+    content: "";
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-2) ease-out;
+  }
+
+  @media (hover: hover) {
+    .cards li:has(:global(.title-link):hover) {
+      z-index: 1;
+    }
+
+    .cards li:has(:global(.title-link):hover)::after {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .cards li {
+      --card-lift: 3px;
+
+      transition: transform var(--dur-2) cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+
+    @media (hover: hover) {
+      .cards li:has(:global(.title-link):hover) {
+        transform: translateY(calc(-1 * var(--card-lift)));
+      }
+    }
   }
 
   @media (width >= 640px) {
