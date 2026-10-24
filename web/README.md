@@ -334,6 +334,7 @@ Chromium (desktop and Android profiles) and WebKit (iPhone profiles).
 | CSS `mask`                                                       | The star icons                                                                       | No star; the hidden "your team" label and the row tint remain                               |
 | `<template>`, `replaceChildren()`, `CustomEvent`                 | Favourite blocks                                                                     | Favourites don't apply (the rest of the site works, as without JavaScript)                  |
 | `text-wrap: balance`, `accent-color`, `display-mode` media query | Nicer headings, the checkbox colour, the home-screen note                            | Ordinary wrapping, the default checkbox, no home-screen note                                |
+| Cross-document view transitions (`@view-transition`)             | Pages crossfade (180 ms) between pages of the site (Chrome/Edge 126, Safari 18.2)    | The page changes instantly (Firefox today, and with reduced motion)                         |
 
 Without JavaScript at all, every page shows all its numbers; the controls
 that need JavaScript (tabs, table switch, favourites) are hidden.

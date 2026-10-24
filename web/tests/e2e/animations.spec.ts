@@ -13,6 +13,9 @@
 //   4. Reduced motion: no animation runs at all.
 //   5. Nothing moves while the page loads and its animations play (layout
 //      shift, the same limit as layout-shift.spec.ts).
+//   6. Page crossfades (global.css): following a link and Back each fade the
+//      whole page, with no element moving on its own and nothing but opacity
+//      changing; with reduced motion there is no page transition.
 //
 // Each run also fails on any Content Security Policy violation, with one
 // narrow exception: WebKit (Playwright's Windows build) refuses its own
@@ -33,7 +36,17 @@ const WEBKIT_SELECT_MESSAGE =
 interface Recorded {
   shift: number;
   moved: string[];
-  violations: { directive: string; element: string }[];
+}
+
+interface Violation {
+  directive: string;
+  element: string;
+}
+
+/** Console errors and CSP violations from every page the tab shows, Back included. */
+interface Collected {
+  errors: string[];
+  violations: Violation[];
 }
 
 interface Running {
@@ -44,13 +57,14 @@ interface Running {
   endTime: number;
 }
 
-/** Records layout shift and CSP violations from the very start of the page. */
+/** Records layout shift from the very start of the page, and passes each CSP
+ *  violation to the test (so violations from every page add up, like console errors). */
 function recordFromStart(): void {
-  const w = window as unknown as { __recorded: Recorded };
-  w.__recorded = { shift: 0, moved: [], violations: [] };
+  const w = window as unknown as { __recorded: Recorded; __cspViolation: (v: Violation) => void };
+  w.__recorded = { shift: 0, moved: [] };
   document.addEventListener("securitypolicyviolation", (event) => {
     const target = event.target instanceof Element ? event.target.nodeName : String(event.target);
-    w.__recorded.violations.push({ directive: event.violatedDirective, element: target });
+    void w.__cspViolation({ directive: event.violatedDirective, element: target });
   });
   new PerformanceObserver((list) => {
     for (const entry of list.getEntries() as unknown as {
@@ -70,17 +84,102 @@ function recordFromStart(): void {
   }).observe({ type: "layout-shift", buffered: true });
 }
 
-/** Opens a page as a first-time visitor (System theme, no favourite) and collects console errors. */
-async function open(page: Page, path: string, width: number): Promise<string[]> {
-  const errors: string[] = [];
-  page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text());
+interface Reveal {
+  transition: boolean;
+  ready: boolean;
+  finished: boolean;
+  error: string | null;
+  animations: { pseudo: string; keyframes: Record<string, unknown>[]; endTime: number }[];
+}
+
+/** Records the page transition the new page arrived with, if any (pagereveal). */
+function recordReveal(): void {
+  const w = window as unknown as { __reveal: Reveal | null };
+  w.__reveal = null;
+  window.addEventListener("pagereveal", (event) => {
+    const transition = (event as Event & { viewTransition: ViewTransition | null }).viewTransition;
+    const reveal: Reveal = {
+      transition: transition !== null,
+      ready: false,
+      finished: false,
+      error: null,
+      animations: [],
+    };
+    w.__reveal = reveal;
+    if (!transition) return;
+    transition.ready.then(
+      () => {
+        reveal.ready = true;
+        reveal.animations = document
+          .getAnimations()
+          .filter((a) => (a.effect as KeyframeEffect).pseudoElement?.startsWith("::view-transition"))
+          .map((a) => {
+            const effect = a.effect as KeyframeEffect;
+            return {
+              pseudo: effect.pseudoElement ?? "",
+              keyframes: effect
+                .getKeyframes()
+                .map((frame) =>
+                  Object.fromEntries(
+                    Object.entries(frame).filter(
+                      ([key]) => !["offset", "computedOffset", "easing", "composite"].includes(key),
+                    ),
+                  ),
+                ),
+              endTime: Number(effect.getComputedTiming().endTime ?? 0),
+            };
+          });
+      },
+      (error: unknown) => (reveal.error = String(error)),
+    );
+    transition.finished.then(() => (reveal.finished = true));
   });
-  page.on("pageerror", (error) => errors.push(String(error)));
+}
+
+/** Waits for the page to be shown and, when one is expected, for its page
+ *  transition to end; then returns what happened. Waiting for a transition
+ *  matters on Back: a page restored from the back-forward cache still holds
+ *  the record of its first load until its new pagereveal arrives. */
+async function revealed(page: Page, expectTransition: boolean): Promise<Reveal> {
+  // On a timeout the caller's assertions say what's missing (e.g. "the page crossfaded").
+  await page
+    .waitForFunction(
+      (expected) => {
+        const reveal = (window as unknown as { __reveal: Reveal | null }).__reveal;
+        if (reveal === null) return false;
+        if (!expected) return true;
+        return reveal.transition && (reveal.finished || reveal.error !== null);
+      },
+      expectTransition,
+      { timeout: 5000 },
+    )
+    .catch(() => undefined);
+  return page.evaluate(() => (window as unknown as { __reveal: Reveal }).__reveal);
+}
+
+/** Every property of a view-transition animation whose value changes between keyframes. */
+function changing(reveal: Reveal): string[] {
+  return reveal.animations.flatMap((a) => {
+    const keys = [...new Set(a.keyframes.flatMap((frame) => Object.keys(frame)))];
+    return keys
+      .filter((key) => new Set(a.keyframes.map((frame) => String(frame[key]))).size > 1)
+      .map((key) => `${a.pseudo}: ${key}`);
+  });
+}
+
+/** Opens a page as a first-time visitor (System theme, no favourite), collecting
+ *  console errors and CSP violations from then on. */
+async function open(page: Page, path: string, width: number): Promise<Collected> {
+  const collected: Collected = { errors: [], violations: [] };
+  page.on("console", (message) => {
+    if (message.type() === "error") collected.errors.push(message.text());
+  });
+  page.on("pageerror", (error) => collected.errors.push(String(error)));
+  await page.exposeFunction("__cspViolation", (v: Violation) => collected.violations.push(v));
   await page.setViewportSize({ width, height: 900 });
   await page.addInitScript(recordFromStart);
   await page.goto(path, { waitUntil: "networkidle" });
-  return errors;
+  return collected;
 }
 
 /** Every animation and transition running now, with what it animates. */
@@ -154,14 +253,12 @@ async function endStates(page: Page): Promise<{ checked: number; wrong: string[]
 
 /** Console errors and CSP violations that aren't the one allowed WebKit <select> message. */
 function unexplained(
-  errors: string[],
-  recorded: Recorded,
+  { errors, violations }: Collected,
   browserName: string,
 ): { errors: string[]; violations: string[] } {
-  const isSelect = (v: Recorded["violations"][number]) =>
-    v.directive === "style-src-attr" && v.element === "SELECT";
+  const isSelect = (v: Violation) => v.directive === "style-src-attr" && v.element === "SELECT";
   const allowSelect = browserName === "webkit";
-  let selectReports = allowSelect ? recorded.violations.filter(isSelect).length : 0;
+  let selectReports = allowSelect ? violations.filter(isSelect).length : 0;
   const leftErrors = errors.filter((message) => {
     if (message === WEBKIT_SELECT_MESSAGE && selectReports > 0) {
       selectReports--;
@@ -169,7 +266,7 @@ function unexplained(
     }
     return true;
   });
-  const leftViolations = recorded.violations
+  const leftViolations = violations
     .filter((v) => !(allowSelect && isSelect(v)))
     .map((v) => `${v.directive} on ${v.element}`);
   return { errors: leftErrors, violations: leftViolations };
@@ -182,7 +279,7 @@ for (const width of WIDTHS) {
         page,
         browserName,
       }) => {
-        const errors = await open(page, path, width);
+        const collected = await open(page, path, width);
         const atLoad = await running(page);
         await scrollThrough(page);
         const all = [...atLoad, ...(await running(page))];
@@ -214,7 +311,7 @@ for (const width of WIDTHS) {
         );
         expect(recorded.shift, recorded.moved.join("; ")).toBeLessThan(MAX_SHIFT);
 
-        const left = unexplained(errors, recorded, browserName);
+        const left = unexplained(collected, browserName);
         expect(left.violations, "Content Security Policy violations").toEqual([]);
         expect(left.errors, "console errors (including CSP violations)").toEqual([]);
 
@@ -226,8 +323,63 @@ for (const width of WIDTHS) {
   });
 }
 
+test.describe("page crossfades", () => {
+  for (const width of WIDTHS) {
+    test(`${width}px: a link and Back each crossfade the page, opacity only`, async ({
+      page,
+      browserName,
+    }) => {
+      await page.addInitScript(recordReveal);
+      const collected = await open(page, "/", width);
+      await page.locator('a.title-link[href="/premier-league/"]').click();
+      await page.waitForURL("**/premier-league/");
+      for (const step of ["link", "Back"]) {
+        const reveal = await revealed(page, true);
+        expect(reveal.error, `${step}: the transition ran to the end`).toBeNull();
+        expect(reveal.transition && reveal.ready && reveal.finished, `${step}: the page crossfaded`).toBe(
+          true,
+        );
+        const groups = reveal.animations
+          .map((a) => a.pseudo)
+          .filter((p) => p.startsWith("::view-transition-group"));
+        expect([...new Set(groups)], `${step}: only the whole page, no element moves on its own`).toEqual([
+          "::view-transition-group(root)",
+        ]);
+        expect(
+          changing(reveal).filter((c) => !c.endsWith(": opacity")),
+          `${step}: nothing but opacity changes`,
+        ).toEqual([]);
+        expect(changing(reveal).length, `${step}: the old and new pages fade`).toBeGreaterThan(0);
+        const long = reveal.animations.filter((a) => a.endTime > MAX_END_MS);
+        expect(
+          long.map((a) => `${a.pseudo}: ${a.endTime} ms`),
+          `${step}: over within ${MAX_END_MS} ms`,
+        ).toEqual([]);
+        if (step === "link") {
+          await page.goBack();
+          await page.waitForURL((url) => url.pathname === "/");
+        }
+      }
+      const left = unexplained(collected, browserName);
+      expect(left.violations, "Content Security Policy violations").toEqual([]);
+      expect(left.errors, "console errors (including CSP violations)").toEqual([]);
+    });
+  }
+});
+
 test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
+
+  test("following a link changes the page without a transition", async ({ page }) => {
+    await page.addInitScript(recordReveal);
+    await open(page, "/", 1280);
+    await page.locator('a.title-link[href="/premier-league/"]').click();
+    await page.waitForURL("**/premier-league/");
+    // Give a transition time to start if one were coming, then check there was none.
+    await page.waitForLoadState("networkidle");
+    expect((await revealed(page, false)).transition, "no page transition with reduced motion").toBe(false);
+  });
+
   for (const path of ALL_PAGES) {
     test(`${path}: nothing animates`, async ({ page }) => {
       await open(page, path, 1280);
@@ -243,22 +395,16 @@ test.describe("reduced motion", () => {
 });
 
 test("the allowed WebKit message is the exact text and nothing broader", () => {
-  const recorded: Recorded = {
-    shift: 0,
-    moved: [],
-    violations: [{ directive: "style-src-attr", element: "SELECT" }],
-  };
+  const select: Violation[] = [{ directive: "style-src-attr", element: "SELECT" }];
+  const seen = (errors: string[], violations = select): Collected => ({ errors, violations });
   // Allowed: WebKit, the exact message, one report on a <select>.
-  expect(unexplained([WEBKIT_SELECT_MESSAGE], recorded, "webkit")).toEqual({ errors: [], violations: [] });
-  // Not allowed: Chromium; a second message with only one report; a violation on another element.
-  expect(unexplained([WEBKIT_SELECT_MESSAGE], recorded, "chromium").errors).toEqual([WEBKIT_SELECT_MESSAGE]);
-  expect(unexplained([WEBKIT_SELECT_MESSAGE, WEBKIT_SELECT_MESSAGE], recorded, "webkit").errors).toHaveLength(
-    1,
-  );
-  const other: Recorded = { ...recorded, violations: [{ directive: "style-src-attr", element: "DIV" }] };
-  expect(unexplained([WEBKIT_SELECT_MESSAGE], other, "webkit")).toEqual({
-    errors: [WEBKIT_SELECT_MESSAGE],
-    violations: ["style-src-attr on DIV"],
-  });
-  expect(unexplained([`${WEBKIT_SELECT_MESSAGE} extra`], recorded, "webkit").errors).toHaveLength(1);
+  expect(unexplained(seen([WEBKIT_SELECT_MESSAGE]), "webkit")).toEqual({ errors: [], violations: [] });
+  // Not allowed: Chromium; a second message with only one report; a violation on
+  // another element; any other wording.
+  expect(unexplained(seen([WEBKIT_SELECT_MESSAGE]), "chromium").errors).toEqual([WEBKIT_SELECT_MESSAGE]);
+  expect(unexplained(seen([WEBKIT_SELECT_MESSAGE, WEBKIT_SELECT_MESSAGE]), "webkit").errors).toHaveLength(1);
+  expect(
+    unexplained(seen([WEBKIT_SELECT_MESSAGE], [{ directive: "style-src-attr", element: "DIV" }]), "webkit"),
+  ).toEqual({ errors: [WEBKIT_SELECT_MESSAGE], violations: ["style-src-attr on DIV"] });
+  expect(unexplained(seen([`${WEBKIT_SELECT_MESSAGE} extra`]), "webkit").errors).toHaveLength(1);
 });

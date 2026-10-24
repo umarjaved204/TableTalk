@@ -172,6 +172,24 @@ abbr[title] {
   color: var(--text-muted);
 }
 
+/* Pages crossfade (180 ms) when a link to another page of the site is
+   followed, and on Back and Forward, in browsers with cross-document view
+   transitions (Chrome and Edge 126, Safari 18.2; Firefox changes page as
+   before). The browser fades a snapshot of the old page into the new one:
+   opacity only, and no element is named, so nothing moves. Off when the
+   device asks for less motion. Lighthouse opens each page fresh, so it never
+   sees one. tests/e2e/animations.spec.ts checks all of this. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+}
+
 /* Windows High Contrast / forced colours: let the system colours win, and
    keep zone markers visible as borders. */
 @media (forced-colors: active) {
