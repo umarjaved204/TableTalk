@@ -90,6 +90,21 @@
     document.dispatchEvent(new CustomEvent("tabletalk:favourite"));
   }
 
+  // A team just chosen: its stars pop once (favourites.css, which also turns
+  // this off when the device asks for less motion). data-fav-just-saved is
+  // set for 700 ms by choose() only, never on a page load. Saving again pops
+  // again: the attribute is removed and the style recalculated first.
+  var popTimer = 0;
+  function popStars() {
+    clearTimeout(popTimer);
+    root.removeAttribute("data-fav-just-saved");
+    void root.offsetWidth;
+    root.setAttribute("data-fav-just-saved", "");
+    popTimer = setTimeout(function () {
+      root.removeAttribute("data-fav-just-saved");
+    }, 700);
+  }
+
   // Text for the holes in a filled block (data-fav-text="name" and so on).
   // Always set with textContent, never as HTML.
   function text(what) {
@@ -225,6 +240,7 @@
       if (!team) return false;
       current = { state: "chosen", team: team.slug, name: team.name, league: team.league };
       write();
+      popStars();
       changed();
       return true;
     },

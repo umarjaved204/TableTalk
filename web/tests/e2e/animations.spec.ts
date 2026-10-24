@@ -19,6 +19,10 @@
 //   7. Theme crossfade (theme-head.js): a theme chosen in Appearance fades in
 //      over the old one (240 ms, opacity only) and the page ends on it, even
 //      after quick changes; with reduced motion it changes at once.
+//   8. Star pop (favourite-head.js, favourites.css): saving a team pops its
+//      stars once, transform and opacity only, ending on the star's own
+//      style; saving again pops again; a page load never does; with reduced
+//      motion the stars simply appear.
 //
 // Each run also fails on any Content Security Policy violation, with one
 // narrow exception: WebKit (Playwright's Windows build) refuses its own
@@ -27,7 +31,7 @@
 // word for word, and only as many times as the page reported a style-src-attr
 // violation on a <select> element. Any other violation still fails.
 import type { Page } from "@playwright/test";
-import { ALL_PAGES } from "./helpers.ts";
+import { ALL_PAGES, stars } from "./helpers.ts";
 import { expect, test } from "./test.ts";
 
 const WIDTHS = [390, 1280];
@@ -457,8 +461,59 @@ test.describe("theme crossfade", () => {
   });
 });
 
+/** The star-pop animations running now. */
+const pops = async (page: Page) => (await running(page)).filter((a) => a.name === "star-pop");
+
+test.describe("star pop", () => {
+  test("saving a team pops its stars once; again on a second save; never on a page load", async ({
+    page,
+    browserName,
+  }) => {
+    const collected = await open(page, "/", 1280);
+    await page.locator("#pick-team").selectOption("arsenal");
+    await page.locator('[data-fav-action="save-select"][data-select="pick-team"]').click();
+    const popped = await pops(page);
+    expect(popped.length, "the new team's stars pop").toBeGreaterThan(0);
+    expect(
+      popped.filter((a) => a.properties.some((p) => p !== "transform" && p !== "opacity")),
+      "only transform and opacity",
+    ).toEqual([]);
+    expect(
+      popped.filter((a) => a.iterations !== 1 || a.endTime > MAX_END_MS),
+      "once, within 1 s",
+    ).toEqual([]);
+    await page.evaluate(() =>
+      Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))),
+    );
+    const { wrong } = await endStates(page);
+    expect(wrong, "each star ends on its own style").toEqual([]);
+    await page.waitForFunction(() => !document.documentElement.hasAttribute("data-fav-just-saved"));
+
+    // The same team again, from the Your team dialog: it pops again.
+    await page.locator("[data-open-favourite]").click();
+    await page.locator('#favourite [data-fav-action="save-select"]').click();
+    expect((await pops(page)).length, "saving again pops again").toBeGreaterThan(0);
+
+    await page.reload({ waitUntil: "networkidle" });
+    expect(await pops(page), "no pop on a page load").toEqual([]);
+    expect(await stars(page.locator("body")), "the stars still show").toBeGreaterThan(0);
+
+    const left = unexplained(collected, browserName);
+    expect(left.violations, "Content Security Policy violations").toEqual([]);
+    expect(left.errors, "console errors (including CSP violations)").toEqual([]);
+  });
+});
+
 test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
+
+  test("saving a team shows its stars without a pop", async ({ page }) => {
+    await open(page, "/", 1280);
+    await page.locator("#pick-team").selectOption("arsenal");
+    await page.locator('[data-fav-action="save-select"][data-select="pick-team"]').click();
+    expect(await running(page), "no animation with reduced motion").toEqual([]);
+    expect(await stars(page.locator("body")), "the stars show").toBeGreaterThan(0);
+  });
 
   test("choosing a theme changes it at once, without a crossfade", async ({ page }) => {
     await open(page, "/", 1280);
