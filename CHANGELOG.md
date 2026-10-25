@@ -27,6 +27,13 @@ commit and pull request.
   see browser zoom shrinking the window's height. A name too long for its
   tile (Borussia Mönchengladbach) spans two columns, so it breaks only
   between words.
+- **Star pop on a slow device**: the attribute that plays a saved team's star
+  pop is now removed when the pop ends (`animationend`), with a 2 s fallback
+  when it never starts, instead of after a fixed 700 ms. A busy device could
+  start the pop after the window had closed and skip it; this showed as a
+  WebKit test that failed only when both browsers ran at once. The test now
+  listens for the pop before pressing Save, so the Save button's own press
+  transition can't end its wait early.
 - **Checked**: Chromium leaves hidden radios out of the "2 of 18" count, so
   all 96 share one name (read through Windows UI Automation, 25 Oct). axe
   runs on the open dialog in all 8 themes, with filter results and with none.

@@ -471,7 +471,7 @@ test.describe("theme crossfade", () => {
 
 /** From now on, records on the page every CSS animation and transition as it
  *  starts (animationstart, transitionrun), with what it animates. Short
- *  effects (a 200 ms hover, a pop removed after 700 ms) can be over before the
+ *  effects (a 200 ms hover, a 420 ms pop) can be over before the
  *  test's next look at the page when the machine is busy; this record can't miss them. */
 async function recordStarts(page: Page): Promise<void> {
   await page.evaluate(() => {
@@ -522,6 +522,29 @@ async function started(page: Page, timeout = 2000): Promise<Running[]> {
   return page.evaluate(() => (window as unknown as { __starts: Running[] }).__starts);
 }
 
+/** Starts listening for the star pop now, before the click that saves, so a
+ *  pop that starts late on a busy machine is still seen. (Waiting afterwards
+ *  for "the first effect to start" could return on the Save button's own
+ *  press transition, before the pop began.) */
+async function armPop(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as { __pop: Promise<boolean> };
+    w.__pop = new Promise((resolve) => {
+      const seen = (event: AnimationEvent) => {
+        if (event.animationName !== "star-pop") return;
+        document.removeEventListener("animationstart", seen, true);
+        resolve(true);
+      };
+      document.addEventListener("animationstart", seen, true);
+      window.setTimeout(() => resolve(false), 10_000);
+    });
+  });
+}
+
+/** Whether the pop armed by armPop started (waits for it, up to 10 s). */
+const popStarted = (page: Page) =>
+  page.evaluate(() => (window as unknown as { __pop: Promise<boolean> }).__pop);
+
 test.describe("star pop", () => {
   test("saving a team pops its stars once; again on a second save; never on a page load", async ({
     page,
@@ -531,7 +554,9 @@ test.describe("star pop", () => {
     await page.locator('[data-fav-action="open-picker"][data-league="premier_league"]').click();
     await page.locator('#favourite input[value="arsenal"]').check();
     await recordStarts(page);
+    await armPop(page);
     await page.locator('#favourite [data-fav-action="save-picker"]').click();
+    expect(await popStarted(page), "the new team's stars pop").toBe(true);
     const popped = (await started(page)).filter((a) => a.name === "star-pop");
     expect(popped.length, "the new team's stars pop").toBeGreaterThan(0);
     expect(
@@ -547,15 +572,13 @@ test.describe("star pop", () => {
     );
     const { wrong } = await endStates(page);
     expect(wrong, "each star ends on its own style").toEqual([]);
+    // The attribute goes when the pop ends, not after a fixed time.
     await page.waitForFunction(() => !document.documentElement.hasAttribute("data-fav-just-saved"));
 
     // The same team again (the dialog stays open after saving): it pops again.
-    await recordStarts(page);
+    await armPop(page);
     await page.locator('#favourite [data-fav-action="save-picker"]').click();
-    expect(
-      (await started(page)).filter((a) => a.name === "star-pop").length,
-      "saving again pops again",
-    ).toBeGreaterThan(0);
+    expect(await popStarted(page), "saving again pops again").toBe(true);
 
     await page.reload({ waitUntil: "networkidle" });
     expect(
@@ -575,7 +598,9 @@ test.describe("star pop", () => {
   }) => {
     const collected = await open(page, "/premier-league/arsenal/", 1280);
     await recordStarts(page);
+    await armPop(page);
     await page.locator('[data-fav-action="choose-this"]').click();
+    expect(await popStarted(page), "the heading's star pops").toBe(true);
     const popped = (await started(page)).filter((a) => a.name === "star-pop");
     expect(popped.length, "the heading's star pops").toBeGreaterThan(0);
     expect(
@@ -791,6 +816,10 @@ test.describe("reduced motion", () => {
     await page.locator('[data-fav-action="choose-this"]').click();
     expect(await running(page), "no animation with reduced motion").toEqual([]);
     expect(await stars(page.locator(".team-head h1")), "the star shows").toBe(1);
+    // No pop means no animationend: the 2 s fallback removes the attribute.
+    const root = page.locator("html");
+    await expect(root).toHaveAttribute("data-fav-just-saved", "");
+    await expect(root).not.toHaveAttribute("data-fav-just-saved", "", { timeout: 4000 });
   });
 
   test("choosing a theme changes it at once, without a crossfade", async ({ page }) => {

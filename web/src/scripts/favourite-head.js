@@ -92,17 +92,26 @@
 
   // A team just chosen: its stars pop once (favourites.css, which also turns
   // this off when the device asks for less motion). data-fav-just-saved is
-  // set for 700 ms by choose() only, never on a page load. Saving again pops
-  // again: the attribute is removed and the style recalculated first.
+  // set by choose() only, never on a page load, and removed when the pop ends
+  // (animationend). A fixed window could close before a busy or slow device
+  // had started the pop, so the 2 s timer is only a fallback, for when it
+  // never starts (reduced motion, or the browser skipped it). Saving again
+  // pops again: the attribute is removed and the style recalculated first.
   var popTimer = 0;
-  function popStars() {
+  function popDone() {
     clearTimeout(popTimer);
+    document.removeEventListener("animationend", popEnded, true);
     root.removeAttribute("data-fav-just-saved");
+  }
+  function popEnded(event) {
+    if (event.animationName === "star-pop") popDone();
+  }
+  function popStars() {
+    popDone();
     void root.offsetWidth;
     root.setAttribute("data-fav-just-saved", "");
-    popTimer = setTimeout(function () {
-      root.removeAttribute("data-fav-just-saved");
-    }, 700);
+    document.addEventListener("animationend", popEnded, true);
+    popTimer = setTimeout(popDone, 2000);
   }
 
   // Text for the holes in a filled block (data-fav-text="name" and so on).

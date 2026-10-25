@@ -62,8 +62,9 @@
 
 /* A team just chosen: its stars grow from 30% with a slight overshoot, once
    (420 ms). Only on the page where it was saved: favourite-head.js sets
-   data-fav-just-saved for 700 ms in choose(), never on a page load. Transform
-   and opacity only; off when the device asks for less motion. */
+   data-fav-just-saved in choose(), never on a page load, and removes it when
+   the pop ends (or after 2 s if it never starts). Transform and opacity only;
+   off when the device asks for less motion. */
 @keyframes star-pop {
   0% {
     opacity: 0;
