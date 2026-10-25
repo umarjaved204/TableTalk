@@ -284,7 +284,10 @@ Save saves. It is built the first time the dialog opens, with
 `createElement` only, so pages carry none of it. All radios share one name;
 Chromium leaves the hidden leagues out of the count ("2 of 18", not "of
 96"). Only the middle of the dialog scrolls, so the footer with Save never
-covers a focused team.
+covers a focused team. A name whose longest word doesn't fit its tile
+(Borussia Mönchengladbach, and Bournemouth by 4 px, on a 360px phone) spans
+two columns, so it breaks only between words; `fit()` measures this each
+time a league is shown or the window resizes.
 
 **Stub pages for last season's teams.** A team that left the covered leagues
 keeps its address: a short page says it isn't covered this season ("It was in

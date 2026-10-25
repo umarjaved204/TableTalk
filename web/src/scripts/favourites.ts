@@ -112,6 +112,8 @@ function openDialog(asked: string | null = null): void {
   // README.md) gets the dialog shown in place, without the backdrop.
   if (typeof dialog.showModal === "function") dialog.showModal();
   else dialog.setAttribute("open", "");
+  // Tiles can only be measured once the dialog is shown.
+  picker?.fit();
 }
 
 /** After a block is replaced (the button that was clicked is gone), keep the

@@ -30,6 +30,8 @@ export interface Picker {
   checked(): HTMLInputElement | null;
   /** Focus the checked team, or the first one shown. */
   focusTeams(): void;
+  /** Re-measure which shown tiles need the full row (call once the dialog is open). */
+  fit(): void;
 }
 
 function make<K extends keyof HTMLElementTagNameMap>(
@@ -86,7 +88,33 @@ export function buildPicker(host: HTMLElement, teams: TeamList, onChange: () => 
   function showLeague(id: string): void {
     for (const [key, set] of sets) set.hidden = key !== id;
     for (const [key, button] of buttons) button.setAttribute("aria-pressed", String(key === id));
+    fit();
   }
+
+  // A name whose longest word doesn't fit its tile (Borussia Mönchengladbach
+  // on a phone, and in the four-column desktop grid) spans two columns: the
+  // whole row on a phone, half of it on desktop. So it breaks only between
+  // words. Measured, not guessed from the letter count: with breaking inside
+  // words switched off (.measuring), a word that doesn't fit overflows its
+  // span. Measured again whenever a league is shown or the window resizes,
+  // because the answer depends on the width and the text size. In a single
+  // column (200% text) there's nothing to span, so no tile is widened. Tiles
+  // keep their A-Z order (no dense packing), so a wide tile can leave a gap
+  // beside the tile before it.
+  function fit(): void {
+    const tiles = [...host.querySelectorAll<HTMLElement>("fieldset:not([hidden]) .team")];
+    for (const tile of tiles) tile.classList.remove("wide");
+    host.classList.add("measuring");
+    const wide = tiles.filter((tile) => {
+      const grid = tile.parentElement;
+      const columns = grid ? getComputedStyle(grid).gridTemplateColumns.split(" ").length : 1;
+      const name = tile.lastElementChild;
+      return columns > 1 && name !== null && name.scrollWidth > name.clientWidth;
+    });
+    host.classList.remove("measuring");
+    for (const tile of wide) tile.classList.add("wide");
+  }
+  window.addEventListener("resize", fit);
 
   return {
     showLeague,
@@ -98,5 +126,6 @@ export function buildPicker(host: HTMLElement, teams: TeamList, onChange: () => 
       const shown = [...radios()].filter((r) => !r.closest("fieldset")?.hidden);
       (shown.find((r) => r.checked) ?? shown[0])?.focus();
     },
+    fit,
   };
 }

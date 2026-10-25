@@ -153,26 +153,69 @@ const layoutProblems = (page: Page) =>
     return problems;
   });
 
+/** Names that only fit by breaking inside a word: with breaking inside words
+ *  switched off, the name overflows its tile. */
+const brokenInsideWords = (page: Page) =>
+  page.evaluate(() => {
+    const broken: string[] = [];
+    for (const span of document.querySelectorAll<HTMLElement>(
+      "#favourite fieldset:not([hidden]) .team span",
+    )) {
+      span.style.overflowWrap = "normal";
+      if (span.scrollWidth > span.clientWidth + 1) broken.push(span.textContent ?? "");
+      span.style.overflowWrap = "";
+    }
+    return broken;
+  });
+
 const columns = (page: Page) =>
   page
     .locator("#favourite fieldset:not([hidden]) .grid")
     .evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(" ").length);
 
 test.describe("layout", () => {
+  test("a name too long for its tile spans two columns: the whole row on a phone, half on desktop", async ({
+    page,
+  }) => {
+    const share = () =>
+      page
+        .locator("#favourite .team", { hasText: "Borussia Mönchengladbach" })
+        .evaluate(
+          (tile) => tile.getBoundingClientRect().width / tile.parentElement!.getBoundingClientRect().width,
+        );
+    await openDialog(page, "/bundesliga/", 360, 740);
+    expect(await share(), "the whole row of two").toBeCloseTo(1, 2);
+    expect(await brokenInsideWords(page)).toEqual([]);
+    // Measured again on resize: in the four-column desktop grid it takes two columns.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await expect.poll(share).toBeGreaterThan(0.45);
+    expect(await share(), "two of four columns").toBeLessThan(0.55);
+    expect(await brokenInsideWords(page)).toEqual([]);
+    // In a single column (200% text) nothing is widened: there is nothing to span.
+    await page.evaluate(() => (document.documentElement.style.fontSize = "200%"));
+    await page.setViewportSize({ width: 360, height: 740 });
+    await expect(page.locator("#favourite .team.wide")).toHaveCount(0);
+    expect(await columns(page)).toBe(1);
+  });
+
   test("360px phone: two columns, 44px targets, every name inside its tile, in every league", async ({
     page,
   }) => {
     await seed(page, saved("arsenal"));
     await openDialog(page, "/", 360, 740);
     expect(await columns(page)).toBe(2);
+    const widened: string[] = [];
     for (const [, name] of await teamList(page)) {
       await dialog(page).getByRole("button", { name, exact: true }).click();
       expect(await layoutProblems(page), name).toEqual([]);
+      expect(await brokenInsideWords(page), `${name}: names break only between words`).toEqual([]);
+      widened.push(
+        ...(await page.locator("#favourite fieldset:not([hidden]) .team.wide span").allTextContents()),
+      );
     }
-    const longest = (await teamList(page))
-      .flatMap(([, , t]) => t.map(([, n]) => n))
-      .sort((a, b) => b.length - a.length)[0];
-    test.info().annotations.push({ type: "longest name", description: longest! });
+    // Borussia Mönchengladbach's longest word doesn't fit half the row, so it takes the whole row.
+    expect(widened).toContain("Borussia Mönchengladbach");
+    test.info().annotations.push({ type: "full-row tiles", description: widened.join(", ") });
   });
 
   test("200% text on a 360px phone: one column, nothing sideways, every name fits", async ({ page }) => {

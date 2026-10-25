@@ -260,6 +260,18 @@ import { FAV_STORAGE_KEY } from "../scripts/theme-script.ts";
     overflow-wrap: anywhere;
   }
 
+  /* A name whose longest word doesn't fit its tile spans two columns: the
+     whole row on a phone, half of it on desktop (fit() in team-picker.ts
+     measures with breaking inside words switched off, and never widens a
+     tile in a single column). */
+  .picker :global(.team.wide) {
+    grid-column: span 2;
+  }
+
+  .picker:global(.measuring) :global(.team span) {
+    overflow-wrap: normal;
+  }
+
   .picker :global(.team input) {
     flex: none;
     width: 18px;
