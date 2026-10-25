@@ -274,7 +274,8 @@ replace another team); it is `aria-hidden`, because screen readers already
 hear the same words from the page's status region.
 
 **The team picker** (`src/scripts/team-picker.ts`). The Your team dialog
-shows a button per league, then that league's teams as native radio buttons
+shows a "Find a team" field, a button per league, then that league's teams
+as native radio buttons
 in a `<fieldset>` named by its `<legend>`: two columns on a phone, four in
 the desktop dialog, one at 200% text. It opens on the page's league, else
 the favourite's, else the first (`openingLeague()` in
@@ -292,6 +293,15 @@ container query can't see browser zoom shrinking the window's height). A name wh
 (Borussia Mönchengladbach, and Bournemouth by 4 px, on a 360px phone) spans
 two columns, so it breaks only between words; `fit()` measures this each
 time a league is shown or the window resizes.
+
+**Find a team.** A plain text field (not a combobox). Typing shows the
+matching teams from every league, each under its league's legend, and no
+league button is pressed. Matching is anywhere in the name, ignoring case,
+accents and "&" (`normalise()` in `team-picker-core.ts`: "monch" finds
+Mönchengladbach, "coruna" Deportivo La Coruña). A polite live region says
+"3 teams match" once typing pauses for 400 ms. Escape clears the field before
+it closes the dialog; a league button clears it too. A checked team that is
+filtered out stays checked, and the footer still names it.
 
 **Stub pages for last season's teams.** A team that left the covered leagues
 keeps its address: a short page says it isn't covered this season ("It was in

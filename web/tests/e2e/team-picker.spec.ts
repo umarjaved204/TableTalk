@@ -13,6 +13,7 @@ const saved = (team: string, league = "premier_league") =>
   JSON.stringify({ v: 1, team, name: "Stored", league });
 
 const dialog = (page: Page) => page.getByRole("dialog", { name: "Your team" });
+const filterField = (page: Page) => page.getByRole("searchbox", { name: "Find a team" });
 const radios = (page: Page) => page.locator('#favourite input[type="radio"]');
 const shownTeams = (page: Page) => page.locator('#favourite fieldset:not([hidden]) input[type="radio"]');
 const pressed = (page: Page) => page.locator('#favourite .league[aria-pressed="true"]').allTextContents();
@@ -144,7 +145,7 @@ const layoutProblems = (page: Page) =>
         problems.push(`doesn't fit: ${span.textContent}`);
     }
     for (const el of box.querySelectorAll<HTMLElement>(
-      ".league, fieldset:not([hidden]) .team, .foot .button",
+      ".filter input, .league, fieldset:not([hidden]) .team:not([hidden]), .foot .button",
     )) {
       const r = el.getBoundingClientRect();
       if (r.width > 0 && (r.height < 44 || r.width < 44))
@@ -314,6 +315,10 @@ test.describe("layout", () => {
       expect(await teamsVisibleOnOpening(page), "at least one team tile visible").toBeGreaterThanOrEqual(1);
       expect((await layoutProblems(page)).filter((p) => !p.startsWith("under 44px"))).toEqual([]);
       expect(await hiddenFocus(page)).toEqual([]);
+      // With a filter typed, the results lay out the same way.
+      await filterField(page).fill("mon");
+      await expect(page.locator("#favourite .count")).not.toBeEmpty();
+      expect((await layoutProblems(page)).filter((p) => !p.startsWith("under 44px"))).toEqual([]);
       test.info().annotations.push({
         type: "footer",
         description: (await dialog(page).getAttribute("class"))?.includes("unpinned") ? "scrolls" : "pinned",
@@ -353,6 +358,126 @@ test.describe("layout", () => {
   });
 });
 
+test.describe("Find a team", () => {
+  /** The teams whose names contain `typed`, ignoring case and accents, per league (from the page's own list). */
+  const expected = async (page: Page, typed: string) => {
+    const plain = (s: string) =>
+      s
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "");
+    return (await teamList(page))
+      .map(
+        ([, league, teams]) =>
+          [league, teams.map(([, n]) => n).filter((n) => plain(n).includes(plain(typed)))] as const,
+      )
+      .filter(([, names]) => names.length > 0);
+  };
+  const shownNames = (page: Page) =>
+    page.locator("#favourite fieldset:not([hidden]) .team:not([hidden]) span").allTextContents();
+  const count = (page: Page) => page.locator("#favourite .count");
+
+  test("typing shows matches from every league, under their league names, and says how many", async ({
+    page,
+  }) => {
+    await openDialog(page, "/premier-league/");
+    await expect(count(page), "the live region starts empty").toBeEmpty();
+    await expect(count(page)).toHaveAttribute("aria-live", "polite");
+    const want = await expected(page, "mon");
+    expect(want.length, "the test needs matches in more than one league").toBeGreaterThan(1);
+    await filterField(page).fill("mon");
+    expect(await pressed(page), "no league pressed while filtering").toEqual([]);
+    const names = want.flatMap(([, n]) => [...n].sort((a, b) => a.localeCompare(b, "en")));
+    expect(await shownNames(page)).toEqual(names);
+    // Each league with matches shows as a group named by its (now visible) legend.
+    for (const [league] of want) {
+      const group = dialog(page).getByRole("group", { name: league, exact: true });
+      await expect(group).toBeVisible();
+      await expect(group.locator("legend")).toBeVisible();
+    }
+    // Announced once typing pauses, not on every key.
+    await expect(count(page)).toHaveText(`${names.length} teams match`);
+  });
+
+  test("accents and case don't matter; one match says so", async ({ page }) => {
+    await openDialog(page, "/");
+    await filterField(page).fill("MONCH");
+    expect(await shownNames(page)).toEqual(["Borussia Mönchengladbach"]);
+    await expect(count(page)).toHaveText("1 team matches");
+  });
+
+  test("no match says so and shows no teams", async ({ page }) => {
+    await openDialog(page, "/");
+    await filterField(page).fill("zzz");
+    await expect(page.locator("#favourite fieldset:not([hidden])")).toHaveCount(0);
+    await expect(count(page)).toHaveText("No teams match. Try fewer letters.");
+  });
+
+  test("Escape clears the field and shows the league again; a second Escape closes the dialog", async ({
+    page,
+  }) => {
+    await openDialog(page, "/bundesliga/");
+    await filterField(page).fill("mon");
+    await page.keyboard.press("Escape");
+    await expect(dialog(page)).toBeVisible();
+    await expect(filterField(page)).toHaveValue("");
+    expect(await pressed(page)).toEqual(["Bundesliga"]);
+    await expect(count(page)).toBeEmpty();
+    await page.keyboard.press("Escape");
+    await expect(dialog(page)).toBeHidden();
+  });
+
+  test("clearing the field, or pressing a league button, goes back to one league", async ({ page }) => {
+    await openDialog(page, "/bundesliga/");
+    await filterField(page).fill("mon");
+    await filterField(page).fill("");
+    expect(await pressed(page)).toEqual(["Bundesliga"]);
+    await filterField(page).fill("united");
+    await dialog(page).getByRole("button", { name: "Ligue 1", exact: true }).click();
+    await expect(filterField(page)).toHaveValue("");
+    expect(await pressed(page)).toEqual(["Ligue 1"]);
+    await expect(page.locator("#favourite fieldset:not([hidden]) .team[hidden]")).toHaveCount(0);
+  });
+
+  test("a checked team that's filtered out stays checked, the footer names it, and Save saves it", async ({
+    page,
+  }) => {
+    await openDialog(page, "/premier-league/");
+    await dialog(page).getByRole("radio", { name: "Chelsea" }).check();
+    await filterField(page).fill("mon");
+    await expect(page.locator('#favourite input[value="chelsea"]')).toBeChecked();
+    await expect(page.locator("[data-picker-selected]")).toHaveText("Selected: Chelsea");
+    await dialog(page).getByRole("button", { name: "Save" }).click();
+    expect(JSON.parse((await stored(page))!).team).toBe("chelsea");
+  });
+
+  test("keyboard: from the field, Tab reaches the results; arrows move through them across leagues", async ({
+    page,
+  }) => {
+    await openDialog(page, "/premier-league/");
+    await filterField(page).focus();
+    await page.keyboard.type("mon");
+    const results = page.locator("#favourite fieldset:not([hidden]) .team:not([hidden]) input");
+    const total = await results.count();
+    // Past the league buttons to the first result.
+    for (let i = 0; i < 10; i++) {
+      if (await results.first().evaluate((el) => el === document.activeElement)) break;
+      await page.keyboard.press("Tab");
+    }
+    await expect(results.first()).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(results.nth(1)).toBeFocused();
+    await expect(results.nth(1)).toBeChecked();
+    expect(total).toBeGreaterThan(1);
+    expect(await stored(page), "arrows don't save").toBeNull();
+  });
+
+  test("no picker is built and nothing changes until the dialog opens", async ({ page }) => {
+    await page.goto("/premier-league/", { waitUntil: "networkidle" });
+    await expect(page.locator("#team-filter")).toHaveCount(0);
+  });
+});
+
 test.describe("axe with the dialog open, every theme", () => {
   for (const theme of THEME_IDS) {
     test(theme, async ({ page }) => {
@@ -365,6 +490,17 @@ test.describe("axe with the dialog open, every theme", () => {
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
         .analyze();
       expect(results.violations.map((v) => `${v.id}: ${v.nodes.length} (${v.help})`)).toEqual([]);
+      for (const typed of ["mon", "zzz"]) {
+        await filterField(page).fill(typed);
+        await expect(page.locator("#favourite .count")).not.toBeEmpty();
+        const filtered = await new AxeBuilder({ page })
+          .include("#favourite")
+          .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+          .analyze();
+        expect(filtered.violations.map((v) => `${typed}: ${v.id}: ${v.nodes.length} (${v.help})`)).toEqual(
+          [],
+        );
+      }
       expect(errors, "console errors (including CSP and Trusted Types violations)").toEqual([]);
     });
   }

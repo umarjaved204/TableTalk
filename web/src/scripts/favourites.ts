@@ -239,6 +239,14 @@ dialog?.querySelector("[data-close]")?.addEventListener("click", () => {
   if (typeof dialog.close === "function") dialog.close();
   else dialog.removeAttribute("open");
 });
+// Escape in the "Find a team" field clears what was typed first; only a
+// second Escape closes the dialog (and loses nothing).
+dialog?.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  if (event.target instanceof HTMLInputElement && event.target.type === "search" && picker?.clearFilter()) {
+    event.preventDefault();
+  }
+});
 // Clicking the backdrop (outside the panel) closes it too.
 dialog?.addEventListener("click", (event) => {
   if (event.target === dialog) dialog.close();
