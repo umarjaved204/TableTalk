@@ -1,4 +1,4 @@
-# TableTalk update, 2026-10-25T06:48:47Z
+# TableTalk update, 2026-10-25T08:40:59Z
 
 - Bundesliga: updated in 4s; results through 2026-10-23; 251 matches still to play
     Results not in yet (6): 1. FC Köln v Schalke 04 (24 Oct 13:30 UTC, TIMED); FC Augsburg v Union Berlin (24 Oct 13:30 UTC, TIMED); Mainz 05 v Werder Bremen (24 Oct 13:30 UTC, TIMED); Paderborn 07 v Hamburger SV (24 Oct 13:30 UTC, TIMED); RB Leipzig v SV Elversberg (24 Oct 13:30 UTC, IN_PLAY); Borussia Dortmund v Eintracht Frankfurt (24 Oct 16:30 UTC, IN_PLAY)
@@ -17,7 +17,3 @@
 
 Postponed, suspended and cancelled matches stay in the matches still to play (a cancelled
 match is assumed to be replayed). Their locked predictions are voided and not scored.
-
-## Locks this run
-
-- 8 prediction(s) locked
