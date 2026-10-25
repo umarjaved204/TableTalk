@@ -4,6 +4,37 @@ What changed and why, newest first. How things work today is in the
 [README](README.md) and [docs/](docs/); the detail of each change is in its
 commit and pull request.
 
+## 26 Oct 2026
+
+- **Picking your team, rebuilt** (branch `team-picker`). The Your team
+  dialog's dropdown of 96 teams is replaced by a "Find a team" field, a
+  button per league, and that league's teams as large native radio buttons
+  in a fieldset: two columns on a phone, four on desktop, one at 200% text.
+  It opens on the page's league, else the favourite's. Arrow keys never save;
+  Save does. The filter searches every league, ignoring case and accents, and
+  says "3 teams match" once typing pauses. The picker is built only when the
+  dialog first opens, with `createElement` only (CSP and Trusted Types
+  unchanged). The home page's prompt has a button per league instead of its
+  own dropdown.
+- **"Make this my team" on team pages**: one press saves the team, and a
+  line under the button says what happened, including which team it
+  replaced; on the favourite's own page it reads "Your team · Change". The
+  label is right from the first paint (`--fav-unmark` in the favourite's
+  rule).
+- **Large text and zoom**: when the dialog's pinned footer would leave no
+  team visible (200% text on a phone, 400% zoom), the whole dialog scrolls
+  instead, measured rather than set by an em container query, which can't
+  see browser zoom shrinking the window's height. A name too long for its
+  tile (Borussia Mönchengladbach) spans two columns, so it breaks only
+  between words.
+- **Checked**: Chromium leaves hidden radios out of the "2 of 18" count, so
+  all 96 share one name (read through Windows UI Automation, 25 Oct). axe
+  runs on the open dialog in all 8 themes, with filter results and with none.
+  Still to do by hand: the NVDA pass, and a real phone at large text.
+- **Decided against**: replacing the home page's Your team card with a link
+  (kept for now); a `lang` per league for hyphenation (English exonyms such
+  as Bayern Munich, and NVDA switching voice per name).
+
 ## 24 Oct 2026
 
 - **Website animations**: pages crossfade between pages of the site (Chrome,
