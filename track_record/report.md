@@ -1,10 +1,10 @@
-# Live track record (2026-10-24T06:26:16Z)
+# Live track record (2026-10-25T06:48:47Z)
 
 Live since 2026-09-29T16:31:51Z. Lock log hash chain verified.
-Locks: 102 (1 voided, 0 invalid); missed: 0; scored: 101; awaiting a result: 0
+Locks: 110 (1 voided, 0 invalid); missed: 0; scored: 105; awaiting a result: 4
 
-## all (101 scored)
-- vs base rates: model better: -0.110 +/- 0.071 (n = 101; first half -0.102, second half -0.118)
+## all (105 scored)
+- vs base rates: model better: -0.103 +/- 0.071 (n = 105; first half -0.101, second half -0.105)
 - vs market: no detectable difference: +0.010 +/- 0.031 (n = 96; first half +0.002, second half +0.019)
   the interval is wide: roughly 225 matches are needed to detect a gap the size the backtest found
 
@@ -26,9 +26,9 @@ Locks: 102 (1 voided, 0 invalid); missed: 0; scored: 101; awaiting a result: 0
 - vs market: no detectable difference: -0.033 +/- 0.070 (n = 18; first half -0.040, second half -0.025)
   the interval is wide: roughly 222 matches are needed to detect a gap the size the backtest found
 
-## premier_league (21 scored)
-- vs base rates: no detectable difference: -0.097 +/- 0.147 (n = 21; first half +0.034, second half -0.217)
-  the interval is wide: roughly 72 matches are needed to detect a gap the size the backtest found
+## premier_league (25 scored)
+- vs base rates: no detectable difference: -0.069 +/- 0.145 (n = 25; first half +0.006, second half -0.139)
+  the interval is wide: roughly 83 matches are needed to detect a gap the size the backtest found
 - vs market: model worse: +0.057 +/- 0.057 (n = 20; first half +0.057, second half +0.058)
   the interval is wide: roughly 165 matches are needed to detect a gap the size the backtest found
 
@@ -42,13 +42,13 @@ Locks: 102 (1 voided, 0 invalid); missed: 0; scored: 101; awaiting a result: 0
 
 outcome  bin      n  forecast  observed  95% interval
 home     0%-20%    10  0.17      0.20      0.06-0.51
-home     20%-40%   40  0.31      0.33      0.20-0.48
-home     40%-60%   33  0.50      0.61      0.44-0.75
-home     60%-80%   16  0.68      0.75      0.51-0.90
+home     20%-40%   42  0.31      0.33      0.21-0.48
+home     40%-60%   34  0.50      0.59      0.42-0.74
+home     60%-80%   17  0.68      0.76      0.53-0.90
 home     80%-100%   2  0.84      1.00      0.34-1.00
 draw     0%-20%    12  0.16      0.25      0.09-0.53
-draw     20%-40%   89  0.25      0.22      0.15-0.32
-away     0%-20%    24  0.14      0.08      0.02-0.26
-away     20%-40%   46  0.30      0.20      0.11-0.33
-away     40%-60%   27  0.49      0.59      0.41-0.75
+draw     20%-40%   93  0.25      0.22      0.14-0.31
+away     0%-20%    25  0.14      0.08      0.02-0.25
+away     20%-40%   47  0.30      0.21      0.12-0.35
+away     40%-60%   29  0.49      0.59      0.41-0.74
 away     60%-80%    4  0.66      0.50      0.15-0.85

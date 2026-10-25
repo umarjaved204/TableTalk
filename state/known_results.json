@@ -2532,6 +2532,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "premier_league|2026-27|Arsenal|Everton": {
+   "away_goals": 0,
+   "away_team": "Everton",
+   "competition": "premier_league",
+   "date": "2026-10-24",
+   "home_goals": 2,
+   "home_team": "Arsenal",
+   "kickoff_utc": "2026-10-24T14:00:00Z",
+   "match_id": "fdorg:560616",
+   "recorded_at": "2026-10-25T06:48:47Z",
+   "season": "2026-27"
+  },
   "premier_league|2026-27|Arsenal|Leeds United": {
    "away_goals": 1,
    "away_team": "Leeds United",
@@ -2566,6 +2578,18 @@
    "kickoff_utc": "2026-10-10T14:00:00Z",
    "match_id": "fdorg:560601",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "premier_league|2026-27|Aston Villa|Manchester City": {
+   "away_goals": 1,
+   "away_team": "Manchester City",
+   "competition": "premier_league",
+   "date": "2026-10-24",
+   "home_goals": 2,
+   "home_team": "Aston Villa",
+   "kickoff_utc": "2026-10-24T11:30:00Z",
+   "match_id": "fdorg:560614",
+   "recorded_at": "2026-10-25T06:48:47Z",
    "season": "2026-27"
   },
   "premier_league|2026-27|Aston Villa|Nottingham Forest": {
@@ -2760,6 +2784,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "premier_league|2026-27|Chelsea|Tottenham Hotspur": {
+   "away_goals": 2,
+   "away_team": "Tottenham Hotspur",
+   "competition": "premier_league",
+   "date": "2026-10-24",
+   "home_goals": 0,
+   "home_team": "Chelsea",
+   "kickoff_utc": "2026-10-24T16:30:00Z",
+   "match_id": "fdorg:560617",
+   "recorded_at": "2026-10-25T06:48:47Z",
+   "season": "2026-27"
+  },
   "premier_league|2026-27|Coventry City|Brighton & Hove Albion": {
    "away_goals": 5,
    "away_team": "Brighton & Hove Albion",
@@ -2770,6 +2806,18 @@
    "kickoff_utc": "2026-09-13T13:00:00Z",
    "match_id": "fdorg:560578",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "premier_league|2026-27|Coventry City|Fulham": {
+   "away_goals": 1,
+   "away_team": "Fulham",
+   "competition": "premier_league",
+   "date": "2026-10-24",
+   "home_goals": 0,
+   "home_team": "Coventry City",
+   "kickoff_utc": "2026-10-24T14:00:00Z",
+   "match_id": "fdorg:560618",
+   "recorded_at": "2026-10-25T06:48:47Z",
    "season": "2026-27"
   },
   "premier_league|2026-27|Coventry City|Hull City": {
