@@ -2124,6 +2124,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "ligue_1|2026-27|Lens|Paris FC": {
+   "away_goals": 1,
+   "away_team": "Paris FC",
+   "competition": "ligue_1",
+   "date": "2026-10-24",
+   "home_goals": 2,
+   "home_team": "Lens",
+   "kickoff_utc": "2026-10-24T18:45:00Z",
+   "match_id": "fdorg:559652",
+   "recorded_at": "2026-10-25T12:43:20Z",
+   "season": "2026-27"
+  },
   "ligue_1|2026-27|Lille|Brest": {
    "away_goals": 1,
    "away_team": "Brest",

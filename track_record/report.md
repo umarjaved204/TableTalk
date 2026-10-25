@@ -1,7 +1,7 @@
-# Live track record (2026-10-25T10:06:04Z)
+# Live track record (2026-10-25T12:43:20Z)
 
 Live since 2026-09-29T16:31:51Z. Lock log hash chain verified.
-Locks: 121 (1 voided, 0 invalid); missed: 0; scored: 120; awaiting a result: 0
+Locks: 122 (1 voided, 0 invalid); missed: 0; scored: 120; awaiting a result: 1
 
 ## all (120 scored)
 - vs base rates: model better: -0.110 +/- 0.064 (n = 120; first half -0.073, second half -0.147)
