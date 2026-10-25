@@ -1,36 +1,22 @@
 {
  "date": "2026-10-25",
- "generated_at": "2026-10-25T08:40:59Z",
+ "generated_at": "2026-10-25T10:06:04Z",
  "last_try": false,
  "leagues": {
   "bundesliga": {
-   "missing": [
-    "fdorg:565831",
-    "fdorg:565838",
-    "fdorg:565830",
-    "fdorg:565834",
-    "fdorg:565832",
-    "fdorg:565837"
-   ],
-   "results_complete": false,
+   "missing": [],
+   "results_complete": true,
    "updated": true
   },
   "la_liga": {
-   "missing": [
-    "fdorg:564718",
-    "fdorg:564727",
-    "fdorg:564722",
-    "fdorg:564724"
-   ],
-   "results_complete": false,
+   "missing": [],
+   "results_complete": true,
    "updated": true
   },
   "ligue_1": {
-   "missing": [
-    "fdorg:559652"
-   ],
+   "missing": [],
    "results_complete": false,
-   "updated": true
+   "updated": false
   },
   "premier_league": {
    "missing": [],
@@ -38,13 +24,8 @@
    "updated": true
   },
   "serie_a": {
-   "missing": [
-    "fdorg:558560",
-    "fdorg:558561",
-    "fdorg:558564",
-    "fdorg:558565"
-   ],
-   "results_complete": false,
+   "missing": [],
+   "results_complete": true,
    "updated": true
   }
  }
