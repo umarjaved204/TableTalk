@@ -284,7 +284,11 @@ Save saves. It is built the first time the dialog opens, with
 `createElement` only, so pages carry none of it. All radios share one name;
 Chromium leaves the hidden leagues out of the count ("2 of 18", not "of
 96"). Only the middle of the dialog scrolls, so the footer with Save never
-covers a focused team. A name whose longest word doesn't fit its tile
+covers a focused team. With large text or a short window, where the pinned
+head and footer would leave no team visible on opening (200% text on a
+phone, 400% zoom), the whole dialog scrolls instead, footer after the teams
+(`pinFooter()` in `favourites.ts`, measured on opening and on resize; an em
+container query can't see browser zoom shrinking the window's height). A name whose longest word doesn't fit its tile
 (Borussia Mönchengladbach, and Bournemouth by 4 px, on a 360px phone) spans
 two columns, so it breaks only between words; `fit()` measures this each
 time a league is shown or the window resizes.

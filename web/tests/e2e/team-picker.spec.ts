@@ -168,6 +168,52 @@ const brokenInsideWords = (page: Page) =>
     return broken;
   });
 
+/** Team tiles wholly inside the dialog's visible area, as it opens (scrolled to the top). */
+const teamsVisibleOnOpening = (page: Page) =>
+  page.evaluate(() => {
+    const box = document.querySelector("#favourite")!.getBoundingClientRect();
+    return [...document.querySelectorAll("#favourite fieldset:not([hidden]) .team")].filter((tile) => {
+      const r = tile.getBoundingClientRect();
+      return r.top >= box.top && r.bottom <= box.bottom;
+    }).length;
+  });
+
+/** Everything the keyboard reaches in the dialog (Tab through it, then the
+ *  arrow keys through every team): each must end up wholly inside the
+ *  dialog's visible area, and not under a pinned footer. Returns what wasn't. */
+async function hiddenFocus(page: Page): Promise<string[]> {
+  const check = () =>
+    page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null;
+      const dialog = document.querySelector<HTMLElement>("#favourite")!;
+      if (!el || !dialog.contains(el)) return null;
+      const target = el.closest(".team") ?? el;
+      const r = target.getBoundingClientRect();
+      const box = dialog.getBoundingClientRect();
+      const foot = dialog.querySelector(".foot")!;
+      const pinned = !dialog.classList.contains("unpinned") && !foot.contains(el);
+      const bottom = pinned ? foot.getBoundingClientRect().top : box.bottom;
+      const name = (el.getAttribute("value") ?? el.textContent ?? el.tagName).trim().slice(0, 30);
+      return r.top >= box.top - 1 && r.bottom <= bottom + 1 ? "" : name;
+    });
+  const hidden: string[] = [];
+  await page.locator("#favourite [data-close]").focus();
+  for (let i = 0; i < 25; i++) {
+    const result = await check();
+    if (result === null) break;
+    if (result) hidden.push(`Tab: ${result}`);
+    await page.keyboard.press("Tab");
+  }
+  await shownTeams(page).first().focus();
+  const count = await shownTeams(page).count();
+  for (let i = 0; i < count; i++) {
+    const result = await check();
+    if (result) hidden.push(`arrow: ${result}`);
+    await page.keyboard.press("ArrowDown");
+  }
+  return hidden;
+}
+
 const columns = (page: Page) =>
   page
     .locator("#favourite fieldset:not([hidden]) .grid")
@@ -238,6 +284,7 @@ test.describe("layout", () => {
 
   test("the footer never covers the focused team (WCAG 2.4.11), at 360 × 640", async ({ page }) => {
     await openDialog(page, "/premier-league/", 360, 640);
+    await expect(dialog(page), "normal text: the footer stays pinned").not.toHaveClass(/unpinned/);
     await shownTeams(page).first().focus();
     await page.keyboard.press("ArrowUp"); // wraps to the last team
     await expect(shownTeams(page).last()).toBeFocused();
@@ -245,6 +292,42 @@ test.describe("layout", () => {
     const foot = await page.locator("#favourite .foot").boundingBox();
     expect(tile!.y + tile!.height, "the last team is above the footer").toBeLessThanOrEqual(foot!.y + 1);
     await expect(page.locator("#favourite .foot")).toBeVisible();
+  });
+
+  // The test site has three leagues (real data: five, so more rows of buttons),
+  // so 360 × 740 may stay pinned here; 360 × 640 makes it unpin for certain.
+  for (const [height, favourite] of [
+    [740, false],
+    [740, true],
+    [640, true],
+  ] as const) {
+    test(`200% text at 360 × ${height}${favourite ? ", a team saved" : ""}: a team shows on opening, nothing sideways, focus never hidden`, async ({
+      page,
+    }) => {
+      if (favourite) await seed(page, saved("mainz-05", "bundesliga"));
+      await page.setViewportSize({ width: 360, height });
+      await page.goto("/bundesliga/", { waitUntil: "networkidle" });
+      await page.evaluate(() => (document.documentElement.style.fontSize = "200%"));
+      await page.locator("[data-open-favourite]").click();
+      if (height === 640)
+        await expect(dialog(page), "the footer scrolls with the rest").toHaveClass(/unpinned/);
+      expect(await teamsVisibleOnOpening(page), "at least one team tile visible").toBeGreaterThanOrEqual(1);
+      expect((await layoutProblems(page)).filter((p) => !p.startsWith("under 44px"))).toEqual([]);
+      expect(await hiddenFocus(page)).toEqual([]);
+      test.info().annotations.push({
+        type: "footer",
+        description: (await dialog(page).getAttribute("class"))?.includes("unpinned") ? "scrolls" : "pinned",
+      });
+    });
+  }
+
+  test("400% browser zoom (a 1280 × 1024 window is 320 × 256): unpinned, nothing sideways, focus never hidden", async ({
+    page,
+  }) => {
+    await openDialog(page, "/premier-league/", 320, 256);
+    await expect(dialog(page)).toHaveClass(/unpinned/);
+    expect(await layoutProblems(page)).toEqual([]);
+    expect(await hiddenFocus(page)).toEqual([]);
   });
 
   test("forced colours: the shown league and the checked team differ by more than colour", async ({

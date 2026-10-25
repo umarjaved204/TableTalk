@@ -80,7 +80,20 @@ export function buildPicker(host: HTMLElement, teams: TeamList, onChange: () => 
     sets.set(id, set);
     groups.append(set);
   }
-  groups.addEventListener("change", onChange);
+  // The browser scrolls a focused radio into view, but not its whole tile:
+  // a tile two lines tall (large text) could end up half under the pinned
+  // footer. Scroll the tile instead (its scroll-margin adds a little room),
+  // on focus and again after a change, because onChange rewrites the
+  // footer's "Selected:" line, and a longer name there makes the footer taller.
+  const showTile = (event: Event) => {
+    const tile = event.target instanceof Element ? event.target.closest(".team") : null;
+    tile?.scrollIntoView({ block: "nearest" });
+  };
+  groups.addEventListener("focusin", showTile);
+  groups.addEventListener("change", (event) => {
+    onChange();
+    showTile(event);
+  });
   host.append(row, groups);
 
   const radios = () => host.querySelectorAll<HTMLInputElement>('input[name="favourite-team"]');

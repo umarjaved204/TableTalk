@@ -112,9 +112,39 @@ function openDialog(asked: string | null = null): void {
   // README.md) gets the dialog shown in place, without the backdrop.
   if (typeof dialog.showModal === "function") dialog.showModal();
   else dialog.setAttribute("open", "");
-  // Tiles can only be measured once the dialog is shown.
+  // Tiles can only be measured once the dialog is shown. It opens at the top.
+  dialog.scrollTop = 0;
+  const body = dialog.querySelector<HTMLElement>(".body");
+  if (body) body.scrollTop = 0;
   picker?.fit();
+  pinFooter();
 }
+
+/**
+ * Normally only the middle of the dialog scrolls, with the footer (Selected,
+ * Save, Remove) pinned below it. With large text or a short window the head
+ * and footer can leave no room for the teams (at 200% text on a 360 x 740
+ * phone, the league buttons filled the middle and no team showed), so the
+ * whole dialog scrolls instead, with the footer after the teams.
+ *
+ * The rule is the point of it: unpin when, with the footer pinned, not one
+ * team tile would be wholly visible at the top of the middle. Measured, not a
+ * container query in em: browser zoom shrinks the window's height in CSS
+ * pixels without changing the em, so at 400% zoom (320 x 256) an em-width
+ * query wouldn't fire while the pinned parts filled the dialog. Measured
+ * again on resize.
+ */
+function pinFooter(): void {
+  if (!dialog?.open) return;
+  const body = dialog.querySelector<HTMLElement>(".body");
+  const first = dialog.querySelector<HTMLElement>("fieldset:not([hidden]) .team:not([hidden])");
+  if (!body || !first) return;
+  dialog.classList.remove("unpinned");
+  // Where the first tile ends, from the top of the middle's content.
+  const end = first.getBoundingClientRect().bottom - body.getBoundingClientRect().top + body.scrollTop;
+  dialog.classList.toggle("unpinned", end > body.clientHeight);
+}
+window.addEventListener("resize", pinFooter);
 
 /** After a block is replaced (the button that was clicked is gone), keep the
  *  keyboard user in a sensible place instead of at the top of the page. */

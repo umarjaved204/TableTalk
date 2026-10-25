@@ -182,6 +182,18 @@ import { FAV_STORAGE_KEY } from "../scripts/theme-script.ts";
     }
   }
 
+  /* Large text or a short window: the whole dialog scrolls, the footer after
+     the teams (pinFooter() in src/scripts/favourites.ts decides, by measuring). */
+  dialog[open].unpinned {
+    display: block;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .unpinned .body {
+    overflow: visible;
+  }
+
   .selected {
     color: var(--text-muted);
     font-size: var(--step--1);
@@ -239,8 +251,11 @@ import { FAV_STORAGE_KEY } from "../scripts/theme-script.ts";
     gap: var(--space-2);
   }
 
-  /* A whole tile is the radio's label, so the whole tile is the target. */
+  /* A whole tile is the radio's label, so the whole tile is the target.
+     scroll-margin: room around a tile scrolled into view on focus, so its
+     focus ring shows too (team-picker.ts). */
   .picker :global(.team) {
+    scroll-margin-block: var(--space-2);
     display: flex;
     align-items: center;
     gap: var(--space-2);
