@@ -359,6 +359,7 @@ test("storage blocked: the choice applies to this page, and the dialog says it w
 
 test.describe("the team page's Make this my team", () => {
   const button = (page: Page) => page.locator('[data-fav-action="choose-this"]');
+  const shown = (page: Page) => page.locator("[data-make-status]");
 
   test("one press saves the team; the label changes, focus stays, and it's announced", async ({ page }) => {
     await open(page, "/premier-league/arsenal/", 360);
@@ -376,16 +377,47 @@ test.describe("the team page's Make this my team", () => {
     expect(await hasSidewaysScroll(page)).toBe(false);
   });
 
-  test("replacing another favourite says which one it replaced", async ({ page }) => {
+  test("replacing another favourite says which one it replaced, shown and announced once", async ({
+    page,
+  }) => {
     await seed(page, { [KEY]: saved("chelsea") });
     await open(page, "/premier-league/arsenal/");
     await expect(button(page)).toHaveAccessibleName("Make this my team");
+    await expect(shown(page), "nothing shown before a press").toBeHidden();
     await button(page).click();
-    await expect(page.locator("[data-fav-status]")).toHaveText(
-      "Saved. Arsenal is your team on this device, instead of Chelsea.",
-    );
+    const message = "Saved. Arsenal is your team on this device, instead of Chelsea.";
+    await expect(page.locator("[data-fav-status]")).toHaveText(message);
+    await expect(shown(page)).toBeVisible();
+    await expect(shown(page)).toHaveText(message);
+    // Screen readers hear it once, from the status region: the shown copy is hidden from them.
+    await expect(shown(page)).toHaveAttribute("aria-hidden", "true");
+    expect(await page.getByRole("status").filter({ hasText: "instead of Chelsea" }).count()).toBe(1);
     expect(JSON.parse((await stored(page))!).team).toBe("arsenal");
   });
+
+  test("the shown line clears when the team is changed another way", async ({ page }) => {
+    await open(page, "/premier-league/arsenal/");
+    await button(page).click();
+    await expect(shown(page)).toHaveText("Saved. Arsenal is your team on this device.");
+    await button(page).click(); // now "Your team · Change": opens the dialog
+    const dialog = page.getByRole("dialog", { name: "Your team" });
+    await dialog.getByLabel("Choose a team").selectOption("chelsea");
+    await dialog.getByRole("button", { name: "Save" }).click();
+    await expect(shown(page)).toBeHidden();
+    await expect(shown(page)).toHaveText("");
+  });
+
+  for (const width of [360, 1280]) {
+    test(`the shown line after a press is not layout shift, at ${width}px`, async ({ page }) => {
+      await seed(page, { [KEY]: saved("chelsea") });
+      await watchShifts(page);
+      await open(page, "/premier-league/arsenal/", width);
+      await button(page).click();
+      await expect(shown(page)).toBeVisible();
+      await page.waitForTimeout(300);
+      await expectNoShift(page);
+    });
+  }
 
   test("on the favourite's own page it reads 'Your team · Change' and opens the dialog", async ({ page }) => {
     await seed(page, { [KEY]: saved("arsenal") });

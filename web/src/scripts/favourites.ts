@@ -36,6 +36,8 @@ const api = window.tabletalkFavourite;
 const dialog = document.querySelector<HTMLDialogElement>("#favourite");
 const opener = document.querySelector<HTMLButtonElement>("[data-open-favourite]");
 const pageStatus = document.querySelector<HTMLElement>("[data-fav-status]");
+/** The team page's shown "Saved. …" line under Make this my team. */
+const madeStatus = document.querySelector<HTMLElement>("[data-make-status]");
 
 /** Put a message in a live region. Cleared first, so the same words twice are announced twice. */
 function announce(region: HTMLElement | null, message: string): void {
@@ -137,13 +139,20 @@ function chooseThis(button: HTMLElement): void {
   if (!api.choose(slug)) return;
   const name = api.current().name ?? "This team";
   const instead = before.state === "chosen" && before.name ? `, instead of ${before.name}` : "";
-  announce(
-    pageStatus,
-    api.storageWorks()
-      ? `Saved. ${name} is your team on this device${instead}.`
-      : `${name} is your team until you close this page${instead}. This browser isn't letting the site remember it.`,
-  );
+  const message = api.storageWorks()
+    ? `Saved. ${name} is your team on this device${instead}.`
+    : `${name} is your team until you close this page${instead}. This browser isn't letting the site remember it.`;
+  announce(pageStatus, message);
+  // The same words, shown under the button straight away (in the same task
+  // as the press, so the line it adds doesn't count as layout shift).
+  if (madeStatus) madeStatus.textContent = message;
 }
+
+// The shown line describes one press; any other change (the dialog, Remove)
+// clears it. choose() fires this event before chooseThis writes its line.
+document.addEventListener("tabletalk:favourite", () => {
+  if (madeStatus) madeStatus.textContent = "";
+});
 
 function handle(action: string, button: HTMLElement): void {
   if (!api) return;

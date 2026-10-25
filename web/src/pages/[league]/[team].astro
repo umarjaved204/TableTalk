@@ -115,6 +115,10 @@ const crumbs = [
               </span>
             </button>
           </p>
+          {/* What the press did, shown (one press can replace another team).
+              Screen readers already hear it from the page's status region, so
+              this copy is aria-hidden to avoid reading it twice. */}
+          <p class="make-status" aria-hidden="true" data-make-status></p>
           <UpdatedStamp
             generatedAt={data.generatedAt}
             dataThrough={data.dataThrough}
@@ -284,6 +288,15 @@ const crumbs = [
     height: 0.9em;
     margin-right: var(--space-2);
     vertical-align: -0.1em;
+  }
+
+  .make-status {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  .make-status:empty {
+    display: none;
   }
 
   .star-outline {
