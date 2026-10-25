@@ -264,6 +264,13 @@ only when the page exists (`teamHref()`). Linking every name added no
 element to the league page (see the star above).
 The Your team dialog links "Bookmark your team's page".
 
+**Choosing a team from its page.** Under a team page's heading, "Make this
+my team" saves the team in one press. When it is the favourite, the same
+button reads "Your team · Change" and opens the Your team dialog. Both labels
+are in the button; the favourite's rule from `favouriteCss()` sets
+`--fav-unmark: none` as well as `--fav-mark`, so the right label shows from
+the first paint.
+
 **Stub pages for last season's teams.** A team that left the covered leagues
 keeps its address: a short page says it isn't covered this season ("It was in
 the Premier League in 2026-27"), with the breadcrumb and links back. Stubs are

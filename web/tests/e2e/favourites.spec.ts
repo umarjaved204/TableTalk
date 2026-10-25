@@ -357,6 +357,66 @@ test("storage blocked: the choice applies to this page, and the dialog says it w
   await expect(page.locator("[data-storage-warning]")).toBeVisible();
 });
 
+test.describe("the team page's Make this my team", () => {
+  const button = (page: Page) => page.locator('[data-fav-action="choose-this"]');
+
+  test("one press saves the team; the label changes, focus stays, and it's announced", async ({ page }) => {
+    await open(page, "/premier-league/arsenal/", 360);
+    await expect(button(page)).toHaveAccessibleName("Make this my team");
+    await expect(button(page).locator(".is-fav")).toBeHidden();
+    const box = await button(page).boundingBox();
+    expect(box!.height, "a 44px target").toBeGreaterThanOrEqual(44);
+    await button(page).focus();
+    await page.keyboard.press("Enter");
+    expect(JSON.parse((await stored(page))!).team).toBe("arsenal");
+    await expect(button(page)).toHaveAccessibleName("Your team · Change");
+    await expect(button(page)).toBeFocused();
+    await expect(page.locator("[data-fav-status]")).toHaveText("Saved. Arsenal is your team on this device.");
+    expect(await stars(page.locator(".team-head h1"))).toBe(1);
+    expect(await hasSidewaysScroll(page)).toBe(false);
+  });
+
+  test("replacing another favourite says which one it replaced", async ({ page }) => {
+    await seed(page, { [KEY]: saved("chelsea") });
+    await open(page, "/premier-league/arsenal/");
+    await expect(button(page)).toHaveAccessibleName("Make this my team");
+    await button(page).click();
+    await expect(page.locator("[data-fav-status]")).toHaveText(
+      "Saved. Arsenal is your team on this device, instead of Chelsea.",
+    );
+    expect(JSON.parse((await stored(page))!).team).toBe("arsenal");
+  });
+
+  test("on the favourite's own page it reads 'Your team · Change' and opens the dialog", async ({ page }) => {
+    await seed(page, { [KEY]: saved("arsenal") });
+    await open(page, "/premier-league/arsenal/");
+    await expect(button(page)).toHaveAccessibleName("Your team · Change");
+    await expect(button(page).locator(".not-fav")).toBeHidden();
+    await button(page).click();
+    const dialog = page.getByRole("dialog", { name: "Your team" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel("Choose a team")).toHaveValue("arsenal");
+    expect(JSON.parse((await stored(page))!).team, "nothing changed").toBe("arsenal");
+  });
+
+  test("storage blocked: the choice applies to this page, and it says so", async ({ page }) => {
+    await page.addInitScript(() => {
+      const deny = () => {
+        throw new DOMException("blocked", "SecurityError");
+      };
+      Storage.prototype.getItem = deny;
+      Storage.prototype.setItem = deny;
+      Storage.prototype.removeItem = deny;
+    });
+    await open(page, "/premier-league/arsenal/");
+    await button(page).click();
+    await expect(button(page)).toHaveAccessibleName("Your team · Change");
+    await expect(page.locator("[data-fav-status]")).toHaveText(
+      "Arsenal is your team until you close this page. This browser isn't letting the site remember it.",
+    );
+  });
+});
+
 test.describe("the Your team dialog", () => {
   test("keyboard only: open, choose, save, close, and focus returns to the button", async ({ page }) => {
     await seed(page, { [KEY]: saved("arsenal") });
@@ -425,6 +485,8 @@ test.describe("no layout shift", () => {
     ["dismissed", { [KEY]: JSON.stringify({ v: 1, team: null, prompt: "dismissed" }) }, "/"],
     ["league page, favourite", { [KEY]: saved("arsenal") }, "/premier-league/"],
     ["race panel, favourite outside the race", { [KEY]: saved("mainz-05") }, "/bundesliga/"],
+    ["team page, this team the favourite", { [KEY]: saved("arsenal") }, "/premier-league/arsenal/"],
+    ["team page, another team the favourite", { [KEY]: saved("chelsea") }, "/premier-league/arsenal/"],
   ];
   for (const [name, values, path] of STATES) {
     for (const width of [360, 1280]) {

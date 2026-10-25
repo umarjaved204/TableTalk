@@ -1,6 +1,6 @@
 // The favourite team's controls, on every page: the "Your team" dialog, the
-// buttons in the pre-built blocks (prompt, "no longer covered"), and the
-// matches page's "Your team only" filter.
+// buttons in the pre-built blocks (prompt, "no longer covered"), the team
+// page's "Make this my team", and the matches page's "Your team only" filter.
 //
 // The state itself lives in the early script (window.tabletalkFavourite,
 // src/scripts/favourite-head.js): it stores the choice, sets the attributes
@@ -123,6 +123,28 @@ function saveFromSelect(button: HTMLElement): void {
   else focusAfterChange(document.querySelector(".your-team-slot [data-fav-target] h2"));
 }
 
+/** The team page's button: one tap makes this team the favourite. When it
+ *  already is, the button reads "Your team · Change" and opens the dialog.
+ *  The label swaps by itself (favouriteCss), and the button stays focused. */
+function chooseThis(button: HTMLElement): void {
+  if (!api) return;
+  const slug = button.dataset["teamSlug"] ?? "";
+  const before = api.current();
+  if (before.state === "chosen" && before.team === slug) {
+    openDialog();
+    return;
+  }
+  if (!api.choose(slug)) return;
+  const name = api.current().name ?? "This team";
+  const instead = before.state === "chosen" && before.name ? `, instead of ${before.name}` : "";
+  announce(
+    pageStatus,
+    api.storageWorks()
+      ? `Saved. ${name} is your team on this device${instead}.`
+      : `${name} is your team until you close this page${instead}. This browser isn't letting the site remember it.`,
+  );
+}
+
 function handle(action: string, button: HTMLElement): void {
   if (!api) return;
   switch (action) {
@@ -131,6 +153,9 @@ function handle(action: string, button: HTMLElement): void {
       break;
     case "open-picker":
       openDialog();
+      break;
+    case "choose-this":
+      chooseThis(button);
       break;
     case "dismiss":
       api.dismiss();

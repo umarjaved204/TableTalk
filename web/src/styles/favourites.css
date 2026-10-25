@@ -3,6 +3,8 @@
    (favouriteCss in src/scripts/favourite-core.js). It switches on these
    custom properties inside that team's elements:
      --fav-mark         inline-block: show the star and the hidden "your team" label
+     --fav-unmark       none: hide what only a team that isn't the favourite shows
+                        (the team page's "Make this my team")
      --fav-bg           row background (the tint)
      --fav-ring         the 2px rule around the favourite's name cell
      --fav-card-bg      a match card involving the favourite

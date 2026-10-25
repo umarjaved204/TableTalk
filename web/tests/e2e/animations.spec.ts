@@ -568,6 +568,24 @@ test.describe("star pop", () => {
     expect(left.violations, "Content Security Policy violations").toEqual([]);
     expect(left.errors, "console errors (including CSP violations)").toEqual([]);
   });
+
+  test("the team page's Make this my team pops the star by the team's name", async ({
+    page,
+    browserName,
+  }) => {
+    const collected = await open(page, "/premier-league/arsenal/", 1280);
+    await recordStarts(page);
+    await page.locator('[data-fav-action="choose-this"]').click();
+    const popped = (await started(page)).filter((a) => a.name === "star-pop");
+    expect(popped.length, "the heading's star pops").toBeGreaterThan(0);
+    expect(
+      popped.filter((a) => a.properties.some((p) => p !== "transform" && p !== "opacity")),
+      "only transform and opacity",
+    ).toEqual([]);
+    const left = unexplained(collected, browserName);
+    expect(left.violations, "Content Security Policy violations").toEqual([]);
+    expect(left.errors, "console errors (including CSP violations)").toEqual([]);
+  });
 });
 
 const LIFTED = "matrix(1, 0, 0, 1, 0, -3)";
@@ -766,6 +784,13 @@ test.describe("reduced motion", () => {
     await page.locator('[data-fav-action="save-select"][data-select="pick-team"]').click();
     expect(await running(page), "no animation with reduced motion").toEqual([]);
     expect(await stars(page.locator("body")), "the stars show").toBeGreaterThan(0);
+  });
+
+  test("the team page's Make this my team shows the star without a pop", async ({ page }) => {
+    await open(page, "/premier-league/arsenal/", 1280);
+    await page.locator('[data-fav-action="choose-this"]').click();
+    expect(await running(page), "no animation with reduced motion").toEqual([]);
+    expect(await stars(page.locator(".team-head h1")), "the star shows").toBe(1);
   });
 
   test("choosing a theme changes it at once, without a crossfade", async ({ page }) => {

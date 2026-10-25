@@ -172,6 +172,12 @@ describe("the favourite's CSS rule", () => {
     expect(css).toContain(':root[data-fav="arsenal"] [data-teams~="arsenal"]{--fav-card-bg:var(--fav-tint)}');
   });
 
+  it("hides what only other teams show (the team page's 'Make this my team')", () => {
+    const rule = favouriteCss("arsenal", null, ids);
+    expect(rule).toContain('[data-team="arsenal"]{--fav-mark:inline-block;--fav-unmark:none;');
+    expect(favouriteCss(null, "premier_league", ids)).not.toContain("--fav-unmark");
+  });
+
   it("moves the league card first and gives every card its width after the move", () => {
     // Ligue 1 is fifth in the switcher; as the favourite's league it becomes first.
     const rules = favouriteCss(null, "ligue_1", ids).split("\n");
