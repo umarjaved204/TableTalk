@@ -2,7 +2,7 @@
 // the picker by keyboard, an old ?team= link changing nothing, no layout
 // shift, blocked storage, the matches filter, accessibility (axe) in light and dark, and graceful fallbacks.
 import AxeBuilder from "@axe-core/playwright";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { DARK, LIGHT, hasSidewaysScroll, stars } from "./helpers.ts";
 import { expect, test } from "./test.ts";
 
@@ -84,6 +84,21 @@ async function open(page: Page, path: string, width = 1280): Promise<void> {
   await page.goto(path, { waitUntil: "networkidle" });
 }
 
+const dialogOf = (page: Page) => page.getByRole("dialog", { name: "Your team" });
+const pressedLeague = (page: Page) =>
+  dialogOf(page).locator('.league[aria-pressed="true"]').allTextContents();
+/** The team radios a visitor can see (the shown league's). */
+const shownTeams = (page: Page) => dialogOf(page).locator("fieldset:not([hidden]) input[type=radio]");
+
+/** Press Tab until `target` has focus (at most `max` times). */
+async function tabTo(page: Page, target: Locator, max = 12): Promise<void> {
+  for (let i = 0; i < max; i++) {
+    if (await target.evaluate((el) => el === document.activeElement)) return;
+    await page.keyboard.press("Tab");
+  }
+  await expect(target).toBeFocused();
+}
+
 test.describe("first visit and choosing", () => {
   test("the prompt, chosen with the keyboard; the card replaces it and survives a reload", async ({
     page,
@@ -92,17 +107,28 @@ test.describe("first visit and choosing", () => {
     const prompt = page.getByRole("region", { name: "Pick your team" });
     await expect(prompt).toBeVisible();
 
-    const select = page.locator("#pick-team");
-    await select.focus();
-    await select.selectOption("arsenal");
-    await page.keyboard.press("Tab");
-    await expect(prompt.getByRole("button", { name: "Save" })).toBeFocused();
+    // A button per league; Premier League opens the dialog on its teams.
+    await prompt.getByRole("button", { name: "Premier League" }).focus();
     await page.keyboard.press("Enter");
+    await expect(dialogOf(page)).toBeVisible();
+    expect(await pressedLeague(page)).toEqual(["Premier League"]);
+    // Tab reaches the team group in one stop; Space checks the focused team.
+    const arsenal = dialogOf(page).getByRole("radio", { name: "Arsenal" });
+    await tabTo(page, arsenal);
+    await page.keyboard.press("Space");
+    await expect(arsenal).toBeChecked();
+    await expect(dialogOf(page).locator("[data-picker-selected]")).toHaveText("Selected: Arsenal");
+    await tabTo(page, dialogOf(page).getByRole("button", { name: "Save" }));
+    await page.keyboard.press("Enter");
+    await expect(dialogOf(page).getByRole("status")).toHaveText(
+      "Saved. Arsenal is your team on this device.",
+    );
 
+    // Behind the dialog the prompt became the card. On close, focus goes to the
+    // card's heading (the button that opened the dialog is gone), not to the top.
+    await page.keyboard.press("Escape");
     const card = page.getByRole("article", { name: "Arsenal" });
     await expect(card).toBeVisible();
-    await expect(page.locator("[data-fav-status]")).toHaveText("Saved. Arsenal is your team on this device.");
-    // Focus moved to the new card's heading, not lost at the top of the page.
     await expect(card.getByRole("heading", { level: 2 })).toBeFocused();
 
     expect(JSON.parse((await stored(page))!)).toEqual({
@@ -115,10 +141,38 @@ test.describe("first visit and choosing", () => {
     await expect(page.getByRole("article", { name: "Arsenal" })).toBeVisible();
   });
 
-  test("Save with no team chosen says so and saves nothing", async ({ page }) => {
+  test("the prompt has a button per league with teams, each opening the dialog on it", async ({ page }) => {
+    await open(page, "/", 390);
+    const buttons = page.getByRole("group", { name: "Choose its league:" }).getByRole("button");
+    // The test data has teams in three leagues (La Liga and Serie A have no readable data).
+    const leagues = await page.evaluate(() =>
+      (
+        window as unknown as { tabletalkFavourite: { teams(): [string, string, unknown][] } }
+      ).tabletalkFavourite
+        .teams()
+        .map(([, name]) => name),
+    );
+    expect(leagues).toEqual(["Premier League", "Bundesliga", "Ligue 1"]);
+    await expect(buttons).toHaveText(leagues);
+    for (const height of await buttons.evaluateAll((els) =>
+      els.map((el) => el.getBoundingClientRect().height),
+    ))
+      expect(height, "44px targets").toBeGreaterThanOrEqual(44);
+    await buttons.filter({ hasText: "Bundesliga" }).click();
+    expect(await pressedLeague(page)).toEqual(["Bundesliga"]);
+    await expect(shownTeams(page).first()).toBeVisible();
+    expect(await stored(page), "opening saves nothing").toBeNull();
+  });
+
+  test("Save with no team chosen says so, focuses the teams and saves nothing", async ({ page }) => {
     await open(page, "/");
-    await page.getByRole("region", { name: "Pick your team" }).getByRole("button", { name: "Save" }).click();
-    await expect(page.locator("[data-fav-status]")).toHaveText("Choose a team first.");
+    await page
+      .getByRole("region", { name: "Pick your team" })
+      .getByRole("button", { name: "Ligue 1" })
+      .click();
+    await dialogOf(page).getByRole("button", { name: "Save" }).click();
+    await expect(dialogOf(page).getByRole("status")).toHaveText("Choose a team first.");
+    await expect(shownTeams(page).first()).toBeFocused();
     expect(await stored(page)).toBeNull();
   });
 
@@ -349,12 +403,16 @@ test("storage blocked: the choice applies to this page, and the dialog says it w
     Storage.prototype.removeItem = deny;
   });
   await open(page, "/");
-  await page.locator("#pick-team").selectOption("arsenal");
-  await page.getByRole("region", { name: "Pick your team" }).getByRole("button", { name: "Save" }).click();
-  await expect(page.getByRole("article", { name: "Arsenal" })).toBeVisible();
-  await expect(page.locator("[data-fav-status]")).toContainText("isn't letting the site remember it");
-  await page.locator("[data-open-favourite]").click();
+  await page
+    .getByRole("region", { name: "Pick your team" })
+    .getByRole("button", { name: "Premier League" })
+    .click();
+  await dialogOf(page).getByRole("radio", { name: "Arsenal" }).check();
+  await dialogOf(page).getByRole("button", { name: "Save" }).click();
+  await expect(dialogOf(page).getByRole("status")).toContainText("isn't letting the site remember it");
   await expect(page.locator("[data-storage-warning]")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("article", { name: "Arsenal" })).toBeVisible();
 });
 
 test.describe("the team page's Make this my team", () => {
@@ -400,8 +458,8 @@ test.describe("the team page's Make this my team", () => {
     await button(page).click();
     await expect(shown(page)).toHaveText("Saved. Arsenal is your team on this device.");
     await button(page).click(); // now "Your team · Change": opens the dialog
-    const dialog = page.getByRole("dialog", { name: "Your team" });
-    await dialog.getByLabel("Choose a team").selectOption("chelsea");
+    const dialog = dialogOf(page);
+    await dialog.getByRole("radio", { name: "Chelsea" }).check();
     await dialog.getByRole("button", { name: "Save" }).click();
     await expect(shown(page)).toBeHidden();
     await expect(shown(page)).toHaveText("");
@@ -425,9 +483,9 @@ test.describe("the team page's Make this my team", () => {
     await expect(button(page)).toHaveAccessibleName("Your team · Change");
     await expect(button(page).locator(".not-fav")).toBeHidden();
     await button(page).click();
-    const dialog = page.getByRole("dialog", { name: "Your team" });
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByLabel("Choose a team")).toHaveValue("arsenal");
+    await expect(dialogOf(page)).toBeVisible();
+    expect(await pressedLeague(page), "on the team's league").toEqual(["Premier League"]);
+    await expect(dialogOf(page).getByRole("radio", { name: "Arsenal" })).toBeChecked();
     expect(JSON.parse((await stored(page))!).team, "nothing changed").toBe("arsenal");
   });
 
@@ -456,21 +514,22 @@ test.describe("the Your team dialog", () => {
     const opener = page.locator("[data-open-favourite]");
     await opener.focus();
     await page.keyboard.press("Enter");
-    const dialog = page.getByRole("dialog", { name: "Your team" });
+    const dialog = dialogOf(page);
     await expect(dialog).toBeVisible();
-    const select = dialog.getByLabel("Choose a team");
-    await expect(select).toHaveValue("arsenal");
-    await select.focus();
-    await select.selectOption("chelsea");
-    await page.keyboard.press("Tab");
-    await expect(dialog.getByRole("button", { name: "Save" })).toBeFocused();
-    await page.keyboard.press("Enter");
-    await expect(dialog.getByRole("status").first()).toHaveText(
-      "Saved. Chelsea is your team on this device.",
-    );
-    // Arrowing through the select alone never saves: only Save does.
-    await select.focus();
+    expect(await pressedLeague(page)).toEqual(["Premier League"]);
+    // Tab lands on the checked team (one stop for the whole group).
+    const arsenal = dialog.getByRole("radio", { name: "Arsenal" });
+    await expect(arsenal).toBeChecked();
+    await tabTo(page, arsenal);
+    // Arrow keys move and check, but never save: only Save does.
     await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    await expect(arsenal).not.toBeChecked();
+    expect(JSON.parse((await stored(page))!).team).toBe("arsenal");
+    await dialog.getByRole("radio", { name: "Chelsea" }).check();
+    await tabTo(page, dialog.getByRole("button", { name: "Save" }));
+    await page.keyboard.press("Enter");
+    await expect(dialog.getByRole("status")).toHaveText("Saved. Chelsea is your team on this device.");
     expect(JSON.parse((await stored(page))!).team).toBe("chelsea");
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();

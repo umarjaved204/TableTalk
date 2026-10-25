@@ -11,6 +11,8 @@
 // listener on the document, so buttons inside copied-in blocks work too.
 
 import { LEAGUES } from "../data/leagues.ts";
+import { openingLeague } from "./team-picker-core.ts";
+import { buildPicker, type Picker } from "./team-picker.ts";
 
 interface Current {
   state: "none" | "dismissed" | "newer" | "chosen" | "paused" | "gone";
@@ -52,26 +54,34 @@ function savedMessage(name: string): string {
     : `${name} is your team until you close this page. This browser isn't letting the site remember it.`;
 }
 
-/** The dialog's select: filled once, from the same list as the early script. */
-function fillTeamOptions(select: HTMLSelectElement): void {
-  if (!api || select.dataset["filled"] === "yes") return;
-  for (const [, leagueName, teams] of api.teams()) {
-    const group = document.createElement("optgroup");
-    group.label = leagueName;
-    for (const [slug, name] of teams) group.append(new Option(name, slug));
-    select.append(group);
+/** The dialog's picker: built the first time the dialog opens (team-picker.ts). */
+let picker: Picker | null = null;
+const dialogStatus = dialog?.querySelector<HTMLElement>("[data-fav-dialog-status]") ?? null;
+
+/** The footer's "Selected: Arsenal", so it's clear what Save will save even
+ *  when the checked team is in a league that isn't shown. */
+function updateSelected(): void {
+  const line = dialog?.querySelector<HTMLElement>("[data-picker-selected]");
+  if (!line) return;
+  const name = picker?.checked()?.nextElementSibling?.textContent;
+  if (!name) {
+    line.textContent = "No team selected";
+    return;
   }
-  select.dataset["filled"] = "yes";
+  const strong = document.createElement("b");
+  strong.textContent = name;
+  line.replaceChildren("Selected: ", strong);
 }
 
+/** Puts the dialog in step with the saved favourite: its team checked, the
+ *  storage warning, the link to its page. */
 function refreshDialog(): void {
   if (!dialog || !api) return;
   const current = api.current();
-  const select = dialog.querySelector<HTMLSelectElement>("[data-fill-teams]");
-  if (select) {
-    fillTeamOptions(select);
-    select.value = current.state === "chosen" && current.team ? current.team : "";
-  }
+  const host = dialog.querySelector<HTMLElement>("[data-picker]");
+  if (host && !picker) picker = buildPicker(host, api.teams(), updateSelected);
+  picker?.check(current.state === "chosen" && current.team ? current.team : null);
+  updateSelected();
   const warning = dialog.querySelector<HTMLElement>("[data-storage-warning]");
   if (warning) warning.hidden = api.storageWorks();
   if (current.state !== "chosen" || !current.team) return;
@@ -80,11 +90,24 @@ function refreshDialog(): void {
   if (page && league) page.href = `/${league.slug}/${current.team}/`;
 }
 
-function openDialog(): void {
-  if (!dialog) return;
+/** Where focus was when the dialog opened (the browser returns it there). */
+let returnTo: Element | null = null;
+
+/** Opens the dialog on a league: `asked`, else the page's, else the favourite's
+ *  (openingLeague in team-picker-core.ts). */
+function openDialog(asked: string | null = null): void {
+  if (!dialog || !api) return;
+  returnTo = document.activeElement;
   refreshDialog();
-  const status = dialog.querySelector<HTMLElement>("[data-fav-dialog-status]");
-  if (status) status.textContent = "";
+  const ids = new Set(api.teams().map(([id]) => id));
+  const league = openingLeague(
+    asked,
+    location.pathname,
+    api.current().league ?? null,
+    LEAGUES.filter((l) => ids.has(l.id)),
+  );
+  if (league) picker?.showLeague(league);
+  if (dialogStatus) dialogStatus.textContent = "";
   // A browser without showModal() (older than the support policy in
   // README.md) gets the dialog shown in place, without the backdrop.
   if (typeof dialog.showModal === "function") dialog.showModal();
@@ -100,29 +123,19 @@ function focusAfterChange(preferred: Element | null): void {
   target.focus();
 }
 
-function saveFromSelect(button: HTMLElement): void {
+/** Save: the checked team becomes the favourite. The dialog stays open and
+ *  says what happened. */
+function saveFromPicker(): void {
   if (!api) return;
-  const select = document.getElementById(button.dataset["select"] ?? "");
-  if (!(select instanceof HTMLSelectElement)) return;
-  const inDialog = dialog?.contains(button) ?? false;
-  const status = inDialog
-    ? (dialog?.querySelector<HTMLElement>("[data-fav-dialog-status]") ?? null)
-    : pageStatus;
-  if (select.value === "") {
-    if (inDialog && api.current().state === "chosen") {
-      api.remove();
-      announce(status, "Removed. No team is saved on this device.");
-    } else {
-      announce(status, "Choose a team first.");
-      select.focus();
-    }
+  const radio = picker?.checked();
+  if (!radio) {
+    announce(dialogStatus, "Choose a team first.");
+    picker?.focusTeams();
     return;
   }
-  if (!api.choose(select.value)) return;
-  const name = api.current().name ?? "Your team";
-  announce(status, savedMessage(name));
-  if (inDialog) refreshDialog();
-  else focusAfterChange(document.querySelector(".your-team-slot [data-fav-target] h2"));
+  if (!api.choose(radio.value)) return;
+  announce(dialogStatus, savedMessage(api.current().name ?? "Your team"));
+  refreshDialog();
 }
 
 /** The team page's button: one tap makes this team the favourite. When it
@@ -133,7 +146,7 @@ function chooseThis(button: HTMLElement): void {
   const slug = button.dataset["teamSlug"] ?? "";
   const before = api.current();
   if (before.state === "chosen" && before.team === slug) {
-    openDialog();
+    openDialog(before.league ?? null);
     return;
   }
   if (!api.choose(slug)) return;
@@ -157,11 +170,12 @@ document.addEventListener("tabletalk:favourite", () => {
 function handle(action: string, button: HTMLElement): void {
   if (!api) return;
   switch (action) {
-    case "save-select":
-      saveFromSelect(button);
+    case "save-picker":
+      saveFromPicker();
       break;
     case "open-picker":
-      openDialog();
+      // The home page's prompt has a button per league; "Pick another team" has none.
+      openDialog(button.dataset["league"] ?? null);
       break;
     case "choose-this":
       chooseThis(button);
@@ -174,10 +188,7 @@ function handle(action: string, button: HTMLElement): void {
     case "remove": {
       api.remove();
       const inDialog = dialog?.contains(button) ?? false;
-      announce(
-        inDialog ? (dialog?.querySelector<HTMLElement>("[data-fav-dialog-status]") ?? null) : pageStatus,
-        "Removed. No team is saved on this device.",
-      );
+      announce(inDialog ? dialogStatus : pageStatus, "Removed. No team is saved on this device.");
       if (inDialog) refreshDialog();
       else focusAfterChange(opener);
       break;
@@ -191,7 +202,7 @@ document.addEventListener("click", (event) => {
   if (target?.dataset["favAction"]) handle(target.dataset["favAction"], target);
 });
 
-opener?.addEventListener("click", openDialog);
+opener?.addEventListener("click", () => openDialog());
 dialog?.querySelector("[data-close]")?.addEventListener("click", () => {
   if (typeof dialog.close === "function") dialog.close();
   else dialog.removeAttribute("open");
@@ -199,6 +210,15 @@ dialog?.querySelector("[data-close]")?.addEventListener("click", () => {
 // Clicking the backdrop (outside the panel) closes it too.
 dialog?.addEventListener("click", (event) => {
   if (event.target === dialog) dialog.close();
+});
+// Saving from the home page's prompt replaces the prompt with the card, so the
+// button that opened the dialog is gone: focus the card's heading instead of
+// losing focus to the top of the page.
+dialog?.addEventListener("close", () => {
+  if (returnTo && !returnTo.isConnected) {
+    focusAfterChange(document.querySelector(".your-team-slot [data-fav-target] h2"));
+  }
+  returnTo = null;
 });
 
 // ---------------------------------------------------------------------------

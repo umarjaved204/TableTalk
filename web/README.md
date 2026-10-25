@@ -269,7 +269,22 @@ my team" saves the team in one press. When it is the favourite, the same
 button reads "Your team · Change" and opens the Your team dialog. Both labels
 are in the button; the favourite's rule from `favouriteCss()` sets
 `--fav-unmark: none` as well as `--fav-mark`, so the right label shows from
-the first paint.
+the first paint. The line under the button says what the press did (it can
+replace another team); it is `aria-hidden`, because screen readers already
+hear the same words from the page's status region.
+
+**The team picker** (`src/scripts/team-picker.ts`). The Your team dialog
+shows a button per league, then that league's teams as native radio buttons
+in a `<fieldset>` named by its `<legend>`: two columns on a phone, four in
+the desktop dialog, one at 200% text. It opens on the page's league, else
+the favourite's, else the first (`openingLeague()` in
+`team-picker-core.ts`); the home page's prompt has a button per league that
+opens it on that league. Arrow keys check each radio as they move, so only
+Save saves. It is built the first time the dialog opens, with
+`createElement` only, so pages carry none of it. All radios share one name;
+Chromium leaves the hidden leagues out of the count ("2 of 18", not "of
+96"). Only the middle of the dialog scrolls, so the footer with Save never
+covers a focused team.
 
 **Stub pages for last season's teams.** A team that left the covered leagues
 keeps its address: a short page says it isn't covered this season ("It was in

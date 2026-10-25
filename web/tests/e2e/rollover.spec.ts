@@ -36,7 +36,7 @@ test("a favourite that was relegated: 'isn't in the leagues we cover this season
   // Picking another team replaces it.
   await page.goto("/", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "Pick another team" }).click();
-  await page.getByRole("dialog").getByLabel("Choose a team").selectOption("burnley");
+  await page.locator('#favourite input[value="burnley"]').check();
   await page.getByRole("dialog").getByRole("button", { name: "Save" }).click();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("article", { name: "Burnley" })).toBeVisible();
@@ -59,11 +59,7 @@ test("a promoted team works like any other: card, star, league first", async ({ 
 test("the picker lists this season's teams only", async ({ page }) => {
   await page.goto("/", { waitUntil: "networkidle" });
   await page.locator("[data-open-favourite]").click();
-  const options = await page
-    .getByRole("dialog")
-    .getByLabel("Choose a team")
-    .locator("option")
-    .allTextContents();
+  const options = await page.locator("#favourite .team span").allTextContents();
   for (const team of ["Burnley", "Leicester City", "Sheffield United", "Fortuna Düsseldorf"])
     expect(options).toContain(team);
   for (const team of ["Coventry City", "Ipswich Town", "Hull City", "Hamburger SV"])
