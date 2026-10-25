@@ -264,6 +264,45 @@ only when the page exists (`teamHref()`). Linking every name added no
 element to the league page (see the star above).
 The Your team dialog links "Bookmark your team's page".
 
+**Choosing a team from its page.** Under a team page's heading, "Make this
+my team" saves the team in one press. When it is the favourite, the same
+button reads "Your team · Change" and opens the Your team dialog. Both labels
+are in the button; the favourite's rule from `favouriteCss()` sets
+`--fav-unmark: none` as well as `--fav-mark`, so the right label shows from
+the first paint. The line under the button says what the press did (it can
+replace another team); it is `aria-hidden`, because screen readers already
+hear the same words from the page's status region.
+
+**The team picker** (`src/scripts/team-picker.ts`). The Your team dialog
+shows a "Find a team" field, a button per league, then that league's teams
+as native radio buttons
+in a `<fieldset>` named by its `<legend>`: two columns on a phone, four in
+the desktop dialog, one at 200% text. It opens on the page's league, else
+the favourite's, else the first (`openingLeague()` in
+`team-picker-core.ts`); the home page's prompt has a button per league that
+opens it on that league. Arrow keys check each radio as they move, so only
+Save saves. It is built the first time the dialog opens, with
+`createElement` only, so pages carry none of it. All radios share one name;
+Chromium leaves the hidden leagues out of the count ("2 of 18", not "of
+96"). Only the middle of the dialog scrolls, so the footer with Save never
+covers a focused team. With large text or a short window, where the pinned
+head and footer would leave no team visible on opening (200% text on a
+phone, 400% zoom), the whole dialog scrolls instead, footer after the teams
+(`pinFooter()` in `favourites.ts`, measured on opening and on resize; an em
+container query can't see browser zoom shrinking the window's height). A name whose longest word doesn't fit its tile
+(Borussia Mönchengladbach, and Bournemouth by 4 px, on a 360px phone) spans
+two columns, so it breaks only between words; `fit()` measures this each
+time a league is shown or the window resizes.
+
+**Find a team.** A plain text field (not a combobox). Typing shows the
+matching teams from every league, each under its league's legend, and no
+league button is pressed. Matching is anywhere in the name, ignoring case,
+accents and "&" (`normalise()` in `team-picker-core.ts`: "monch" finds
+Mönchengladbach, "coruna" Deportivo La Coruña). A polite live region says
+"3 teams match" once typing pauses for 400 ms. Escape clears the field before
+it closes the dialog; a league button clears it too. A checked team that is
+filtered out stays checked, and the footer still names it.
+
 **Stub pages for last season's teams.** A team that left the covered leagues
 keeps its address: a short page says it isn't covered this season ("It was in
 the Premier League in 2026-27"), with the breadcrumb and links back. Stubs are

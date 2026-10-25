@@ -471,7 +471,7 @@ test.describe("theme crossfade", () => {
 
 /** From now on, records on the page every CSS animation and transition as it
  *  starts (animationstart, transitionrun), with what it animates. Short
- *  effects (a 200 ms hover, a pop removed after 700 ms) can be over before the
+ *  effects (a 200 ms hover, a 420 ms pop) can be over before the
  *  test's next look at the page when the machine is busy; this record can't miss them. */
 async function recordStarts(page: Page): Promise<void> {
   await page.evaluate(() => {
@@ -522,15 +522,41 @@ async function started(page: Page, timeout = 2000): Promise<Running[]> {
   return page.evaluate(() => (window as unknown as { __starts: Running[] }).__starts);
 }
 
+/** Starts listening for the star pop now, before the click that saves, so a
+ *  pop that starts late on a busy machine is still seen. (Waiting afterwards
+ *  for "the first effect to start" could return on the Save button's own
+ *  press transition, before the pop began.) */
+async function armPop(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as { __pop: Promise<boolean> };
+    w.__pop = new Promise((resolve) => {
+      const seen = (event: AnimationEvent) => {
+        if (event.animationName !== "star-pop") return;
+        document.removeEventListener("animationstart", seen, true);
+        resolve(true);
+      };
+      document.addEventListener("animationstart", seen, true);
+      window.setTimeout(() => resolve(false), 10_000);
+    });
+  });
+}
+
+/** Whether the pop armed by armPop started (waits for it, up to 10 s). */
+const popStarted = (page: Page) =>
+  page.evaluate(() => (window as unknown as { __pop: Promise<boolean> }).__pop);
+
 test.describe("star pop", () => {
   test("saving a team pops its stars once; again on a second save; never on a page load", async ({
     page,
     browserName,
   }) => {
     const collected = await open(page, "/", 1280);
-    await page.locator("#pick-team").selectOption("arsenal");
+    await page.locator('[data-fav-action="open-picker"][data-league="premier_league"]').click();
+    await page.locator('#favourite input[value="arsenal"]').check();
     await recordStarts(page);
-    await page.locator('[data-fav-action="save-select"][data-select="pick-team"]').click();
+    await armPop(page);
+    await page.locator('#favourite [data-fav-action="save-picker"]').click();
+    expect(await popStarted(page), "the new team's stars pop").toBe(true);
     const popped = (await started(page)).filter((a) => a.name === "star-pop");
     expect(popped.length, "the new team's stars pop").toBeGreaterThan(0);
     expect(
@@ -546,16 +572,13 @@ test.describe("star pop", () => {
     );
     const { wrong } = await endStates(page);
     expect(wrong, "each star ends on its own style").toEqual([]);
+    // The attribute goes when the pop ends, not after a fixed time.
     await page.waitForFunction(() => !document.documentElement.hasAttribute("data-fav-just-saved"));
 
-    // The same team again, from the Your team dialog: it pops again.
-    await page.locator("[data-open-favourite]").click();
-    await recordStarts(page);
-    await page.locator('#favourite [data-fav-action="save-select"]').click();
-    expect(
-      (await started(page)).filter((a) => a.name === "star-pop").length,
-      "saving again pops again",
-    ).toBeGreaterThan(0);
+    // The same team again (the dialog stays open after saving): it pops again.
+    await armPop(page);
+    await page.locator('#favourite [data-fav-action="save-picker"]').click();
+    expect(await popStarted(page), "saving again pops again").toBe(true);
 
     await page.reload({ waitUntil: "networkidle" });
     expect(
@@ -564,6 +587,26 @@ test.describe("star pop", () => {
     ).toEqual([]);
     expect(await stars(page.locator("body")), "the stars still show").toBeGreaterThan(0);
 
+    const left = unexplained(collected, browserName);
+    expect(left.violations, "Content Security Policy violations").toEqual([]);
+    expect(left.errors, "console errors (including CSP violations)").toEqual([]);
+  });
+
+  test("the team page's Make this my team pops the star by the team's name", async ({
+    page,
+    browserName,
+  }) => {
+    const collected = await open(page, "/premier-league/arsenal/", 1280);
+    await recordStarts(page);
+    await armPop(page);
+    await page.locator('[data-fav-action="choose-this"]').click();
+    expect(await popStarted(page), "the heading's star pops").toBe(true);
+    const popped = (await started(page)).filter((a) => a.name === "star-pop");
+    expect(popped.length, "the heading's star pops").toBeGreaterThan(0);
+    expect(
+      popped.filter((a) => a.properties.some((p) => p !== "transform" && p !== "opacity")),
+      "only transform and opacity",
+    ).toEqual([]);
     const left = unexplained(collected, browserName);
     expect(left.violations, "Content Security Policy violations").toEqual([]);
     expect(left.errors, "console errors (including CSP violations)").toEqual([]);
@@ -662,14 +705,13 @@ test.describe("card hover and button press", () => {
 
   test("a pressed button shrinks to 97%", async ({ page }) => {
     await open(page, "/", 1280);
-    const box = await page.locator('[data-fav-action="save-select"][data-select="pick-team"]').boundingBox();
-    if (!box) throw new Error("no Save button");
+    const button = page.locator('[data-fav-action="open-picker"][data-league="premier_league"]');
+    const box = await button.boundingBox();
+    if (!box) throw new Error("no league button");
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
     await page.waitForTimeout(300);
-    const pressed = await page
-      .locator('[data-fav-action="save-select"][data-select="pick-team"]')
-      .evaluate((el) => getComputedStyle(el).transform);
+    const pressed = await button.evaluate((el) => getComputedStyle(el).transform);
     await page.mouse.up();
     expect(pressed).toBe("matrix(0.97, 0, 0, 0.97, 0, 0)");
   });
@@ -751,9 +793,9 @@ test.describe("reduced motion", () => {
       shadow: "1",
       hovered: true,
     });
-    const save = page.locator('[data-fav-action="save-select"][data-select="pick-team"]');
+    const save = page.locator('[data-fav-action="open-picker"][data-league="premier_league"]');
     const box = await save.boundingBox();
-    if (!box) throw new Error("no Save button");
+    if (!box) throw new Error("no league button");
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
     expect(flat(await save.evaluate((el) => getComputedStyle(el).transform)), "no shrink").toBe("none");
@@ -762,10 +804,22 @@ test.describe("reduced motion", () => {
 
   test("saving a team shows its stars without a pop", async ({ page }) => {
     await open(page, "/", 1280);
-    await page.locator("#pick-team").selectOption("arsenal");
-    await page.locator('[data-fav-action="save-select"][data-select="pick-team"]').click();
+    await page.locator('[data-fav-action="open-picker"][data-league="premier_league"]').click();
+    await page.locator('#favourite input[value="arsenal"]').check();
+    await page.locator('#favourite [data-fav-action="save-picker"]').click();
     expect(await running(page), "no animation with reduced motion").toEqual([]);
     expect(await stars(page.locator("body")), "the stars show").toBeGreaterThan(0);
+  });
+
+  test("the team page's Make this my team shows the star without a pop", async ({ page }) => {
+    await open(page, "/premier-league/arsenal/", 1280);
+    await page.locator('[data-fav-action="choose-this"]').click();
+    expect(await running(page), "no animation with reduced motion").toEqual([]);
+    expect(await stars(page.locator(".team-head h1")), "the star shows").toBe(1);
+    // No pop means no animationend: the 2 s fallback removes the attribute.
+    const root = page.locator("html");
+    await expect(root).toHaveAttribute("data-fav-just-saved", "");
+    await expect(root).not.toHaveAttribute("data-fav-just-saved", "", { timeout: 4000 });
   });
 
   test("choosing a theme changes it at once, without a crossfade", async ({ page }) => {

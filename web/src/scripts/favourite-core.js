@@ -155,7 +155,7 @@ export function favouriteCss(team, league, leagueIds) {
         '"] [data-team="' +
         team +
         '"]' +
-        "{--fav-mark:inline-block;--fav-bg:var(--fav-tint);--fav-ring:var(--fav-edge)}",
+        "{--fav-mark:inline-block;--fav-unmark:none;--fav-bg:var(--fav-tint);--fav-ring:var(--fav-edge)}",
       ':root[data-fav="' + team + '"] [data-teams~="' + team + '"]{--fav-card-bg:var(--fav-tint)}',
     );
   }

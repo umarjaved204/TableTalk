@@ -4,7 +4,6 @@
 // summary of the live track record.
 import FavouriteSlot from "../components/FavouriteSlot.astro";
 import LeagueCard from "../components/LeagueCard.astro";
-import TeamSelect from "../components/TeamSelect.astro";
 import YourTeamCard from "../components/YourTeamCard.astro";
 import { loadTeamIndex } from "../data/teams.ts";
 import { cardFields, yourTeamCards } from "../data/your-team.ts";
@@ -34,6 +33,8 @@ const lastUpdate = "index" in index ? index.index.generated_at : null;
 // (FavouriteSlot.astro). Data, not a copy of the card per team: that made the
 // page about 300 KB, over the agreed budget.
 const teams = loadTeamIndex().teams;
+// The prompt's league buttons: the leagues the picker has teams for.
+const pickLeagues = LEAGUES.filter((league) => teams.some((t) => t.leagueId === league.id));
 const cardData = scriptJson(
   Object.fromEntries(
     leagues.flatMap((data) =>
@@ -99,19 +100,16 @@ const cardData = scriptJson(
             Home-screen apps keep their own settings, separate from your browser, so pick your team again
             here.
           </p>
-          <div class="pick">
-            <label for="pick-team" class="visually-hidden">
-              Choose a team
-            </label>
-            <TeamSelect id="pick-team" teams={teams} />
-            <button
-              type="button"
-              class="button primary"
-              data-fav-action="save-select"
-              data-select="pick-team"
-            >
-              Save
-            </button>
+          {/* Each button opens the Your team dialog on its league. */}
+          <p class="pick-label" id="pick-league">
+            Choose its league:
+          </p>
+          <div class="pick" role="group" aria-labelledby="pick-league">
+            {pickLeagues.map((league) => (
+              <button type="button" class="button pill" data-fav-action="open-picker" data-league={league.id}>
+                {league.name}
+              </button>
+            ))}
           </div>
           <p>
             <button type="button" class="link-button" data-fav-action="dismiss">
@@ -485,19 +483,14 @@ const cardData = scriptJson(
     gap: var(--space-2);
   }
 
-  .pick :global(select) {
-    flex: 1 1 14rem;
-    width: 100%;
-    min-width: 0;
-    min-height: var(--tap-main);
-    padding: 0 var(--space-2);
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-2);
-    background: var(--surface);
-    color: var(--text);
-    font-family: var(--font-text);
-    font-size: var(--step-0);
-    font-weight: 600;
+  /* The league buttons, shaped like the dialog's own league row. */
+  .pill {
+    border-radius: var(--radius-pill);
+  }
+
+  .pick-label {
+    color: var(--text-muted);
+    font-size: var(--step--1);
   }
 
   .note {

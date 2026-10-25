@@ -103,6 +103,22 @@ const crumbs = [
           <p class="league">
             {league.name} <span class="season">{data.season}</span>
           </p>
+          {/* Both labels are in the button; the favourite's rule (favouriteCss)
+              shows one before the page paints, so it never changes late. */}
+          <p class="make-fav" data-needs-js>
+            <button type="button" class="button make" data-fav-action="choose-this" data-team-slug={slug}>
+              <span class="not-fav">
+                <span class="star-outline" aria-hidden="true"></span>Make this my team
+              </span>
+              <span class="is-fav">
+                <span class="star-icon" aria-hidden="true"></span>Your team · Change
+              </span>
+            </button>
+          </p>
+          {/* What the press did, shown (one press can replace another team).
+              Screen readers already hear it from the page's status region, so
+              this copy is aria-hidden to avoid reading it twice. */}
+          <p class="make-status" aria-hidden="true" data-make-status></p>
           <UpdatedStamp
             generatedAt={data.generatedAt}
             dataThrough={data.dataThrough}
@@ -246,6 +262,53 @@ const crumbs = [
 
   .season {
     color: var(--text-muted);
+  }
+
+  /* "Make this my team": outlined in the accent, quieter than a filled
+     button so it doesn't compete with the numbers. One label shows:
+     --fav-mark and --fav-unmark are set only inside the favourite's
+     data-team element (favouriteCss in src/scripts/favourite-core.js). */
+  .make {
+    border: 2px solid var(--accent);
+  }
+
+  /* Shown as inline-block (the value --fav-mark carries), so the stars are
+     spaced with a margin rather than a flex gap. */
+  .not-fav {
+    display: var(--fav-unmark, inline-block);
+  }
+
+  .is-fav {
+    display: var(--fav-mark, none);
+  }
+
+  .make :is(.star-outline, .star-icon) {
+    display: inline-block;
+    width: 0.9em;
+    height: 0.9em;
+    margin-right: var(--space-2);
+    vertical-align: -0.1em;
+  }
+
+  .make-status {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  .make-status:empty {
+    display: none;
+  }
+
+  .star-outline {
+    background: currentcolor;
+    mask: var(--star-outline-mask) center / contain no-repeat;
+  }
+
+  @media (forced-colors: active) {
+    .star-outline {
+      forced-color-adjust: none;
+      background: CanvasText;
+    }
   }
 
   .top,

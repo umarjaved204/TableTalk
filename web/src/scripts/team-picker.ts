@@ -1,0 +1,221 @@
+// The Your team dialog's picker: a "Find a team" field, a row of league
+// buttons, and each league's teams as native radio buttons in a <fieldset>
+// with a <legend>. Native on purpose: Tab reaches the group in one stop, arrow
+// keys move through the teams, and screen readers announce the league and
+// "2 of 18" by themselves.
+//
+// The filter is a plain text field, not a combobox: typing shows the matching
+// teams from every league, each league under its (now visible) legend, and a
+// polite live region says how many match once typing pauses.
+//
+// Arrow keys check each radio as they move, so the picker never saves on its
+// own: the dialog's Save button does (src/scripts/favourites.ts).
+//
+// Built the first time the dialog opens, from the early script's team list,
+// so no page carries it. Only createElement and textContent: nothing is
+// parsed as HTML, so the Content Security Policy and Trusted Types are
+// unchanged. Its styles are in FavouritePicker.astro (:global, because
+// elements made here don't get the component's scoped attribute).
+//
+// All 96 radios share one name, so exactly one team can be checked across
+// the leagues. Leagues not shown are `hidden`, and Chromium leaves hidden
+// radios out of both the arrow keys and the count ("2 of 18", checked on
+// 25 Oct 2026 through Windows UI Automation).
+
+import { byName, countMessage, matches, normalise } from "./team-picker-core.ts";
+
+export type TeamList = [string, string, [string, string][]][];
+
+export interface Picker {
+  /** Show one league's teams and press its button. */
+  showLeague(id: string): void;
+  /** Check this team's radio (or none, for null). */
+  check(slug: string | null): void;
+  /** The checked radio, if any. */
+  checked(): HTMLInputElement | null;
+  /** Focus the checked team, or the first one shown. */
+  focusTeams(): void;
+  /** Re-measure which shown tiles need the full row (call once the dialog is open). */
+  fit(): void;
+  /** Escape in the filter: clears it and shows the league again. False when it was empty. */
+  clearFilter(): boolean;
+}
+
+/** How long typing pauses before the live region says how many match (ms),
+ *  so a screen reader isn't interrupted on every key. */
+const ANNOUNCE_AFTER = 400;
+
+function make<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  className = "",
+  text = "",
+): HTMLElementTagNameMap[K] {
+  const element = document.createElement(tag);
+  if (className) element.className = className;
+  if (text) element.textContent = text;
+  return element;
+}
+
+/** Builds the picker into `host`. `onChange` runs when a team is checked. */
+export function buildPicker(host: HTMLElement, teams: TeamList, onChange: () => void): Picker {
+  // The filter. No autofocus: on a phone it would open the keyboard over the teams.
+  const filter = make("div", "filter");
+  const label = make("label", "", "Find a team");
+  const input = make("input");
+  input.type = "search";
+  input.id = "team-filter";
+  input.autocomplete = "off";
+  input.spellcheck = false;
+  label.htmlFor = input.id;
+  // The live region starts empty and stays in place: some screen readers
+  // ignore a region that appears with its text already in it.
+  const count = make("p", "count");
+  count.setAttribute("aria-live", "polite");
+  filter.append(label, input, count);
+
+  const row = make("div", "leagues");
+  row.setAttribute("role", "group");
+  row.setAttribute("aria-label", "League");
+  const groups = make("div", "team-groups");
+  const buttons = new Map<string, HTMLButtonElement>();
+  const sets = new Map<string, HTMLFieldSetElement>();
+
+  for (const [id, name, list] of teams) {
+    const button = make("button", "league", name);
+    button.type = "button";
+    button.setAttribute("aria-pressed", "false");
+    button.addEventListener("click", () => {
+      input.value = "";
+      showLeague(id);
+    });
+    buttons.set(id, button);
+    row.append(button);
+
+    const set = make("fieldset", "league-teams");
+    set.hidden = true;
+    const grid = make("div", "grid");
+    for (const [slug, teamName] of byName(list)) {
+      const tile = make("label", "team");
+      tile.dataset["search"] = normalise(teamName);
+      const radio = make("input");
+      radio.type = "radio";
+      radio.name = "favourite-team";
+      radio.value = slug;
+      tile.append(radio, make("span", "", teamName));
+      grid.append(tile);
+    }
+    // The legend names the group for screen readers. It is shown only in
+    // filter results; with one league shown, the pressed button says it.
+    set.append(make("legend", "visually-hidden", name), grid);
+    sets.set(id, set);
+    groups.append(set);
+  }
+  // The browser scrolls a focused radio into view, but not its whole tile:
+  // a tile two lines tall (large text) could end up half under the pinned
+  // footer. Scroll the tile instead (its scroll-margin adds a little room),
+  // on focus and again after a change, because onChange rewrites the
+  // footer's "Selected:" line, and a longer name there makes the footer taller.
+  const showTile = (event: Event) => {
+    const tile = event.target instanceof Element ? event.target.closest(".team") : null;
+    tile?.scrollIntoView({ block: "nearest" });
+  };
+  groups.addEventListener("focusin", showTile);
+  groups.addEventListener("change", (event) => {
+    onChange();
+    showTile(event);
+  });
+  host.append(filter, row, groups);
+
+  const radios = () => host.querySelectorAll<HTMLInputElement>('input[name="favourite-team"]');
+
+  /** The league shown when the filter is empty. */
+  let league = teams[0]?.[0] ?? "";
+  let timer = 0;
+
+  function showLeague(id: string): void {
+    league = id;
+    window.clearTimeout(timer);
+    count.textContent = "";
+    setFiltering(false);
+    for (const [key, set] of sets) {
+      set.hidden = key !== id;
+      for (const tile of set.querySelectorAll<HTMLElement>(".team")) tile.hidden = false;
+    }
+    for (const [key, button] of buttons) button.setAttribute("aria-pressed", String(key === id));
+    fit();
+  }
+
+  /** Filter results show each league's legend; one league shown hides it. */
+  function setFiltering(on: boolean): void {
+    for (const legend of host.querySelectorAll("legend")) legend.classList.toggle("visually-hidden", !on);
+  }
+
+  function applyFilter(): void {
+    if (normalise(input.value) === "") {
+      showLeague(league);
+      return;
+    }
+    setFiltering(true);
+    for (const button of buttons.values()) button.setAttribute("aria-pressed", "false");
+    let shown = 0;
+    for (const set of sets.values()) {
+      let inLeague = 0;
+      for (const tile of set.querySelectorAll<HTMLElement>(".team")) {
+        tile.hidden = !matches(tile.dataset["search"] ?? "", input.value);
+        if (!tile.hidden) inLeague++;
+      }
+      set.hidden = inLeague === 0;
+      shown += inLeague;
+    }
+    fit();
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => (count.textContent = countMessage(shown)), ANNOUNCE_AFTER);
+  }
+  input.addEventListener("input", applyFilter);
+
+  // A name whose longest word doesn't fit its tile (Borussia Mönchengladbach
+  // on a phone, and in the four-column desktop grid) spans two columns: the
+  // whole row on a phone, half of it on desktop. So it breaks only between
+  // words. Measured, not guessed from the letter count: with breaking inside
+  // words switched off (.measuring), a word that doesn't fit overflows its
+  // span. Measured again whenever a league is shown or the window resizes,
+  // because the answer depends on the width and the text size. In a single
+  // column (200% text) there's nothing to span, so no tile is widened. Tiles
+  // keep their A-Z order (no dense packing), so a wide tile can leave a gap
+  // beside the tile before it.
+  function fit(): void {
+    const tiles = [...host.querySelectorAll<HTMLElement>("fieldset:not([hidden]) .team:not([hidden])")];
+    for (const tile of tiles) tile.classList.remove("wide");
+    host.classList.add("measuring");
+    const wide = tiles.filter((tile) => {
+      const grid = tile.parentElement;
+      const columns = grid ? getComputedStyle(grid).gridTemplateColumns.split(" ").length : 1;
+      const name = tile.lastElementChild;
+      return columns > 1 && name !== null && name.scrollWidth > name.clientWidth;
+    });
+    host.classList.remove("measuring");
+    for (const tile of wide) tile.classList.add("wide");
+  }
+  window.addEventListener("resize", fit);
+
+  return {
+    showLeague,
+    check(slug) {
+      for (const radio of radios()) radio.checked = radio.value === slug;
+    },
+    checked: () => host.querySelector<HTMLInputElement>('input[name="favourite-team"]:checked'),
+    focusTeams() {
+      const shown = [...radios()].filter(
+        (r) => !r.closest("fieldset")?.hidden && !r.closest<HTMLElement>(".team")?.hidden,
+      );
+      (shown.find((r) => r.checked) ?? shown[0])?.focus();
+    },
+    fit,
+    clearFilter() {
+      if (input.value === "") return false;
+      input.value = "";
+      showLeague(league);
+      return true;
+    },
+  };
+}
