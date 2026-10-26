@@ -109,7 +109,8 @@ test("a league button shows its teams only; the checked team stays checked and S
   expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, "en")));
   await expect(page.locator("[data-picker-selected]")).toHaveText("Selected: Chelsea");
   await dialog(page).getByRole("button", { name: "Save" }).click();
-  await expect(dialog(page).getByRole("status")).toHaveText("Saved. Chelsea is your team on this device.");
+  await expect(dialog(page), "Save closes the dialog").toBeHidden();
+  await expect(page.locator("[data-fav-status]")).toHaveText("Saved. Chelsea is your team on this device.");
   expect(JSON.parse((await stored(page))!).team).toBe("chelsea");
 });
 
@@ -448,6 +449,7 @@ test.describe("Find a team", () => {
     await expect(page.locator('#favourite input[value="chelsea"]')).toBeChecked();
     await expect(page.locator("[data-picker-selected]")).toHaveText("Selected: Chelsea");
     await dialog(page).getByRole("button", { name: "Save" }).click();
+    await expect(dialog(page)).toBeHidden();
     expect(JSON.parse((await stored(page))!).team).toBe("chelsea");
   });
 

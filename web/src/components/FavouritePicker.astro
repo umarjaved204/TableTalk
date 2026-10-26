@@ -141,6 +141,15 @@ import { FAV_STORAGE_KEY } from "../scripts/theme-script.ts";
     background: color-mix(in srgb, var(--bg) 70%, transparent);
   }
 
+  /* A browser without showModal() shows the dialog in place, not in the top
+     layer (favourites.ts marks it). Without this, page content painted on its
+     own layer (the home cards' animated chance bars, then their links)
+     covered Save. Only the fallback gets it: a plain dialog z-index made the
+     page crossfade test fail in Chromium (5 of 19 runs, 0 of 16 without). */
+  dialog[data-in-place] {
+    z-index: 20;
+  }
+
   .head,
   .body,
   .foot {

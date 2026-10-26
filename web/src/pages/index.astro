@@ -192,9 +192,10 @@ const cardData = scriptJson(
      overlap the heading or the intro at any width; hidden below 768px, where
      there's no room beside them. Its width and height attributes reserve its
      space from the first paint (no layout shift). The colour is each theme's
-     --pitch-line. */
+     --pitch-line. Decoration only, so it never takes a click. */
   .pitch {
     display: none;
+    pointer-events: none;
   }
 
   @media (width >= 768px) {
