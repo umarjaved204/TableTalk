@@ -4,6 +4,21 @@ What changed and why, newest first. How things work today is in the
 [README](README.md) and [docs/](docs/); the detail of each change is in its
 commit and pull request.
 
+## 26 Oct 2026, evening
+
+- **Page crossfade test checks what the site guarantees** (branch
+  `crossfade-test`). The Chromium test that every link and Back crossfades
+  the page failed now and then: Chromium sometimes skips a cross-document
+  transition ("ViewTransition opt-in disabled"), which the spec allows. On
+  30 runs per width it failed 5 of 60 times on the commit before the Your
+  team change and 10 of 60 after it, a difference within chance (p = 0.27),
+  so the flake was already there. The test now checks the rule itself in the
+  stylesheet (on only without reduced motion, 180 ms), checks any transition
+  that runs in full (whole page, opacity only, soon over), and notes a
+  skipped one instead of failing; Chromium's error for a skip is allowed
+  word for word, once per skip. Reduced motion is still checked to give no
+  transition.
+
 ## 26 Oct 2026, later
 
 - **Save closes the Your team dialog** (branch `dialog-close-on-save`). When
