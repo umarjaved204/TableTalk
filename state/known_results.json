@@ -864,6 +864,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "la_liga|2026-27|Athletic Bilbao|Getafe": {
+   "away_goals": 0,
+   "away_team": "Getafe",
+   "competition": "la_liga",
+   "date": "2026-10-25",
+   "home_goals": 4,
+   "home_team": "Athletic Bilbao",
+   "kickoff_utc": "2026-10-25T13:00:00Z",
+   "match_id": "fdorg:564720",
+   "recorded_at": "2026-10-26T14:30:46Z",
+   "season": "2026-27"
+  },
   "la_liga|2026-27|Athletic Bilbao|Sevilla": {
    "away_goals": 3,
    "away_team": "Sevilla",
@@ -984,6 +996,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "la_liga|2026-27|Barcelona|Real Madrid": {
+   "away_goals": 2,
+   "away_team": "Real Madrid",
+   "competition": "la_liga",
+   "date": "2026-10-25",
+   "home_goals": 1,
+   "home_team": "Barcelona",
+   "kickoff_utc": "2026-10-25T20:00:00Z",
+   "match_id": "fdorg:564723",
+   "recorded_at": "2026-10-26T14:30:46Z",
+   "season": "2026-27"
+  },
   "la_liga|2026-27|Celta Vigo|Alavés": {
    "away_goals": 1,
    "away_team": "Alavés",
@@ -1042,6 +1066,18 @@
    "kickoff_utc": "2026-09-19T16:30:00Z",
    "match_id": "fdorg:564694",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "la_liga|2026-27|Celta Vigo|Real Betis": {
+   "away_goals": 0,
+   "away_team": "Real Betis",
+   "competition": "la_liga",
+   "date": "2026-10-25",
+   "home_goals": 0,
+   "home_team": "Celta Vigo",
+   "kickoff_utc": "2026-10-25T15:15:00Z",
+   "match_id": "fdorg:564725",
+   "recorded_at": "2026-10-26T14:30:46Z",
    "season": "2026-27"
   },
   "la_liga|2026-27|Deportivo La Coruña|Elche": {
@@ -1714,6 +1750,18 @@
    "kickoff_utc": "2026-08-29T17:00:00Z",
    "match_id": "fdorg:564653",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "la_liga|2026-27|Real Sociedad|Levante": {
+   "away_goals": 1,
+   "away_team": "Levante",
+   "competition": "la_liga",
+   "date": "2026-10-25",
+   "home_goals": 2,
+   "home_team": "Real Sociedad",
+   "kickoff_utc": "2026-10-25T17:30:00Z",
+   "match_id": "fdorg:564726",
+   "recorded_at": "2026-10-26T14:30:46Z",
    "season": "2026-27"
   },
   "la_liga|2026-27|Sevilla|Atlético Madrid": {
@@ -3096,6 +3144,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "premier_league|2026-27|Crystal Palace|Newcastle United": {
+   "away_goals": 2,
+   "away_team": "Newcastle United",
+   "competition": "premier_league",
+   "date": "2026-10-25",
+   "home_goals": 0,
+   "home_team": "Crystal Palace",
+   "kickoff_utc": "2026-10-25T14:00:00Z",
+   "match_id": "fdorg:560613",
+   "recorded_at": "2026-10-26T14:30:46Z",
+   "season": "2026-27"
+  },
   "premier_league|2026-27|Crystal Palace|Nottingham Forest": {
    "away_goals": 1,
    "away_team": "Nottingham Forest",
@@ -3214,6 +3274,18 @@
    "kickoff_utc": "2026-09-05T16:30:00Z",
    "match_id": "fdorg:560569",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "premier_league|2026-27|Hull City|Brentford": {
+   "away_goals": 1,
+   "away_team": "Brentford",
+   "competition": "premier_league",
+   "date": "2026-10-25",
+   "home_goals": 1,
+   "home_team": "Hull City",
+   "kickoff_utc": "2026-10-25T14:00:00Z",
+   "match_id": "fdorg:560619",
+   "recorded_at": "2026-10-26T14:30:46Z",
    "season": "2026-27"
   },
   "premier_league|2026-27|Hull City|Everton": {
@@ -3336,6 +3408,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "premier_league|2026-27|Liverpool|Brighton & Hove Albion": {
+   "away_goals": 0,
+   "away_team": "Brighton & Hove Albion",
+   "competition": "premier_league",
+   "date": "2026-10-25",
+   "home_goals": 2,
+   "home_team": "Liverpool",
+   "kickoff_utc": "2026-10-25T14:00:00Z",
+   "match_id": "fdorg:560612",
+   "recorded_at": "2026-10-26T14:30:46Z",
+   "season": "2026-27"
+  },
   "premier_league|2026-27|Liverpool|Fulham": {
    "away_goals": 0,
    "away_team": "Fulham",
@@ -3418,6 +3502,18 @@
    "kickoff_utc": "2026-09-20T13:00:00Z",
    "match_id": "fdorg:560590",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "premier_league|2026-27|Manchester United|Bournemouth": {
+   "away_goals": 3,
+   "away_team": "Bournemouth",
+   "competition": "premier_league",
+   "date": "2026-10-25",
+   "home_goals": 0,
+   "home_team": "Manchester United",
+   "kickoff_utc": "2026-10-25T14:00:00Z",
+   "match_id": "fdorg:560615",
+   "recorded_at": "2026-10-26T14:30:46Z",
    "season": "2026-27"
   },
   "premier_league|2026-27|Manchester United|Ipswich Town": {
@@ -3586,6 +3682,18 @@
    "kickoff_utc": "2026-08-30T13:00:00Z",
    "match_id": "fdorg:560554",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "premier_league|2026-27|Sunderland|Leeds United": {
+   "away_goals": 0,
+   "away_team": "Leeds United",
+   "competition": "premier_league",
+   "date": "2026-10-25",
+   "home_goals": 0,
+   "home_team": "Sunderland",
+   "kickoff_utc": "2026-10-25T16:30:00Z",
+   "match_id": "fdorg:560621",
+   "recorded_at": "2026-10-26T14:30:46Z",
    "season": "2026-27"
   },
   "premier_league|2026-27|Tottenham Hotspur|Aston Villa": {
