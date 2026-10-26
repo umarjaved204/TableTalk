@@ -575,7 +575,11 @@ test.describe("star pop", () => {
     // The attribute goes when the pop ends, not after a fixed time.
     await page.waitForFunction(() => !document.documentElement.hasAttribute("data-fav-just-saved"));
 
-    // The same team again (the dialog stays open after saving): it pops again.
+    // The same team again (Save closed the dialog; the header button opens it
+    // with the team still checked): it pops again.
+    await expect(page.locator("#favourite")).toBeHidden();
+    await page.locator("[data-open-favourite]").click();
+    await expect(page.locator('#favourite input[value="arsenal"]')).toBeChecked();
     await armPop(page);
     await page.locator('#favourite [data-fav-action="save-picker"]').click();
     expect(await popStarted(page), "saving again pops again").toBe(true);

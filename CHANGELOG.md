@@ -4,6 +4,25 @@ What changed and why, newest first. How things work today is in the
 [README](README.md) and [docs/](docs/); the detail of each change is in its
 commit and pull request.
 
+## 26 Oct 2026, later
+
+- **Save closes the Your team dialog** (branch `dialog-close-on-save`). When
+  Save saves a team, the dialog closes, as Close does; so does Remove my
+  team. The confirmation moved to the page's status region, so a screen
+  reader hears "Saved. Arsenal is your team on this device." once (or the
+  wording for a browser that won't store it). Focus goes back to the button
+  that opened the dialog, or to the new card's heading when Save replaced
+  the home prompt, or to the header's Your team button when Remove took the
+  card away. Save with nothing checked still keeps the dialog open with
+  "Choose a team first." and focus on the teams.
+- **Dialogs in browsers without `showModal()`**: shown in place rather than
+  in the top layer, the Your team and Appearance dialogs were painted under
+  parts of the page (the home cards' animated chance bars and links), so a
+  mouse click on Save or on a theme hit the page instead. Shown that way,
+  both dialogs are now marked (`data-in-place`) and drawn above the page
+  (`z-index`); modern browsers, which use the top layer, are unchanged. The
+  home page's decorative pitch never takes clicks.
+
 ## 26 Oct 2026
 
 - **Picking your team, rebuilt** (branch `team-picker`). The Your team

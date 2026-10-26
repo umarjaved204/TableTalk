@@ -109,9 +109,13 @@ function openDialog(asked: string | null = null): void {
   if (league) picker?.showLeague(league);
   if (dialogStatus) dialogStatus.textContent = "";
   // A browser without showModal() (older than the support policy in
-  // README.md) gets the dialog shown in place, without the backdrop.
+  // README.md) gets the dialog shown in place, without the backdrop, and
+  // marked so that it's drawn above the page (FavouritePicker.astro).
   if (typeof dialog.showModal === "function") dialog.showModal();
-  else dialog.setAttribute("open", "");
+  else {
+    dialog.setAttribute("data-in-place", "");
+    dialog.setAttribute("open", "");
+  }
   // Tiles can only be measured once the dialog is shown. It opens at the top.
   dialog.scrollTop = 0;
   const body = dialog.querySelector<HTMLElement>(".body");
@@ -155,8 +159,22 @@ function focusAfterChange(preferred: Element | null): void {
   target.focus();
 }
 
-/** Save: the checked team becomes the favourite. The dialog stays open and
- *  says what happened. */
+/** Closes the dialog. A browser without close() (older than the support
+ *  policy) gets the close event too, so focus is put back the same way. */
+function closeDialog(): void {
+  if (!dialog) return;
+  if (typeof dialog.close === "function") {
+    dialog.close();
+    return;
+  }
+  dialog.removeAttribute("open");
+  dialog.dispatchEvent(new Event("close"));
+}
+
+/** Save: the checked team becomes the favourite and the dialog closes, as
+ *  Close does. What happened is said by the page's status region (the
+ *  dialog's goes with it). With nothing checked, the dialog stays open and
+ *  says so. */
 function saveFromPicker(): void {
   if (!api) return;
   const radio = picker?.checked();
@@ -166,8 +184,8 @@ function saveFromPicker(): void {
     return;
   }
   if (!api.choose(radio.value)) return;
-  announce(dialogStatus, savedMessage(api.current().name ?? "Your team"));
-  refreshDialog();
+  closeDialog();
+  announce(pageStatus, savedMessage(api.current().name ?? "Your team"));
 }
 
 /** The team page's button: one tap makes this team the favourite. When it
@@ -217,14 +235,13 @@ function handle(action: string, button: HTMLElement): void {
       announce(pageStatus, "Hidden. You can pick a team any time with the Your team button.");
       focusAfterChange(opener);
       break;
-    case "remove": {
+    case "remove":
       api.remove();
-      const inDialog = dialog?.contains(button) ?? false;
-      announce(inDialog ? dialogStatus : pageStatus, "Removed. No team is saved on this device.");
-      if (inDialog) refreshDialog();
+      // From the dialog, it closes as after Save; focus is handled on close.
+      if (dialog?.contains(button)) closeDialog();
       else focusAfterChange(opener);
+      announce(pageStatus, "Removed. No team is saved on this device.");
       break;
-    }
   }
 }
 
@@ -235,10 +252,7 @@ document.addEventListener("click", (event) => {
 });
 
 opener?.addEventListener("click", () => openDialog());
-dialog?.querySelector("[data-close]")?.addEventListener("click", () => {
-  if (typeof dialog.close === "function") dialog.close();
-  else dialog.removeAttribute("open");
-});
+dialog?.querySelector("[data-close]")?.addEventListener("click", closeDialog);
 // Escape in the "Find a team" field clears what was typed first; only a
 // second Escape closes the dialog (and loses nothing).
 dialog?.addEventListener("keydown", (event) => {
@@ -253,10 +267,15 @@ dialog?.addEventListener("click", (event) => {
 });
 // Saving from the home page's prompt replaces the prompt with the card, so the
 // button that opened the dialog is gone: focus the card's heading instead of
-// losing focus to the top of the page.
+// losing focus to the top of the page. Removing from the card's "Change team"
+// leaves no card (and no heading): the header's Your team button, as after a
+// Remove outside the dialog.
 dialog?.addEventListener("close", () => {
   if (returnTo && !returnTo.isConnected) {
-    focusAfterChange(document.querySelector(".your-team-slot [data-fav-target] h2"));
+    focusAfterChange(document.querySelector(".your-team-slot [data-fav-target] h2") ?? opener);
+  } else if (returnTo instanceof HTMLElement && returnTo !== document.activeElement) {
+    // The browser normally does this itself; the fallback above doesn't.
+    returnTo.focus();
   }
   returnTo = null;
 });

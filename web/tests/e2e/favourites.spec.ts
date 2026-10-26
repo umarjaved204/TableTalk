@@ -120,13 +120,12 @@ test.describe("first visit and choosing", () => {
     await expect(dialogOf(page).locator("[data-picker-selected]")).toHaveText("Selected: Arsenal");
     await tabTo(page, dialogOf(page).getByRole("button", { name: "Save" }));
     await page.keyboard.press("Enter");
-    await expect(dialogOf(page).getByRole("status")).toHaveText(
-      "Saved. Arsenal is your team on this device.",
-    );
 
-    // Behind the dialog the prompt became the card. On close, focus goes to the
-    // card's heading (the button that opened the dialog is gone), not to the top.
-    await page.keyboard.press("Escape");
+    // Save closes the dialog and the page's status region says what happened.
+    // Behind the dialog the prompt became the card, so focus goes to the card's
+    // heading (the button that opened the dialog is gone), not to the top.
+    await expect(dialogOf(page)).toBeHidden();
+    await expect(page.locator("[data-fav-status]")).toHaveText("Saved. Arsenal is your team on this device.");
     const card = page.getByRole("article", { name: "Arsenal" });
     await expect(card).toBeVisible();
     await expect(card.getByRole("heading", { level: 2 })).toBeFocused();
@@ -164,7 +163,9 @@ test.describe("first visit and choosing", () => {
     expect(await stored(page), "opening saves nothing").toBeNull();
   });
 
-  test("Save with no team chosen says so, focuses the teams and saves nothing", async ({ page }) => {
+  test("Save with no team chosen keeps the dialog open, says so there, focuses the teams and saves nothing", async ({
+    page,
+  }) => {
     await open(page, "/");
     await page
       .getByRole("region", { name: "Pick your team" })
@@ -172,7 +173,9 @@ test.describe("first visit and choosing", () => {
       .click();
     await dialogOf(page).getByRole("button", { name: "Save" }).click();
     await expect(dialogOf(page).getByRole("status")).toHaveText("Choose a team first.");
+    await expect(dialogOf(page)).toBeVisible();
     await expect(shownTeams(page).first()).toBeFocused();
+    await expect(page.locator("[data-fav-status]"), "nothing said behind the dialog").toHaveText("");
     expect(await stored(page)).toBeNull();
   });
 
@@ -409,10 +412,14 @@ test("storage blocked: the choice applies to this page, and the dialog says it w
     .click();
   await dialogOf(page).getByRole("radio", { name: "Arsenal" }).check();
   await dialogOf(page).getByRole("button", { name: "Save" }).click();
-  await expect(dialogOf(page).getByRole("status")).toContainText("isn't letting the site remember it");
-  await expect(page.locator("[data-storage-warning]")).toBeVisible();
-  await page.keyboard.press("Escape");
+  await expect(dialogOf(page)).toBeHidden();
+  await expect(page.locator("[data-fav-status]")).toHaveText(
+    "Arsenal is your team until you close this page. This browser isn't letting the site remember it.",
+  );
   await expect(page.getByRole("article", { name: "Arsenal" })).toBeVisible();
+  // Opened again, the dialog carries the warning too.
+  await page.locator("[data-open-favourite]").click();
+  await expect(page.locator("[data-storage-warning]")).toBeVisible();
 });
 
 test.describe("the team page's Make this my team", () => {
@@ -508,7 +515,9 @@ test.describe("the team page's Make this my team", () => {
 });
 
 test.describe("the Your team dialog", () => {
-  test("keyboard only: open, choose, save, close, and focus returns to the button", async ({ page }) => {
+  test("keyboard only: open, choose, save; the dialog closes and focus returns to the button", async ({
+    page,
+  }) => {
     await seed(page, { [KEY]: saved("arsenal") });
     await open(page, "/premier-league/");
     const opener = page.locator("[data-open-favourite]");
@@ -529,25 +538,76 @@ test.describe("the Your team dialog", () => {
     await dialog.getByRole("radio", { name: "Chelsea" }).check();
     await tabTo(page, dialog.getByRole("button", { name: "Save" }));
     await page.keyboard.press("Enter");
-    await expect(dialog.getByRole("status")).toHaveText("Saved. Chelsea is your team on this device.");
-    expect(JSON.parse((await stored(page))!).team).toBe("chelsea");
-    await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
     await expect(opener).toBeFocused();
+    await expect(page.locator("[data-fav-status]")).toHaveText("Saved. Chelsea is your team on this device.");
+    expect(JSON.parse((await stored(page))!).team).toBe("chelsea");
     await expect.poll(() => stars(page.locator('[data-league-table] tr[data-team="chelsea"]'))).toBe(1);
   });
 
-  test("Remove my team: back to no favourite, prompt stays away", async ({ page }) => {
+  test("Save is announced once, from the page's status region, not the dialog's", async ({ page }) => {
+    await open(page, "/premier-league/");
+    await page.locator("[data-open-favourite]").click();
+    await dialogOf(page).getByRole("radio", { name: "Arsenal" }).check();
+    await dialogOf(page).getByRole("button", { name: "Save" }).click();
+    await expect(dialogOf(page)).toBeHidden();
+    const message = "Saved. Arsenal is your team on this device.";
+    await expect(page.locator("[data-fav-status]")).toHaveText(message);
+    // Given time for a late second copy to arrive (announce() writes after 50 ms).
+    await page.waitForTimeout(300);
+    expect(await page.getByRole("status").filter({ hasText: message }).count()).toBe(1);
+    await expect(page.locator("[data-fav-dialog-status]")).toHaveText("");
+  });
+
+  test("Remove my team: the dialog closes, it's announced, focus returns, prompt stays away", async ({
+    page,
+  }) => {
     await seed(page, { [KEY]: saved("arsenal") });
     await open(page, "/");
-    await page.locator("[data-open-favourite]").click();
+    const opener = page.locator("[data-open-favourite]");
+    await opener.click();
     await page.getByRole("button", { name: "Remove my team" }).click();
-    await expect(page.getByRole("dialog").getByRole("status").first()).toHaveText(
-      "Removed. No team is saved on this device.",
-    );
+    await expect(dialogOf(page)).toBeHidden();
+    await expect(opener).toBeFocused();
+    await expect(page.locator("[data-fav-status]")).toHaveText("Removed. No team is saved on this device.");
     expect(JSON.parse((await stored(page))!)).toEqual({ v: 1, team: null, prompt: "dismissed" });
-    await page.keyboard.press("Escape");
     await expect(slot(page)).toBeHidden();
+  });
+
+  test("from the home card's Change team: Save focuses the new card's heading, Remove the Your team button", async ({
+    page,
+  }) => {
+    await seed(page, { [KEY]: saved("arsenal") });
+    await open(page, "/");
+    const change = () =>
+      page.getByRole("article", { name: "Arsenal" }).getByRole("button", { name: "Change team" });
+    await change().click();
+    await dialogOf(page).getByRole("radio", { name: "Chelsea" }).check();
+    await dialogOf(page).getByRole("button", { name: "Save" }).click();
+    await expect(dialogOf(page)).toBeHidden();
+    const card = page.getByRole("article", { name: "Chelsea" });
+    await expect(card.getByRole("heading", { level: 2 })).toBeFocused();
+
+    // The card (and its button) goes with Remove: focus lands on the header's button.
+    await card.getByRole("button", { name: "Change team" }).click();
+    await dialogOf(page).getByRole("button", { name: "Remove my team" }).click();
+    await expect(dialogOf(page)).toBeHidden();
+    await expect(slot(page)).toBeHidden();
+    await expect(page.locator("[data-open-favourite]")).toBeFocused();
+  });
+
+  test("the team page's Your team · Change: Save closes and focus returns to that button", async ({
+    page,
+  }) => {
+    await seed(page, { [KEY]: saved("arsenal") });
+    await open(page, "/premier-league/arsenal/");
+    const button = page.locator('[data-fav-action="choose-this"]');
+    await button.click();
+    await dialogOf(page).getByRole("radio", { name: "Chelsea" }).check();
+    await dialogOf(page).getByRole("button", { name: "Save" }).click();
+    await expect(dialogOf(page)).toBeHidden();
+    await expect(button).toBeFocused();
+    await expect(button).toHaveAccessibleName("Make this my team");
   });
 
   test("without dialog.showModal() (older browsers) it still opens and closes", async ({ page }) => {
@@ -560,6 +620,28 @@ test.describe("the Your team dialog", () => {
     await expect(page.locator("#favourite")).toBeVisible();
     await page.locator("#favourite [data-close]").click();
     await expect(page.locator("#favourite")).toBeHidden();
+    // Save closes it too, with focus back on the button that opened it.
+    const opener = page.locator("[data-open-favourite]");
+    await opener.click();
+    await page.locator('#favourite input[value="arsenal"]').check();
+    // With the mouse: shown in place (no top layer), nothing on the page may cover Save.
+    await page.locator('#favourite [data-fav-action="save-picker"]').click();
+    await expect(page.locator("#favourite")).toBeHidden();
+    await expect(opener).toBeFocused();
+  });
+
+  test("without dialog.showModal(), the Appearance dialog is above the page too: a mouse click reaches its last theme", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      // @ts-expect-error simulating a browser without the API
+      delete HTMLDialogElement.prototype.showModal;
+    });
+    await open(page, "/");
+    await page.locator("[data-open-appearance]").click();
+    const last = page.locator('#appearance input[name="theme"]').last();
+    await last.click();
+    await expect(last).toBeChecked();
   });
 });
 

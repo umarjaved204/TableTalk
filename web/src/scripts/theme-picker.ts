@@ -22,9 +22,13 @@ if (dialog && opener) {
   opener.addEventListener("click", () => {
     const current = window.tabletalkTheme?.current() ?? "system";
     radios.forEach((radio) => (radio.checked = radio.value === current));
-    // Older browsers without showModal() (see README.md, browser support): shown in place.
+    // Older browsers without showModal() (see README.md, browser support): shown
+    // in place, marked so that it's drawn above the page (ThemePicker.astro).
     if (typeof dialog.showModal === "function") dialog.showModal();
-    else dialog.setAttribute("open", "");
+    else {
+      dialog.setAttribute("data-in-place", "");
+      dialog.setAttribute("open", "");
+    }
   });
 
   dialog.addEventListener("change", (event) => {

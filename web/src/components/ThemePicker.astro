@@ -102,6 +102,12 @@ import { PICKER_OPTIONS } from "../themes.ts";
     background: color-mix(in srgb, var(--bg) 70%, transparent);
   }
 
+  /* Shown in place by a browser without showModal() (theme-picker.ts marks
+     it): drawn above the page, as in FavouritePicker.astro. */
+  dialog[data-in-place] {
+    z-index: 20;
+  }
+
   .panel {
     display: grid;
     gap: var(--space-4);

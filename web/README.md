@@ -281,7 +281,12 @@ the desktop dialog, one at 200% text. It opens on the page's league, else
 the favourite's, else the first (`openingLeague()` in
 `team-picker-core.ts`); the home page's prompt has a button per league that
 opens it on that league. Arrow keys check each radio as they move, so only
-Save saves. It is built the first time the dialog opens, with
+Save saves. Save then closes the dialog, as does Remove my team; the
+page's status region (`[data-fav-status]`) says what happened, once, and
+focus goes back to the button that opened it, or, when Save replaced that
+button (the home prompt becoming the card), to the card's heading. Save
+with nothing checked keeps the dialog open and says "Choose a team first."
+in the dialog's own status. It is built the first time the dialog opens, with
 `createElement` only, so pages carry none of it. All radios share one name;
 Chromium leaves the hidden leagues out of the count ("2 of 18", not "of
 96"). Only the middle of the dialog scrolls, so the footer with Save never
