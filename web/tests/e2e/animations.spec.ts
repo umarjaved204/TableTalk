@@ -13,9 +13,11 @@
 //   4. Reduced motion: no animation runs at all.
 //   5. Nothing moves while the page loads and its animations play (layout
 //      shift, the same limit as layout-shift.spec.ts).
-//   6. Page crossfades (global.css): following a link and Back each fade the
-//      whole page, with no element moving on its own and nothing but opacity
-//      changing; with reduced motion there is no page transition.
+//   6. Page crossfades (global.css): the rule is on only when the device
+//      allows motion, at 180 ms; when following a link or Back crossfades
+//      (the browser may skip one), it fades the whole page, with no element
+//      moving on its own and nothing but opacity changing; with reduced
+//      motion there is no page transition.
 //   7. Theme crossfade (theme-head.js): a theme chosen in Appearance fades in
 //      over the old one (240 ms, opacity only) and the page ends on it, even
 //      after quick changes; with reduced motion it changes at once.
@@ -45,6 +47,10 @@ import { expect, test } from "./test.ts";
 const WIDTHS = [390, 1280];
 const MAX_END_MS = 1000;
 const MAX_SHIFT = 0.005;
+/** What Chromium reports as a page error when it skips a page crossfade.
+ *  Allowed only in the crossfade test, once per skip it noted. */
+const CHROMIUM_SKIP_MESSAGE =
+  "InvalidStateError: Transition was aborted because of invalid state. ViewTransition opt-in disabled";
 const WEBKIT_SELECT_MESSAGE =
   "Refused to apply a stylesheet because its hash, its nonce, or 'unsafe-inline' does not appear in the style-src directive of the Content Security Policy.";
 
@@ -147,30 +153,38 @@ function recordReveal(): void {
       },
       (error: unknown) => (reveal.error = String(error)),
     );
-    transition.finished.then(() => (reveal.finished = true));
+    // A transition the browser skips rejects here too (in Chromium:
+    // "ViewTransition opt-in disabled"); handled, so it isn't a page error.
+    transition.finished.then(
+      () => (reveal.finished = true),
+      (error: unknown) => (reveal.error ??= String(error)),
+    );
   });
 }
 
-/** Waits for the page to be shown and, when one is expected, for its page
- *  transition to end; then returns what happened. Waiting for a transition
- *  matters on Back: a page restored from the back-forward cache still holds
- *  the record of its first load until its new pagereveal arrives. */
-async function revealed(page: Page, expectTransition: boolean): Promise<Reveal> {
-  // On a timeout the caller's assertions say what's missing (e.g. "the page crossfaded").
+/** Waits for the page to be shown and, if a page transition runs, for it to
+ *  end (or be skipped); then returns what happened. A page restored from the
+ *  back-forward cache still holds the record of its first load, so clear it
+ *  (forgetReveal) before leaving a page you'll come Back to. */
+async function revealed(page: Page): Promise<Reveal> {
+  // On a timeout the caller's assertions say what's missing.
   await page
     .waitForFunction(
-      (expected) => {
+      () => {
         const reveal = (window as unknown as { __reveal: Reveal | null }).__reveal;
         if (reveal === null) return false;
-        if (!expected) return true;
-        return reveal.transition && (reveal.finished || reveal.error !== null);
+        return !reveal.transition || reveal.finished || reveal.error !== null;
       },
-      expectTransition,
+      undefined,
       { timeout: 5000 },
     )
     .catch(() => undefined);
   return page.evaluate(() => (window as unknown as { __reveal: Reveal }).__reveal);
 }
+
+/** Clears this page's record, so the next one is from its next pagereveal. */
+const forgetReveal = (page: Page) =>
+  page.evaluate(() => ((window as unknown as { __reveal: Reveal | null }).__reveal = null));
 
 /** Every property of a view-transition animation whose value changes between keyframes. */
 function changing(reveal: Reveal): string[] {
@@ -338,38 +352,78 @@ for (const width of WIDTHS) {
   });
 }
 
+// What the site guarantees is the rule: pages may crossfade, opacity only,
+// and not with reduced motion. Whether a given navigation shows one is the
+// browser's call: Chromium skips a cross-document transition now and then
+// (here the link step, in about 1 run in 6 to 12 on 26 Oct 2026, on the
+// commit before and after the Your team change alike), and the spec allows
+// it. So the rule itself is checked in the stylesheet, and a transition that
+// runs is checked in full; a skipped one is noted, not failed.
 test.describe("page crossfades", () => {
+  test("the crossfade rule: on only when the device allows motion, 180 ms", async ({ page }) => {
+    await open(page, "/", 1280);
+    const found = await page.evaluate(() => {
+      const out = { allowed: 0, elsewhere: 0, durations: [] as number[] };
+      const visit = (rules: CSSRuleList, inMotionOk: boolean): void => {
+        for (const rule of rules) {
+          if (rule instanceof CSSMediaRule) {
+            visit(
+              rule.cssRules,
+              inMotionOk || rule.conditionText.includes("prefers-reduced-motion: no-preference"),
+            );
+          } else if (rule.cssText.startsWith("@view-transition")) {
+            if (!rule.cssText.includes("navigation: auto")) continue;
+            if (inMotionOk) out.allowed++;
+            else out.elsewhere++;
+          } else if (
+            rule instanceof CSSStyleRule &&
+            rule.selectorText.startsWith("::view-transition-old(root)")
+          ) {
+            // The build may write 180ms as 0.18s: compare in milliseconds.
+            const duration = rule.style.animationDuration;
+            out.durations.push(parseFloat(duration) * (duration.endsWith("ms") ? 1 : 1000));
+          }
+        }
+      };
+      for (const sheet of document.styleSheets) visit(sheet.cssRules, false);
+      return out;
+    });
+    expect(
+      found.allowed,
+      "@view-transition { navigation: auto } inside (prefers-reduced-motion: no-preference)",
+    ).toBe(1);
+    expect(found.elsewhere, "no page crossfade rule outside that media query").toBe(0);
+    expect(found.durations, "pages fade in 180 ms").toContain(180);
+  });
+
   for (const width of WIDTHS) {
-    test(`${width}px: a link and Back each crossfade the page, opacity only`, async ({
+    test(`${width}px: when a link or Back crossfades the page, it's the whole page, opacity only`, async ({
       page,
       browserName,
     }) => {
       await page.addInitScript(recordReveal);
       const collected = await open(page, "/", width);
+      // The home page comes back from the back-forward cache on Back: clear
+      // its first-load record, so what's read then is from Back.
+      await forgetReveal(page);
       await page.locator('a.title-link[href="/premier-league/"]').click();
       await page.waitForURL("**/premier-league/");
+      let skipped = 0;
       for (const step of ["link", "Back"]) {
-        const reveal = await revealed(page, true);
-        expect(reveal.error, `${step}: the transition ran to the end`).toBeNull();
-        expect(reveal.transition && reveal.ready && reveal.finished, `${step}: the page crossfaded`).toBe(
-          true,
-        );
-        const groups = reveal.animations
-          .map((a) => a.pseudo)
-          .filter((p) => p.startsWith("::view-transition-group"));
-        expect([...new Set(groups)], `${step}: only the whole page, no element moves on its own`).toEqual([
-          "::view-transition-group(root)",
-        ]);
-        expect(
-          changing(reveal).filter((c) => !c.endsWith(": opacity")),
-          `${step}: nothing but opacity changes`,
-        ).toEqual([]);
-        expect(changing(reveal).length, `${step}: the old and new pages fade`).toBeGreaterThan(0);
-        const long = reveal.animations.filter((a) => a.endTime > MAX_END_MS);
-        expect(
-          long.map((a) => `${a.pseudo}: ${a.endTime} ms`),
-          `${step}: over within ${MAX_END_MS} ms`,
-        ).toEqual([]);
+        const reveal = await revealed(page);
+        expect(reveal, `${step}: the page was shown`).not.toBeNull();
+        // Skipped by the browser (none started, or it was abandoned before
+        // its animations began): allowed, and noted in the report.
+        if (!reveal.transition || !reveal.ready) {
+          skipped++;
+          test.info().annotations.push({
+            type: "crossfade skipped",
+            description: `${step}: ${reveal.transition ? (reveal.error ?? "not ready") : "no transition"}`,
+          });
+        } else {
+          expect(reveal.error, `${step}: the transition ran to the end`).toBeNull();
+          checkCrossfade(step, reveal);
+        }
         if (step === "link") {
           await page.goBack();
           await page.waitForURL((url) => url.pathname === "/");
@@ -377,10 +431,39 @@ test.describe("page crossfades", () => {
       }
       const left = unexplained(collected, browserName);
       expect(left.violations, "Content Security Policy violations").toEqual([]);
-      expect(left.errors, "console errors (including CSP violations)").toEqual([]);
+      // Chromium's own report of a skip: allowed word for word, once per skip.
+      let allowed = browserName === "chromium" ? skipped : 0;
+      const errors = left.errors.filter((message) => {
+        if (message === CHROMIUM_SKIP_MESSAGE && allowed > 0) {
+          allowed--;
+          return false;
+        }
+        return true;
+      });
+      expect(errors, "console errors (including CSP violations)").toEqual([]);
     });
   }
 });
+
+/** A page transition that ran: only the whole page, only opacity, soon over. */
+function checkCrossfade(step: string, reveal: Reveal): void {
+  const groups = reveal.animations
+    .map((a) => a.pseudo)
+    .filter((p) => p.startsWith("::view-transition-group"));
+  expect([...new Set(groups)], `${step}: only the whole page, no element moves on its own`).toEqual([
+    "::view-transition-group(root)",
+  ]);
+  expect(
+    changing(reveal).filter((c) => !c.endsWith(": opacity")),
+    `${step}: nothing but opacity changes`,
+  ).toEqual([]);
+  expect(changing(reveal).length, `${step}: the old and new pages fade`).toBeGreaterThan(0);
+  const long = reveal.animations.filter((a) => a.endTime > MAX_END_MS);
+  expect(
+    long.map((a) => `${a.pseudo}: ${a.endTime} ms`),
+    `${step}: over within ${MAX_END_MS} ms`,
+  ).toEqual([]);
+}
 
 interface Fade {
   pseudo: string;
@@ -845,7 +928,7 @@ test.describe("reduced motion", () => {
     await page.waitForURL("**/premier-league/");
     // Give a transition time to start if one were coming, then check there was none.
     await page.waitForLoadState("networkidle");
-    expect((await revealed(page, false)).transition, "no page transition with reduced motion").toBe(false);
+    expect((await revealed(page)).transition, "no page transition with reduced motion").toBe(false);
   });
 
   for (const path of ALL_PAGES) {
