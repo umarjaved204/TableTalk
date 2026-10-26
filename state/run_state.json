@@ -1,31 +1,58 @@
 {
- "date": "2026-10-25",
- "generated_at": "2026-10-25T12:43:20Z",
- "last_try": true,
+ "date": "2026-10-26",
+ "generated_at": "2026-10-26T06:55:45Z",
+ "last_try": false,
  "leagues": {
   "bundesliga": {
-   "missing": [],
-   "results_complete": true,
+   "missing": [
+    "fdorg:565835",
+    "fdorg:565836"
+   ],
+   "results_complete": false,
    "updated": true
   },
   "la_liga": {
-   "missing": [],
-   "results_complete": true,
+   "missing": [
+    "fdorg:564720",
+    "fdorg:564725",
+    "fdorg:564726",
+    "fdorg:564723"
+   ],
+   "results_complete": false,
    "updated": true
   },
   "ligue_1": {
-   "missing": [],
-   "results_complete": true,
+   "missing": [
+    "fdorg:559650",
+    "fdorg:559653",
+    "fdorg:559656",
+    "fdorg:559649",
+    "fdorg:559651",
+    "fdorg:559655"
+   ],
+   "results_complete": false,
    "updated": true
   },
   "premier_league": {
-   "missing": [],
-   "results_complete": true,
+   "missing": [
+    "fdorg:560613",
+    "fdorg:560619",
+    "fdorg:560612",
+    "fdorg:560615",
+    "fdorg:560621"
+   ],
+   "results_complete": false,
    "updated": true
   },
   "serie_a": {
-   "missing": [],
-   "results_complete": true,
+   "missing": [
+    "fdorg:558563",
+    "fdorg:558562",
+    "fdorg:558568",
+    "fdorg:558566",
+    "fdorg:558559"
+   ],
+   "results_complete": false,
    "updated": true
   }
  }
