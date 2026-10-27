@@ -1,9 +1,9 @@
-# TableTalk update, 2026-10-26T14:30:46Z
+# TableTalk update, 2026-10-27T06:48:51Z
 
-- Bundesliga: updated in 4s; results through 2026-10-25; 243 matches still to play
-- La Liga: updated in 8s; results through 2026-10-25; 282 matches still to play
+- Bundesliga: updated in 5s; results through 2026-10-25; 243 matches still to play
+- La Liga: updated in 7s; results through 2026-10-26; 281 matches still to play
     Cancelled: Rayo Vallecano v Athletic Bilbao (listed for 10 Oct)
-- Ligue 1: updated in 4s; results through 2026-10-25; 235 matches still to play
+- Ligue 1: updated in 4s; results through 2026-10-26; 234 matches still to play
 - Premier League: updated in 5s; results through 2026-10-25; 300 matches still to play
 - Serie A: updated in 8s; results through 2026-10-25; 300 matches still to play
 
@@ -12,4 +12,4 @@ match is assumed to be replayed). Their locked predictions are voided and not sc
 
 ## Locks this run
 
-- 9 prediction(s) locked
+- 2 prediction(s) locked

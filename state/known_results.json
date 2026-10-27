@@ -1788,6 +1788,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "la_liga|2026-27|Sevilla|Osasuna": {
+   "away_goals": 0,
+   "away_team": "Osasuna",
+   "competition": "la_liga",
+   "date": "2026-10-26",
+   "home_goals": 2,
+   "home_team": "Sevilla",
+   "kickoff_utc": "2026-10-26T20:00:00Z",
+   "match_id": "fdorg:564721",
+   "recorded_at": "2026-10-27T06:48:51Z",
+   "season": "2026-27"
+  },
   "la_liga|2026-27|Sevilla|Rayo Vallecano": {
    "away_goals": 1,
    "away_team": "Rayo Vallecano",
@@ -2578,6 +2590,18 @@
    "kickoff_utc": "2026-10-10T18:45:00Z",
    "match_id": "fdorg:559672",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "ligue_1|2026-27|Paris Saint-Germain|Lyon": {
+   "away_goals": 0,
+   "away_team": "Lyon",
+   "competition": "ligue_1",
+   "date": "2026-10-26",
+   "home_goals": 2,
+   "home_team": "Paris Saint-Germain",
+   "kickoff_utc": "2026-10-26T19:30:00Z",
+   "match_id": "fdorg:559648",
+   "recorded_at": "2026-10-27T06:48:51Z",
    "season": "2026-27"
   },
   "ligue_1|2026-27|Paris Saint-Germain|Monaco": {
