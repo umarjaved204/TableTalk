@@ -4500,6 +4500,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "serie_a|2026-27|Roma|Cagliari": {
+   "away_goals": 2,
+   "away_team": "Cagliari",
+   "competition": "serie_a",
+   "date": "2026-10-27",
+   "home_goals": 4,
+   "home_team": "Roma",
+   "kickoff_utc": "2026-10-27T19:45:00Z",
+   "match_id": "fdorg:558555",
+   "recorded_at": "2026-10-28T07:22:27Z",
+   "season": "2026-27"
+  },
   "serie_a|2026-27|Roma|Fiorentina": {
    "away_goals": 0,
    "away_team": "Fiorentina",
@@ -4560,6 +4572,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "serie_a|2026-27|Sassuolo|Lazio": {
+   "away_goals": 6,
+   "away_team": "Lazio",
+   "competition": "serie_a",
+   "date": "2026-10-27",
+   "home_goals": 2,
+   "home_team": "Sassuolo",
+   "kickoff_utc": "2026-10-27T17:30:00Z",
+   "match_id": "fdorg:558556",
+   "recorded_at": "2026-10-28T07:22:27Z",
+   "season": "2026-27"
+  },
   "serie_a|2026-27|Sassuolo|Torino": {
    "away_goals": 1,
    "away_team": "Torino",
@@ -4582,6 +4606,18 @@
    "kickoff_utc": "2026-08-23T18:45:00Z",
    "match_id": "fdorg:558634",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "serie_a|2026-27|Torino|Como": {
+   "away_goals": 3,
+   "away_team": "Como",
+   "competition": "serie_a",
+   "date": "2026-10-27",
+   "home_goals": 1,
+   "home_team": "Torino",
+   "kickoff_utc": "2026-10-27T19:45:00Z",
+   "match_id": "fdorg:558557",
+   "recorded_at": "2026-10-28T07:22:27Z",
    "season": "2026-27"
   },
   "serie_a|2026-27|Torino|Monza": {
