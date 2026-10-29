@@ -3780,6 +3780,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "serie_a|2026-27|AC Milan|Bologna": {
+   "away_goals": 4,
+   "away_team": "Bologna",
+   "competition": "serie_a",
+   "date": "2026-10-28",
+   "home_goals": 2,
+   "home_team": "AC Milan",
+   "kickoff_utc": "2026-10-28T17:30:00Z",
+   "match_id": "fdorg:558549",
+   "recorded_at": "2026-10-29T07:39:29Z",
+   "season": "2026-27"
+  },
   "serie_a|2026-27|AC Milan|Lecce": {
    "away_goals": 0,
    "away_team": "Lecce",
@@ -4128,6 +4140,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "serie_a|2026-27|Genoa|Juventus": {
+   "away_goals": 0,
+   "away_team": "Juventus",
+   "competition": "serie_a",
+   "date": "2026-10-28",
+   "home_goals": 2,
+   "home_team": "Genoa",
+   "kickoff_utc": "2026-10-28T19:45:00Z",
+   "match_id": "fdorg:558552",
+   "recorded_at": "2026-10-29T07:39:29Z",
+   "season": "2026-27"
+  },
   "serie_a|2026-27|Genoa|Napoli": {
    "away_goals": 2,
    "away_team": "Napoli",
@@ -4368,6 +4392,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "serie_a|2026-27|Monza|Napoli": {
+   "away_goals": 4,
+   "away_team": "Napoli",
+   "competition": "serie_a",
+   "date": "2026-10-28",
+   "home_goals": 1,
+   "home_team": "Monza",
+   "kickoff_utc": "2026-10-28T19:45:00Z",
+   "match_id": "fdorg:558554",
+   "recorded_at": "2026-10-29T07:39:29Z",
+   "season": "2026-27"
+  },
   "serie_a|2026-27|Monza|Sassuolo": {
    "away_goals": 1,
    "away_team": "Sassuolo",
@@ -4486,6 +4522,18 @@
    "kickoff_utc": "2026-10-19T18:45:00Z",
    "match_id": "fdorg:558578",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "serie_a|2026-27|Parma|Udinese": {
+   "away_goals": 0,
+   "away_team": "Udinese",
+   "competition": "serie_a",
+   "date": "2026-10-28",
+   "home_goals": 0,
+   "home_team": "Parma",
+   "kickoff_utc": "2026-10-28T17:30:00Z",
+   "match_id": "fdorg:558553",
+   "recorded_at": "2026-10-29T07:39:29Z",
    "season": "2026-27"
   },
   "serie_a|2026-27|Roma|Atalanta": {
@@ -4726,6 +4774,18 @@
    "kickoff_utc": "2026-09-11T18:45:00Z",
    "match_id": "fdorg:558606",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "serie_a|2026-27|Venezia|Inter Milan": {
+   "away_goals": 2,
+   "away_team": "Inter Milan",
+   "competition": "serie_a",
+   "date": "2026-10-28",
+   "home_goals": 0,
+   "home_team": "Venezia",
+   "kickoff_utc": "2026-10-28T17:30:00Z",
+   "match_id": "fdorg:558550",
+   "recorded_at": "2026-10-29T07:39:29Z",
    "season": "2026-27"
   },
   "serie_a|2026-27|Venezia|Lazio": {
