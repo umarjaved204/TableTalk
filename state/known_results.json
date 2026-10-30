@@ -4008,6 +4008,18 @@
    "recorded_at": "2026-10-25T10:06:04Z",
    "season": "2026-27"
   },
+  "serie_a|2026-27|Fiorentina|Atalanta": {
+   "away_goals": 2,
+   "away_team": "Atalanta",
+   "competition": "serie_a",
+   "date": "2026-10-29",
+   "home_goals": 2,
+   "home_team": "Fiorentina",
+   "kickoff_utc": "2026-10-29T19:45:00Z",
+   "match_id": "fdorg:558551",
+   "recorded_at": "2026-10-30T07:42:56Z",
+   "season": "2026-27"
+  },
   "serie_a|2026-27|Fiorentina|Como": {
    "away_goals": 3,
    "away_team": "Como",
@@ -4078,6 +4090,18 @@
    "kickoff_utc": "2026-08-23T16:30:00Z",
    "match_id": "fdorg:558635",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "serie_a|2026-27|Frosinone|Lecce": {
+   "away_goals": 1,
+   "away_team": "Lecce",
+   "competition": "serie_a",
+   "date": "2026-10-29",
+   "home_goals": 5,
+   "home_team": "Frosinone",
+   "kickoff_utc": "2026-10-29T17:30:00Z",
+   "match_id": "fdorg:558558",
+   "recorded_at": "2026-10-30T07:42:56Z",
    "season": "2026-27"
   },
   "serie_a|2026-27|Frosinone|Sassuolo": {
