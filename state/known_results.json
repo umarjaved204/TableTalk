@@ -552,6 +552,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "bundesliga|2026-27|SV Elversberg|Mainz 05": {
+   "away_goals": 1,
+   "away_team": "Mainz 05",
+   "competition": "bundesliga",
+   "date": "2026-10-30",
+   "home_goals": 4,
+   "home_team": "SV Elversberg",
+   "kickoff_utc": "2026-10-30T19:30:00Z",
+   "match_id": "fdorg:565846",
+   "recorded_at": "2026-10-31T07:29:16Z",
+   "season": "2026-27"
+  },
   "bundesliga|2026-27|Schalke 04|Bayern Munich": {
    "away_goals": 0,
    "away_team": "Bayern Munich",
@@ -1920,6 +1932,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "la_liga|2026-27|Villarreal|Espanyol": {
+   "away_goals": 1,
+   "away_team": "Espanyol",
+   "competition": "la_liga",
+   "date": "2026-10-30",
+   "home_goals": 0,
+   "home_team": "Villarreal",
+   "kickoff_utc": "2026-10-30T20:00:00Z",
+   "match_id": "fdorg:564737",
+   "recorded_at": "2026-10-31T07:29:16Z",
+   "season": "2026-27"
+  },
   "la_liga|2026-27|Villarreal|Levante": {
    "away_goals": 1,
    "away_team": "Levante",
@@ -2148,6 +2172,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "ligue_1|2026-27|Le Havre|Paris Saint-Germain": {
+   "away_goals": 5,
+   "away_team": "Paris Saint-Germain",
+   "competition": "ligue_1",
+   "date": "2026-10-30",
+   "home_goals": 1,
+   "home_team": "Le Havre",
+   "kickoff_utc": "2026-10-30T18:00:00Z",
+   "match_id": "fdorg:559644",
+   "recorded_at": "2026-10-31T07:29:16Z",
+   "season": "2026-27"
+  },
   "ligue_1|2026-27|Le Mans|Brest": {
    "away_goals": 2,
    "away_team": "Brest",
@@ -2266,6 +2302,18 @@
    "kickoff_utc": "2026-10-10T15:15:00Z",
    "match_id": "fdorg:559674",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "ligue_1|2026-27|Lille|Lens": {
+   "away_goals": 0,
+   "away_team": "Lens",
+   "competition": "ligue_1",
+   "date": "2026-10-30",
+   "home_goals": 1,
+   "home_team": "Lille",
+   "kickoff_utc": "2026-10-30T20:05:00Z",
+   "match_id": "fdorg:559639",
+   "recorded_at": "2026-10-31T07:29:16Z",
    "season": "2026-27"
   },
   "ligue_1|2026-27|Lille|Paris Saint-Germain": {
@@ -2518,6 +2566,18 @@
    "kickoff_utc": "2026-08-22T18:45:00Z",
    "match_id": "fdorg:559716",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "ligue_1|2026-27|Nice|Rennes": {
+   "away_goals": 2,
+   "away_team": "Rennes",
+   "competition": "ligue_1",
+   "date": "2026-10-30",
+   "home_goals": 5,
+   "home_team": "Nice",
+   "kickoff_utc": "2026-10-30T18:00:00Z",
+   "match_id": "fdorg:559646",
+   "recorded_at": "2026-10-31T07:29:16Z",
    "season": "2026-27"
   },
   "ligue_1|2026-27|Nice|Strasbourg": {
