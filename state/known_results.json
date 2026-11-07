@@ -360,6 +360,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "bundesliga|2026-27|Hamburger SV|Borussia Mönchengladbach": {
+   "away_goals": 1,
+   "away_team": "Borussia Mönchengladbach",
+   "competition": "bundesliga",
+   "date": "2026-11-06",
+   "home_goals": 3,
+   "home_team": "Hamburger SV",
+   "kickoff_utc": "2026-11-06T19:30:00Z",
+   "match_id": "fdorg:565852",
+   "recorded_at": "2026-11-07T07:45:13Z",
+   "season": "2026-27"
+  },
   "bundesliga|2026-27|Hamburger SV|Mainz 05": {
    "away_goals": 5,
    "away_team": "Mainz 05",
@@ -1980,6 +1992,18 @@
    "recorded_at": "2026-10-26T14:30:46Z",
    "season": "2026-27"
   },
+  "la_liga|2026-27|Sevilla|Alavés": {
+   "away_goals": 0,
+   "away_team": "Alavés",
+   "competition": "la_liga",
+   "date": "2026-11-06",
+   "home_goals": 0,
+   "home_team": "Sevilla",
+   "kickoff_utc": "2026-11-06T20:00:00Z",
+   "match_id": "fdorg:564740",
+   "recorded_at": "2026-11-07T07:45:13Z",
+   "season": "2026-27"
+  },
   "la_liga|2026-27|Sevilla|Atlético Madrid": {
    "away_goals": 3,
    "away_team": "Atlético Madrid",
@@ -3072,6 +3096,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "ligue_1|2026-27|Toulouse|Strasbourg": {
+   "away_goals": 1,
+   "away_team": "Strasbourg",
+   "competition": "ligue_1",
+   "date": "2026-11-06",
+   "home_goals": 3,
+   "home_team": "Toulouse",
+   "kickoff_utc": "2026-11-06T19:45:00Z",
+   "match_id": "fdorg:559638",
+   "recorded_at": "2026-11-07T07:45:13Z",
+   "season": "2026-27"
+  },
   "ligue_1|2026-27|Toulouse|Troyes": {
    "away_goals": 0,
    "away_team": "Troyes",
@@ -3598,6 +3634,18 @@
    "kickoff_utc": "2026-10-17T11:30:00Z",
    "match_id": "fdorg:560603",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "premier_league|2026-27|Everton|Coventry City": {
+   "away_goals": 1,
+   "away_team": "Coventry City",
+   "competition": "premier_league",
+   "date": "2026-11-06",
+   "home_goals": 3,
+   "home_team": "Everton",
+   "kickoff_utc": "2026-11-06T20:00:00Z",
+   "match_id": "fdorg:560634",
+   "recorded_at": "2026-11-07T07:45:13Z",
    "season": "2026-27"
   },
   "premier_league|2026-27|Everton|Crystal Palace": {
@@ -5422,6 +5470,18 @@
    "kickoff_utc": "2026-10-17T13:00:00Z",
    "match_id": "fdorg:558575",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "serie_a|2026-27|Venezia|Udinese": {
+   "away_goals": 1,
+   "away_team": "Udinese",
+   "competition": "serie_a",
+   "date": "2026-11-06",
+   "home_goals": 2,
+   "home_team": "Venezia",
+   "kickoff_utc": "2026-11-06T19:45:00Z",
+   "match_id": "fdorg:558537",
+   "recorded_at": "2026-11-07T07:45:13Z",
    "season": "2026-27"
   }
  }
