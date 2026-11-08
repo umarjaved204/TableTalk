@@ -180,6 +180,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "bundesliga|2026-27|Borussia Dortmund|SV Elversberg": {
+   "away_goals": 1,
+   "away_team": "SV Elversberg",
+   "competition": "bundesliga",
+   "date": "2026-11-07",
+   "home_goals": 2,
+   "home_team": "Borussia Dortmund",
+   "kickoff_utc": "2026-11-07T14:30:00Z",
+   "match_id": "fdorg:565850",
+   "recorded_at": "2026-11-08T07:56:29Z",
+   "season": "2026-27"
+  },
   "bundesliga|2026-27|Borussia Dortmund|Werder Bremen": {
    "away_goals": 2,
    "away_team": "Werder Bremen",
@@ -408,6 +420,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "bundesliga|2026-27|Mainz 05|Bayern Munich": {
+   "away_goals": 2,
+   "away_team": "Bayern Munich",
+   "competition": "bundesliga",
+   "date": "2026-11-07",
+   "home_goals": 1,
+   "home_team": "Mainz 05",
+   "kickoff_utc": "2026-11-07T14:30:00Z",
+   "match_id": "fdorg:565851",
+   "recorded_at": "2026-11-08T07:56:29Z",
+   "season": "2026-27"
+  },
   "bundesliga|2026-27|Mainz 05|Eintracht Frankfurt": {
    "away_goals": 3,
    "away_team": "Eintracht Frankfurt",
@@ -442,6 +466,18 @@
    "kickoff_utc": "2026-10-24T13:30:00Z",
    "match_id": "fdorg:565830",
    "recorded_at": "2026-10-25T10:06:04Z",
+   "season": "2026-27"
+  },
+  "bundesliga|2026-27|Paderborn 07|Eintracht Frankfurt": {
+   "away_goals": 2,
+   "away_team": "Eintracht Frankfurt",
+   "competition": "bundesliga",
+   "date": "2026-11-07",
+   "home_goals": 2,
+   "home_team": "Paderborn 07",
+   "kickoff_utc": "2026-11-07T14:30:00Z",
+   "match_id": "fdorg:565853",
+   "recorded_at": "2026-11-08T07:56:29Z",
    "season": "2026-27"
   },
   "bundesliga|2026-27|Paderborn 07|Hamburger SV": {
@@ -514,6 +550,18 @@
    "kickoff_utc": "2026-10-10T16:30:00Z",
    "match_id": "fdorg:565815",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "bundesliga|2026-27|RB Leipzig|FC Augsburg": {
+   "away_goals": 2,
+   "away_team": "FC Augsburg",
+   "competition": "bundesliga",
+   "date": "2026-11-07",
+   "home_goals": 5,
+   "home_team": "RB Leipzig",
+   "kickoff_utc": "2026-11-07T14:30:00Z",
+   "match_id": "fdorg:565848",
+   "recorded_at": "2026-11-08T07:56:29Z",
    "season": "2026-27"
   },
   "bundesliga|2026-27|RB Leipzig|Hamburger SV": {
@@ -826,6 +874,18 @@
    "kickoff_utc": "2026-10-23T18:30:00Z",
    "match_id": "fdorg:565833",
    "recorded_at": "2026-10-24T06:26:16Z",
+   "season": "2026-27"
+  },
+  "bundesliga|2026-27|VfB Stuttgart|Werder Bremen": {
+   "away_goals": 0,
+   "away_team": "Werder Bremen",
+   "competition": "bundesliga",
+   "date": "2026-11-07",
+   "home_goals": 1,
+   "home_team": "VfB Stuttgart",
+   "kickoff_utc": "2026-11-07T17:30:00Z",
+   "match_id": "fdorg:565849",
+   "recorded_at": "2026-11-08T07:56:29Z",
    "season": "2026-27"
   },
   "bundesliga|2026-27|Werder Bremen|FC Augsburg": {
@@ -1368,6 +1428,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "la_liga|2026-27|Espanyol|Deportivo La Coruña": {
+   "away_goals": 0,
+   "away_team": "Deportivo La Coruña",
+   "competition": "la_liga",
+   "date": "2026-11-07",
+   "home_goals": 0,
+   "home_team": "Espanyol",
+   "kickoff_utc": "2026-11-07T15:15:00Z",
+   "match_id": "fdorg:564745",
+   "recorded_at": "2026-11-08T07:56:29Z",
+   "season": "2026-27"
+  },
   "la_liga|2026-27|Espanyol|Elche": {
    "away_goals": 3,
    "away_team": "Elche",
@@ -1584,6 +1656,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "la_liga|2026-27|Málaga|Racing Santander": {
+   "away_goals": 2,
+   "away_team": "Racing Santander",
+   "competition": "la_liga",
+   "date": "2026-11-07",
+   "home_goals": 1,
+   "home_team": "Málaga",
+   "kickoff_utc": "2026-11-07T13:00:00Z",
+   "match_id": "fdorg:564744",
+   "recorded_at": "2026-11-08T07:56:29Z",
+   "season": "2026-27"
+  },
   "la_liga|2026-27|Málaga|Real Sociedad": {
    "away_goals": 5,
    "away_team": "Real Sociedad",
@@ -1606,6 +1690,18 @@
    "kickoff_utc": "2026-09-17T19:30:00Z",
    "match_id": "fdorg:564683",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "la_liga|2026-27|Osasuna|Athletic Bilbao": {
+   "away_goals": 1,
+   "away_team": "Athletic Bilbao",
+   "competition": "la_liga",
+   "date": "2026-11-07",
+   "home_goals": 1,
+   "home_team": "Osasuna",
+   "kickoff_utc": "2026-11-07T17:30:00Z",
+   "match_id": "fdorg:564739",
+   "recorded_at": "2026-11-08T07:56:29Z",
    "season": "2026-27"
   },
   "la_liga|2026-27|Osasuna|Espanyol": {
@@ -2112,6 +2208,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "la_liga|2026-27|Valencia|Real Madrid": {
+   "away_goals": 3,
+   "away_team": "Real Madrid",
+   "competition": "la_liga",
+   "date": "2026-11-07",
+   "home_goals": 0,
+   "home_team": "Valencia",
+   "kickoff_utc": "2026-11-07T20:00:00Z",
+   "match_id": "fdorg:564741",
+   "recorded_at": "2026-11-08T07:56:29Z",
+   "season": "2026-27"
+  },
   "la_liga|2026-27|Valencia|Real Sociedad": {
    "away_goals": 3,
    "away_team": "Real Sociedad",
@@ -2302,6 +2410,18 @@
    "kickoff_utc": "2026-09-12T18:45:00Z",
    "match_id": "fdorg:559688",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "ligue_1|2026-27|Auxerre|Paris FC": {
+   "away_goals": 1,
+   "away_team": "Paris FC",
+   "competition": "ligue_1",
+   "date": "2026-11-07",
+   "home_goals": 0,
+   "home_team": "Auxerre",
+   "kickoff_utc": "2026-11-07T18:00:00Z",
+   "match_id": "fdorg:559637",
+   "recorded_at": "2026-11-08T07:56:29Z",
    "season": "2026-27"
   },
   "ligue_1|2026-27|Brest|Angers": {
@@ -2952,6 +3072,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "ligue_1|2026-27|Paris Saint-Germain|Troyes": {
+   "away_goals": 0,
+   "away_team": "Troyes",
+   "competition": "ligue_1",
+   "date": "2026-11-07",
+   "home_goals": 1,
+   "home_team": "Paris Saint-Germain",
+   "kickoff_utc": "2026-11-07T20:05:00Z",
+   "match_id": "fdorg:559635",
+   "recorded_at": "2026-11-08T07:56:29Z",
+   "season": "2026-27"
+  },
   "ligue_1|2026-27|Rennes|Auxerre": {
    "away_goals": 1,
    "away_team": "Auxerre",
@@ -3214,6 +3346,18 @@
    "kickoff_utc": "2026-10-24T14:00:00Z",
    "match_id": "fdorg:560616",
    "recorded_at": "2026-10-25T06:48:47Z",
+   "season": "2026-27"
+  },
+  "premier_league|2026-27|Arsenal|Hull City": {
+   "away_goals": 0,
+   "away_team": "Hull City",
+   "competition": "premier_league",
+   "date": "2026-11-07",
+   "home_goals": 1,
+   "home_team": "Arsenal",
+   "kickoff_utc": "2026-11-07T15:00:00Z",
+   "match_id": "fdorg:560640",
+   "recorded_at": "2026-11-08T07:56:29Z",
    "season": "2026-27"
   },
   "premier_league|2026-27|Arsenal|Leeds United": {
@@ -3732,6 +3876,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "premier_league|2026-27|Fulham|Newcastle United": {
+   "away_goals": 1,
+   "away_team": "Newcastle United",
+   "competition": "premier_league",
+   "date": "2026-11-07",
+   "home_goals": 1,
+   "home_team": "Fulham",
+   "kickoff_utc": "2026-11-07T15:00:00Z",
+   "match_id": "fdorg:560633",
+   "recorded_at": "2026-11-08T07:56:29Z",
+   "season": "2026-27"
+  },
   "premier_league|2026-27|Hull City|Aston Villa": {
    "away_goals": 0,
    "away_team": "Aston Villa",
@@ -3886,6 +4042,18 @@
    "kickoff_utc": "2026-09-14T19:00:00Z",
    "match_id": "fdorg:560579",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "premier_league|2026-27|Leeds United|Tottenham Hotspur": {
+   "away_goals": 0,
+   "away_team": "Tottenham Hotspur",
+   "competition": "premier_league",
+   "date": "2026-11-07",
+   "home_goals": 1,
+   "home_team": "Leeds United",
+   "kickoff_utc": "2026-11-07T12:30:00Z",
+   "match_id": "fdorg:560632",
+   "recorded_at": "2026-11-08T07:56:29Z",
    "season": "2026-27"
   },
   "premier_league|2026-27|Liverpool|Arsenal": {
@@ -4150,6 +4318,18 @@
    "kickoff_utc": "2026-08-22T14:00:00Z",
    "match_id": "fdorg:560545",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "premier_league|2026-27|Nottingham Forest|Manchester City": {
+   "away_goals": 1,
+   "away_team": "Manchester City",
+   "competition": "premier_league",
+   "date": "2026-11-07",
+   "home_goals": 3,
+   "home_team": "Nottingham Forest",
+   "kickoff_utc": "2026-11-07T17:30:00Z",
+   "match_id": "fdorg:560641",
+   "recorded_at": "2026-11-08T07:56:29Z",
    "season": "2026-27"
   },
   "premier_league|2026-27|Nottingham Forest|Tottenham Hotspur": {
@@ -4474,6 +4654,18 @@
    "kickoff_utc": "2026-10-24T13:00:00Z",
    "match_id": "fdorg:558560",
    "recorded_at": "2026-10-25T10:06:04Z",
+   "season": "2026-27"
+  },
+  "serie_a|2026-27|Cagliari|Frosinone": {
+   "away_goals": 0,
+   "away_team": "Frosinone",
+   "competition": "serie_a",
+   "date": "2026-11-07",
+   "home_goals": 1,
+   "home_team": "Cagliari",
+   "kickoff_utc": "2026-11-07T14:00:00Z",
+   "match_id": "fdorg:558534",
+   "recorded_at": "2026-11-08T07:56:29Z",
    "season": "2026-27"
   },
   "serie_a|2026-27|Cagliari|Inter Milan": {
@@ -5100,6 +5292,18 @@
    "recorded_at": "2026-10-25T10:06:04Z",
    "season": "2026-27"
   },
+  "serie_a|2026-27|Parma|Bologna": {
+   "away_goals": 2,
+   "away_team": "Bologna",
+   "competition": "serie_a",
+   "date": "2026-11-07",
+   "home_goals": 1,
+   "home_team": "Parma",
+   "kickoff_utc": "2026-11-07T17:00:00Z",
+   "match_id": "fdorg:558535",
+   "recorded_at": "2026-11-08T07:56:29Z",
+   "season": "2026-27"
+  },
   "serie_a|2026-27|Parma|Cagliari": {
    "away_goals": 1,
    "away_team": "Cagliari",
@@ -5220,6 +5424,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "serie_a|2026-27|Roma|Sassuolo": {
+   "away_goals": 0,
+   "away_team": "Sassuolo",
+   "competition": "serie_a",
+   "date": "2026-11-07",
+   "home_goals": 3,
+   "home_team": "Roma",
+   "kickoff_utc": "2026-11-07T19:45:00Z",
+   "match_id": "fdorg:558531",
+   "recorded_at": "2026-11-08T07:56:29Z",
+   "season": "2026-27"
+  },
   "serie_a|2026-27|Sassuolo|AC Milan": {
    "away_goals": 1,
    "away_team": "AC Milan",
@@ -5302,6 +5518,18 @@
    "kickoff_utc": "2026-10-27T19:45:00Z",
    "match_id": "fdorg:558557",
    "recorded_at": "2026-10-28T07:22:27Z",
+   "season": "2026-27"
+  },
+  "serie_a|2026-27|Torino|Lecce": {
+   "away_goals": 1,
+   "away_team": "Lecce",
+   "competition": "serie_a",
+   "date": "2026-11-07",
+   "home_goals": 1,
+   "home_team": "Torino",
+   "kickoff_utc": "2026-11-07T14:00:00Z",
+   "match_id": "fdorg:558532",
+   "recorded_at": "2026-11-08T07:56:29Z",
    "season": "2026-27"
   },
   "serie_a|2026-27|Torino|Monza": {
