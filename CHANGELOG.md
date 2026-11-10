@@ -4,6 +4,25 @@ What changed and why, newest first. How things work today is in the
 [README](README.md) and [docs/](docs/); the detail of each change is in its
 commit and pull request.
 
+## 10 Nov 2026
+
+- **The home page says what its percentages mean** (branch `home-intro`, PR 1
+  of the UI audit in `docs/design/ui-audit.md`). The heading now says what
+  the site is, the lede says what a season chance is (left out if the leagues
+  use different numbers of simulated seasons), and a link leads to How to read
+  the numbers. Each home-page percentage was traced in the code: the league
+  cards and the Your team card's chances come from the simulated seasons
+  (`zones` in the snapshot), and the next match's home, draw and away come
+  from the match model (`probabilities`), so the sentence covers season
+  chances only.
+- **The track record line is in plain words and gives both comparisons.** It
+  was only against base rates, in log loss. It now says how the model did
+  against league-average forecasts and against bookmakers' odds, on the home
+  page and in the track record page's So far box. Below `matches_needed` it
+  says too few to judge, and the bookmakers' half is left out until that
+  comparison has a result. The differences and intervals stay in the track
+  record page's tables.
+
 ## 26 Oct 2026, evening
 
 - **Page crossfade test checks what the site guarantees** (branch
