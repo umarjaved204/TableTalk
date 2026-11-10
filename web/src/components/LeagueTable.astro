@@ -29,6 +29,11 @@ const firstZone = zones[0]?.id;
 ---
 
 <div class="league-table" data-league-table>
+  <!-- What a chance is, before the numbers (the key to the markers is under the table). -->
+  <p class="intro">
+    <strong>Chances</strong> are the share of simulated seasons that end in that zone. “&lt;1%” means under
+    half a percent: rare or never in the simulations, which is not the same as impossible.
+  </p>
   <!-- Needs JavaScript: shown by CSS when the page has it (data-js). -->
   <div class="controls" data-controls>
     <fieldset class="view">
@@ -155,10 +160,6 @@ const firstZone = zones[0]?.id;
       <strong>Proj. pts</strong>: average final points across {simulations} simulated seasons.{" "}
       <strong>Range</strong>: 80% of simulated seasons end between these totals.
     </p>
-    <p>
-      <strong>Chances</strong> are the share of simulated seasons that end in that zone. “&lt;1%” means under
-      half a percent: rare or never in the simulations, which is not the same as impossible.
-    </p>
     {deductions.length > 0 && (
       <p id="deductions">
         * Points include a deduction or restoration:{" "}
@@ -187,6 +188,16 @@ const firstZone = zones[0]?.id;
        the screen edge on narrow phones. */
     grid-template-columns: minmax(0, 1fr);
     min-width: 0;
+  }
+
+  /* Explanations are body size: they matter more than the small print. */
+  .intro {
+    padding: var(--space-3) var(--space-4);
+    color: var(--text-muted);
+  }
+
+  .intro strong {
+    color: var(--text);
   }
 
   /* Hidden without JavaScript (the switch and picker can't work without it). */
@@ -447,7 +458,6 @@ const firstZone = zones[0]?.id;
     display: grid;
     gap: var(--space-2);
     padding: var(--space-3) var(--space-4);
-    font-size: var(--step--1);
     color: var(--text-muted);
   }
 
