@@ -52,6 +52,7 @@ export default defineConfig(
         findTeam: "readonly",
         favouriteCss: "readonly",
         staleCss: "readonly",
+        staleNote: "readonly",
       },
     },
   },

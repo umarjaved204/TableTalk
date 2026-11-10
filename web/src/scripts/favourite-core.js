@@ -196,30 +196,36 @@ export function ageText(hours) {
 }
 
 /**
+ * The words added after an out-of-date "Updated" line, as real text:
+ * " (2 days ago): these numbers may be out of date", or "" while the numbers
+ * are fresh or `iso` isn't an ISO time. Added by fillAll (favourite-head.js)
+ * from the one-line script after each line, before the first paint.
+ */
+export function staleNote(iso, now) {
+  if (typeof iso !== "string" || !ISO_RE.test(iso)) return "";
+  var hours = (now - Date.parse(iso)) / 3600000;
+  return hours > STALE_HOURS ? " (" + ageText(hours) + "): these numbers may be out of date" : "";
+}
+
+/**
  * One CSS rule per update time (UTC) older than STALE_HOURS at `now` (ms),
  * for every element carrying it as data-generated (UpdatedStamp, the home
  * page's "Last update"). The rule only sets custom properties; the
- * components' CSS uses them to style the line as a warning and to add
- * " (2 days ago): these numbers may be out of date" after it.
+ * components' CSS uses them to style the line as a warning (and to show it
+ * on a home card). The words themselves are real text (staleNote).
  */
 export function staleCss(updated, now) {
   return (updated || [])
     .filter(function (iso) {
-      return typeof iso === "string" && ISO_RE.test(iso);
+      return staleNote(iso, now) !== "";
     })
     .map(function (iso) {
-      var hours = (now - Date.parse(iso)) / 3600000;
-      if (!(hours > STALE_HOURS)) return "";
       return (
         '[data-generated="' +
         iso +
         '"]{--stale-show:block;--stale-bg:var(--warn-bg);--stale-fg:var(--warn-text);' +
-        "--stale-weight:600;--stale-pad:var(--space-2);" +
-        '--stale-note:" (' +
-        ageText(hours) +
-        '): these numbers may be out of date"}'
+        "--stale-weight:600;--stale-pad:var(--space-2)}"
       );
     })
-    .filter(Boolean)
     .join("\n");
 }

@@ -15,6 +15,7 @@ import {
   STALE_HOURS,
   ageText,
   staleCss,
+  staleNote,
 } from "../../src/scripts/favourite-core.js";
 import { STALE_AFTER_HOURS, formatAge } from "../../src/format/time.ts";
 
@@ -212,12 +213,21 @@ describe("out-of-date numbers, flagged before the first paint (staleCss)", () =>
     expect(staleCss([made], at(30.1))).toContain(`[data-generated="${made}"]`);
   });
 
-  it("the rule shows the warning and says how old the numbers are", () => {
+  it("the rule only styles the warning; its words are real text (staleNote)", () => {
     const css = staleCss([made, "2026-09-29T17:56:40Z"], at(52));
     expect(css).toBe(
       `[data-generated="${made}"]{--stale-show:block;--stale-bg:var(--warn-bg);--stale-fg:var(--warn-text);` +
-        `--stale-weight:600;--stale-pad:var(--space-2);--stale-note:" (2 days ago): these numbers may be out of date"}`,
+        `--stale-weight:600;--stale-pad:var(--space-2)}`,
     );
+    expect(css).not.toContain("content");
+  });
+
+  it("the words say how old the numbers are, and nothing while they are fresh", () => {
+    expect(staleNote(made, at(52))).toBe(" (2 days ago): these numbers may be out of date");
+    expect(staleNote(made, at(36))).toBe(" (36 hours ago): these numbers may be out of date");
+    expect(staleNote(made, at(30))).toBe("");
+    expect(staleNote("not a time", at(100))).toBe("");
+    expect(staleNote(null, at(100))).toBe("");
   });
 
   it("ignores anything that isn't an ISO time (it goes into a CSS selector)", () => {

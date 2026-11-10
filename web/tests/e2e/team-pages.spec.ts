@@ -125,7 +125,7 @@ test("too early, provisional and older numbers (Ligue 1)", async ({ page }) => {
 });
 
 for (const [path, name, message] of [
-  ["/la-liga/atletico-madrid/", "Atlético Madrid", "We don't have a forecast for La Liga right now"],
+  ["/la-liga/atletico-madrid/", "Atlético Madrid", "No forecast for La Liga right now"],
   ["/serie-a/inter-milan/", "Inter Milan", "This league's numbers are hidden"],
 ] as const) {
   test(`${path}: the page exists without numbers, and says why`, async ({ page }) => {

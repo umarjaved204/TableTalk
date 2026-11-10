@@ -75,16 +75,13 @@ test("out-of-date numbers: the warning is there from the first paint (Ligue 1, p
   await page.setViewportSize({ width: 390, height: 900 });
   const { total, moved } = await shiftDuringLoad(page, "/ligue-1/");
   expect(total, moved.join("; ")).toBeLessThan(MAX_SHIFT);
+  // The warning is real text: in the page's text and in what a screen reader
+  // reads, not CSS generated content.
   const line = page.locator("[data-stale-message]").first();
-  expect(await line.evaluate((el) => getComputedStyle(el, "::after").content)).toBe(
-    '" (2 days ago): these numbers may be out of date"',
-  );
+  await expect(line).toContainText("(2 days ago): these numbers may be out of date");
+  expect(await line.ariaSnapshot()).toContain("(2 days ago): these numbers may be out of date");
+  expect(await line.evaluate((el) => getComputedStyle(el, "::after").content)).toBe("none");
   // Fresh leagues get no warning.
   await page.goto("/premier-league/", { waitUntil: "networkidle" });
-  expect(
-    await page
-      .locator("[data-stale-message]")
-      .first()
-      .evaluate((el) => getComputedStyle(el, "::after").content),
-  ).toBe("none");
+  await expect(page.locator("[data-stale-message]").first()).not.toContainText("out of date");
 });
