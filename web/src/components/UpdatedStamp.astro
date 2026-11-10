@@ -3,6 +3,7 @@
 // rewrites the time in the visitor's zone. If the numbers are older than 30
 // hours, the first line is a warning from the first paint (see the CSS).
 import { formatDateTime, formatShortDate } from "../format/time.ts";
+import { FILL_SCRIPT } from "../scripts/theme-script.ts";
 
 interface Props {
   generatedAt: string;
@@ -13,17 +14,29 @@ interface Props {
   /** Home page cards: hide the "Updated" line unless the numbers are stale
    *  (the page already says when the last update was). */
   compact?: boolean;
+  /** Home page cards: false when the page's own "Last update" has the same
+   *  time, so an out-of-date warning is said once, at the top. */
+  staleWarning?: boolean;
 }
-const { generatedAt, dataThrough, runStatus, resultsComplete = null, compact = false } = Astro.props;
+const {
+  generatedAt,
+  dataThrough,
+  runStatus,
+  resultsComplete = null,
+  compact = false,
+  staleWarning = true,
+} = Astro.props;
 ---
 
 <div class:list={["stamp", { compact }]} data-generated={generatedAt}>
-  <p class="line" data-stale-message>
-    Updated{" "}
-    <time datetime={generatedAt} data-format="datetime">
-      {formatDateTime(generatedAt, "UTC")} UTC
-    </time>
-  </p>
+  {(!compact || staleWarning) && (
+    <p class="line" data-stale-message>
+      Updated{" "}
+      <time datetime={generatedAt} data-format="datetime">
+        {formatDateTime(generatedAt, "UTC")} UTC
+      </time>
+    </p>
+  )}
   <p class="line">
     {dataThrough ? <>Results up to {formatShortDate(dataThrough)}</> : <>No results yet this season</>}
   </p>
@@ -32,11 +45,12 @@ const { generatedAt, dataThrough, runStatus, resultsComplete = null, compact = f
   )}
   {runStatus === "kept_previous" && (
     <p class="warn">
-      Last night's update failed for this league, so these are the most recent numbers we have.
+      Last night's update failed for this league, so these are the most recent numbers available.
     </p>
   )}
 </div>
-
+<!-- Adds the out-of-date warning's words, if any, before the first paint. -->
+<script is:inline set:html={FILL_SCRIPT} />
 <script>
   import "../scripts/local-times.ts";
 </script>
@@ -64,19 +78,16 @@ const { generatedAt, dataThrough, runStatus, resultsComplete = null, compact = f
 
   /* Out of date (older than 30 hours): decided before the first paint by the
      early script, which sets these custom properties on this element
-     (staleCss in src/scripts/favourite-core.js). The line becomes a warning
-     and "(2 days ago): these numbers may be out of date" is added after it,
-     so it is in place from the first frame and nothing moves later. */
+     (staleCss in src/scripts/favourite-core.js). The line becomes a warning,
+     and the one-line fill script after it adds " (2 days ago): these numbers
+     may be out of date" as real text (staleNote), so screen readers read it.
+     Both happen before the first paint, so nothing moves later. */
   [data-stale-message] {
     padding: 0 var(--stale-pad, 0);
     border-radius: var(--radius-1);
     background: var(--stale-bg, transparent);
     color: var(--stale-fg, inherit);
     font-weight: var(--stale-weight, inherit);
-  }
-
-  [data-stale-message]::after {
-    content: var(--stale-note, none);
   }
 
   .note {

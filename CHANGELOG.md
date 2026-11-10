@@ -4,6 +4,24 @@ What changed and why, newest first. How things work today is in the
 [README](README.md) and [docs/](docs/); the detail of each change is in its
 commit and pull request.
 
+## 11 Nov 2026
+
+- **The out-of-date warning is real text, and said once** (branch
+  `calmer-warnings`, PR 3 of the UI audit, finding 9). The words "(2 days
+  ago): these numbers may be out of date" were CSS generated content, which
+  screen readers don't reliably read and which can't be copied. They are now
+  text, added by the same one-line fill script that places the Your team
+  card, still before the first paint, so nothing moves. On the home page the
+  warning was repeated on every league card (six times when the numbers were
+  old); it is now shown once at the top, and on a card only when that
+  league's numbers are from a different update.
+- **Plainer failure messages.** When a league has no forecast, the home card
+  and the league page say so in the visitor's words, add that updates run
+  every night, and no longer show the data format version or the update's
+  raw error (it stays in the published run report). A league card without
+  numbers links only to the league's page. The kept-previous warning no
+  longer says "we".
+
 ## 10 Nov 2026, later
 
 - **Explanations come first and are readable** (branch `explain-first`, PR 2

@@ -1,5 +1,7 @@
 ---
-// What a league page shows instead of numbers when it has none to show.
+// What a league page shows instead of numbers when it has none to show, in
+// the visitor's words. The update's own error message is for the site's
+// owner: it stays in the published run report, not on the page.
 import type { UnavailableLeague, UnsupportedLeague } from "../data/models.ts";
 import Notice from "./Notice.astro";
 
@@ -13,16 +15,17 @@ const name = data.league.name;
 {data.state === "unsupported" ? (
   <Notice title="This league's numbers are hidden" tone="warn">
     <p>
-      Its data is in a newer format (contract {data.found ?? "unknown"}) than this site understands, so the
-      numbers are hidden rather than shown wrongly. The site will be updated to read it.
+      Its latest numbers are in a newer format than this site can read, so they are hidden rather than shown
+      wrongly. The site will be updated to read them.
     </p>
   </Notice>
 ) : (
-  <Notice title={`We don't have a forecast for ${name} right now`} tone="warn">
-    {data.reason === "no_snapshot" && <p>The last update couldn't produce one.</p>}
-    {data.reason === "missing" && <p>The forecast file is missing from the published data.</p>}
-    {data.reason === "invalid" && <p>The published forecast file couldn't be read, so it isn't shown.</p>}
-    <p>The other leagues are not affected.</p>
-    {data.error && <p>Reason recorded by the update: {data.error}</p>}
+  <Notice title={`No forecast for ${name} right now`} tone="warn">
+    <p>
+      {data.reason === "no_snapshot"
+        ? "Last night's update didn't produce one."
+        : "Its forecast couldn't be loaded, so it isn't shown."}
+    </p>
+    <p>The other leagues are not affected. Updates run every night.</p>
   </Notice>
 )}

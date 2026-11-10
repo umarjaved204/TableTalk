@@ -51,9 +51,11 @@
   }
 
   // Out-of-date numbers, decided now, before the first paint (staleCss).
+  // One clock reading, so the warning's style and its words always agree.
+  var NOW = Date.now();
   try {
     var staleSheet = new CSSStyleSheet();
-    staleSheet.replaceSync(staleCss(DATA.updated, Date.now()));
+    staleSheet.replaceSync(staleCss(DATA.updated, NOW));
     document.adoptedStyleSheets = document.adoptedStyleSheets.concat([staleSheet]);
   } catch {
     // Without constructed stylesheets the warning simply isn't shown.
@@ -273,6 +275,15 @@
     fillAll: function () {
       document.querySelectorAll("[data-fav-slot]").forEach(function (slot) {
         if (slots.indexOf(slot) === -1) fill(slot);
+      });
+      // Out-of-date "Updated" lines: the warning's words as real text, so
+      // screen readers read them and they can be copied (staleNote). Set as
+      // text, never as HTML.
+      document.querySelectorAll("[data-stale-message]:not([data-stale-filled])").forEach(function (line) {
+        line.setAttribute("data-stale-filled", "");
+        var stamp = line.closest("[data-generated]");
+        var note = stamp ? staleNote(stamp.getAttribute("data-generated"), NOW) : "";
+        if (note) line.appendChild(document.createTextNode(note));
       });
     },
   };

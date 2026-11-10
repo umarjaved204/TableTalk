@@ -460,10 +460,13 @@ Measured with Lighthouse on a simulated slow phone (layout shift was 0.12 to
   line height (`size-adjust` and the `-override` properties in
   `src/styles/fonts.css`, measured by `scripts/font-fallback-metrics.mjs`), so
   a page shown in it looks almost the same.
-- **The out-of-date warning.** Numbers older than 30 hours are flagged by the
-  early script before the first paint (`staleCss` in
-  `src/scripts/favourite-core.js`): one CSS rule styles that "Updated" line as
-  a warning and adds "(2 days ago): these numbers may be out of date". It was
+- **The out-of-date warning.** Numbers older than 30 hours are flagged
+  before the first paint: one CSS rule from the early script (`staleCss` in
+  `src/scripts/favourite-core.js`) styles that "Updated" line as a warning,
+  and the one-line fill script after the line adds "(2 days ago): these
+  numbers may be out of date" as real text (`staleNote`), so screen readers
+  read it. On the home page it is said once, at the top; a league card
+  repeats it only when its numbers are from a different update. It was once
   text rewritten after load, which pushed the page down on phones.
   `tests/e2e/layout-shift.spec.ts` checks both with every font 1.5 s late.
 - **Controls appearing late.** The phone tabs and the table's Short/Full

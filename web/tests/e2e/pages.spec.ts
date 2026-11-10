@@ -199,10 +199,15 @@ test.describe("home page", () => {
 
   test("each data state has its own message", async ({ page }) => {
     await openAs(page, "/", LIGHT, 1440);
-    await expect(page.locator('[data-league-card="la_liga"]')).toContainText(
-      "its published file couldn't be read",
-    );
-    await expect(page.locator('[data-league-card="serie_a"]')).toContainText("Numbers hidden");
+    const laLiga = page.locator('[data-league-card="la_liga"]');
+    await expect(laLiga).toContainText("No forecast right now: its forecast couldn't be loaded.");
+    await expect(laLiga).toContainText("Updates run every night.");
+    // No table or matches to show: one link, to the league's page.
+    await expect(laLiga.getByRole("link")).toHaveCount(2); // the league name and "La Liga page"
+    await expect(laLiga.getByRole("link", { name: "La Liga page" })).toHaveAttribute("href", "/la-liga/");
+    await expect(page.locator('[data-league-card="serie_a"]')).toContainText("No forecast shown");
+    // Nothing in the site's own terms.
+    await expect(page.locator("main")).not.toContainText(/contract|published file/i);
     const ligue1 = page.locator('[data-league-card="ligue_1"]');
     await expect(ligue1).toContainText("Provisional");
     await expect(ligue1).toContainText("Last night's update failed for this league");
@@ -225,20 +230,20 @@ test.describe("home page", () => {
     await expect(page.locator("main")).not.toContainText("Some results are not in yet");
   });
 
-  test("stale: more than 30 hours after the update, the page says so", async ({ page }) => {
+  test("stale: more than 30 hours after the update, the page says so once, in its text", async ({ page }) => {
     await page.clock.setFixedTime(new Date("2026-10-01T06:00:00Z")); // 36 hours after
     await openAs(page, "/", LIGHT, 1440);
-    // The warning is CSS set before the first paint (staleCss): the line's
-    // ::after text, and the line shown on the home cards.
-    const note = (selector: string) =>
-      page.locator(selector).evaluate((el) => getComputedStyle(el, "::after").content);
-    expect(await note(".facts [data-stale-message]")).toBe(
-      '" (36 hours ago): these numbers may be out of date"',
+    // Real text, added before the first paint (staleNote, filled by fillAll).
+    await expect(page.locator(".facts [data-stale-message]")).toHaveText(
+      /^Last update .+ \(36 hours ago\): these numbers may be out of date$/,
     );
-    const card = page.locator('[data-league-card="premier_league"] [data-stale-message]');
-    await expect(card).toBeVisible();
-    await expect(card).toContainText("Updated");
-    expect(await note('[data-league-card="premier_league"] [data-stale-message]')).toContain("36 hours ago");
+    // A card with the page's own update time doesn't repeat it...
+    await expect(page.locator('[data-league-card="premier_league"] [data-stale-message]')).toHaveCount(0);
+    // ...a card whose numbers are older (Ligue 1 kept the night before's) says its own age.
+    const ligue1 = page.locator('[data-league-card="ligue_1"] [data-stale-message]');
+    await expect(ligue1).toBeVisible();
+    await expect(ligue1).toContainText("these numbers may be out of date");
+    await expect(page.locator("main").getByText("these numbers may be out of date")).toHaveCount(2);
   });
 
   test("not stale at FIXTURE_NOW", async ({ page }) => {
@@ -301,13 +306,16 @@ test.describe("how the race has moved", () => {
 test.describe("data states on league pages", () => {
   test("La Liga: unavailable (its file couldn't be read)", async ({ page }) => {
     await openAs(page, "/la-liga/", LIGHT, 1440);
-    await expect(page.locator("main")).toContainText("The published forecast file couldn't be read");
+    await expect(page.locator("main")).toContainText("No forecast for La Liga right now");
+    await expect(page.locator("main")).toContainText("Its forecast couldn't be loaded, so it isn't shown.");
+    await expect(page.locator("main")).not.toContainText(/contract|Reason recorded|published/i);
   });
 
   test("Serie A: numbers hidden (newer format), on both pages", async ({ page }) => {
     for (const path of ["/serie-a/", "/serie-a/matches/"]) {
       await openAs(page, path, LIGHT, 1440);
       await expect(page.locator("main")).toContainText("This league's numbers are hidden");
+      await expect(page.locator("main")).not.toContainText(/contract/i);
       await expect(page.locator("[data-match]")).toHaveCount(0);
     }
   });

@@ -19,8 +19,11 @@ import UpdatedStamp from "./UpdatedStamp.astro";
 
 interface Props {
   data: LeagueData;
+  /** The home page's own "Last update" time: a card with the same time
+   *  leaves the out-of-date warning to the top of the page. */
+  pageUpdated?: string | null;
 }
-const { data } = Astro.props;
+const { data, pageUpdated = null } = Astro.props;
 const { league } = data;
 const values = data.state === "ready" ? cardValues(data) : null;
 
@@ -76,24 +79,34 @@ const length = (chance: number) => Math.round(chance * 1000) / 10;
         runStatus={data.runStatus}
         resultsComplete={data.resultsComplete}
         compact
+        staleWarning={data.generatedAt !== pageUpdated}
       />
     </>
   ) : data.state === "unsupported" ? (
-    <p class="flag">Numbers hidden: the data is in a newer format than this site understands.</p>
+    <p class="flag">
+      No forecast shown: this league's latest numbers are in a format the site can't read yet.
+    </p>
   ) : (
     <p class="flag">
       No forecast right now:{" "}
       {data.reason === "no_snapshot"
-        ? "the last update couldn't produce one."
-        : data.reason === "missing"
-          ? "its file is missing from the published data."
-          : "its published file couldn't be read."}
+        ? "last night's update didn't produce one."
+        : "its forecast couldn't be loaded."}{" "}
+      Updates run every night.
     </p>
   )}
 
+  {/* Without numbers there is no table or matches to show: one link, to the
+      league's page, which says why and lists its teams. */}
   <p class="links">
-    <a href={`/${league.slug}/`}>Table and chances</a>
-    <a href={`/${league.slug}/matches/`}>Matches</a>
+    {data.state === "ready" ? (
+      <>
+        <a href={`/${league.slug}/`}>Table and chances</a>
+        <a href={`/${league.slug}/matches/`}>Matches</a>
+      </>
+    ) : (
+      <a href={`/${league.slug}/`}>{league.name} page</a>
+    )}
   </p>
 </article>
 
