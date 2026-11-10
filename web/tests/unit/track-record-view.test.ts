@@ -112,7 +112,7 @@ describe("comparison wording", () => {
 
   it("the home page line for the mature fixture", () => {
     expect(trackRecordLine(asSummary(matureSummary()))).toBe(
-      "183 matches scored. Against base rates: model better (log loss difference −0.072 ± 0.044).",
+      "183 matches scored. Compared with league-average forecasts: model better. Compared with bookmakers' odds: too few to judge so far.",
     );
   });
 });

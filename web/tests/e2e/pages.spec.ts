@@ -161,12 +161,22 @@ test.describe("home page", () => {
     expect(await animation()).not.toBe("none");
   });
 
-  test("last update, simulations and the track record line, linking to its page", async ({ page }) => {
+  test("the heading and lede say what the site is and what a season chance means", async ({ page }) => {
+    await openAs(page, "/", LIGHT, 1440);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Season forecasts for five leagues");
+    await expect(page.locator(".lede")).toHaveText(
+      "Season chances are the share of 10,000 simulated seasons that ended that way. Updated every night.",
+    );
+    await page.getByRole("link", { name: "How to read the numbers" }).click();
+    await expect(page).toHaveURL(/\/methodology\/#reading$/);
+    await expect(page.getByRole("heading", { name: "5. How to read the numbers" })).toBeInViewport();
+  });
+
+  test("last update and the track record line, linking to its page", async ({ page }) => {
     await openAs(page, "/", LIGHT, 1440);
     await expect(page.locator(".facts")).toContainText("Last update 29 Sept, 18:56");
-    await expect(page.locator(".facts")).toContainText("10,000 simulated seasons per league");
     await expect(page.locator(".track-record")).toContainText(
-      "183 matches scored. Against base rates: model better (log loss difference −0.072 ± 0.044).",
+      "183 matches scored. Compared with league-average forecasts: model better. Compared with bookmakers' odds: too few to judge so far.",
     );
     await page.getByRole("link", { name: "How the predictions have done" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Track record");

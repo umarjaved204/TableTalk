@@ -7,6 +7,7 @@ import LeagueCard from "../components/LeagueCard.astro";
 import YourTeamCard from "../components/YourTeamCard.astro";
 import { loadTeamIndex } from "../data/teams.ts";
 import { cardFields, yourTeamCards } from "../data/your-team.ts";
+import { seasonChancesSentence } from "../data/home.ts";
 import { scriptJson } from "../scripts/theme-script.ts";
 import Notice from "../components/Notice.astro";
 import { loadIndex, loadLeague } from "../data/league.ts";
@@ -20,12 +21,11 @@ const index = loadIndex();
 const leagues = LEAGUES.map(loadLeague);
 const summary = loadSummary();
 
-// "10,000 simulated seasons per league", when every league uses the same number.
-const counts = [...new Set(leagues.flatMap((l) => (l.state === "ready" ? [l.nSimulations] : [])))];
-const simulations =
-  counts.length === 1 && counts[0] !== undefined
-    ? `${new Intl.NumberFormat("en-GB").format(counts[0])} simulated seasons per league`
-    : null;
+// What a season chance means. Season chances only: the "Your team" card's
+// next-match chances come from the match model, not from simulated seasons.
+const seasonChances = seasonChancesSentence(
+  leagues.flatMap((l) => (l.state === "ready" ? [l.nSimulations] : [])),
+);
 const lastUpdate = "index" in index ? index.index.generated_at : null;
 
 // The "Your team" card: one template, and every team's values as data
@@ -52,8 +52,8 @@ const cardData = scriptJson(
 >
   <div class="container page">
     <header class="intro">
-      <h1>TableTalk</h1>
-      <p class="lede">Football season forecasts for five leagues, updated every night.</p>
+      <h1>Season forecasts for five leagues</h1>
+      <p class="lede">{seasonChances && `${seasonChances} `}Updated every night.</p>
       <p class="facts" data-generated={lastUpdate ?? undefined}>
         {lastUpdate && (
           <span data-stale-message>
@@ -63,7 +63,7 @@ const cardData = scriptJson(
             </time>
           </span>
         )}
-        {simulations && <span>{simulations}</span>}
+        <a href="/methodology/#reading">How to read the numbers</a>
       </p>
       <!-- Decorative: a faint pitch beside the intro, drawn once per visit. -->
       <svg class="pitch" viewBox="0 0 400 260" width="176" height="114" aria-hidden="true" focusable="false">
@@ -524,6 +524,7 @@ const cardData = scriptJson(
     background: var(--surface);
   }
 
+  .facts a,
   .track-record a {
     display: inline-flex;
     align-items: center;

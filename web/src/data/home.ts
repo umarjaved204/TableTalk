@@ -34,6 +34,19 @@ export function zoneLeaders(rows: TeamRow[], zone: Zone | undefined, count = RAC
     .map((row) => ({ team: row.team, chance: chance(row), zone }));
 }
 
+/**
+ * "Season chances are the share of 10,000 simulated seasons that ended that
+ * way.", or null when the leagues don't all use the same number of simulated
+ * seasons (or none has a forecast). It describes season chances only: a
+ * match's home, draw and away chances come from the match model.
+ */
+export function seasonChancesSentence(simulationCounts: number[]): string | null {
+  const counts = [...new Set(simulationCounts)];
+  if (counts.length !== 1 || counts[0] === undefined) return null;
+  const seasons = new Intl.NumberFormat("en-GB").format(counts[0]);
+  return `Season chances are the share of ${seasons} simulated seasons that ended that way.`;
+}
+
 export function cardValues(league: ReadyLeague): CardValues {
   const zone = (id: string) => league.zones.find((z) => z.id === id);
   return {

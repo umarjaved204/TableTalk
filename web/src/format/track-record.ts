@@ -3,7 +3,8 @@
 //
 // Wording rule: a difference is quoted as "difference ± 95% interval". If the
 // interval includes zero it is "no detectable difference", whatever else is
-// said. Never "beats".
+// said. Never "beats". The one-line summary gives only the verdicts, in plain
+// words; the differences and intervals are in the track record page's tables.
 import type { TrackRecordSummary } from "../data/contract.gen.ts";
 import type { ComparisonView } from "../data/track-record-view.ts";
 import { LOCALE } from "./time.ts";
@@ -68,21 +69,35 @@ function matches(n: number): string {
   return n === 1 ? "1 match" : `${whole.format(n)} matches`;
 }
 
+type RawComparison = TrackRecordSummary["competitions"][number]["comparisons"][number];
+
+/** False until a comparison has a difference and an interval to judge. */
+function hasResult(c: RawComparison): boolean {
+  return c.diff !== null && c.ci95 !== null && c.verdict !== "too few matches to compare";
+}
+
+/** The verdict in the summary line: below `matches_needed`, the sample can't judge. */
+function plainVerdict(c: RawComparison): string {
+  const enough = c.matches_needed !== null && c.n >= c.matches_needed;
+  return enough ? displayVerdict(c) : "too few to judge so far";
+}
+
 /**
- * One sentence about the live track record, from summary.json:
+ * The live track record in plain words, from summary.json:
  *   - nothing scored yet: "No matches scored yet."
  *   - too few to compare: "3 matches scored: too few to compare yet."
- *   - otherwise, against base rates: "120 matches scored. Against base rates:
- *     no detectable difference (log loss difference −0.004 ± 0.020)."
+ *   - otherwise: "144 matches scored. Compared with league-average forecasts:
+ *     model better. Compared with bookmakers' odds: too few to judge so far."
+ * The bookmakers' half is left out until that comparison has a result.
  */
 export function trackRecordLine(summary: TrackRecordSummary): string {
   const all = summary.competitions.find((c) => c.id === "all");
   const base = all?.comparisons.find((c) => c.against === "base rates");
+  const market = all?.comparisons.find((c) => c.against === "market");
   const scored = summary.counts.scored;
   if (scored === 0 || !base) return "No matches scored yet.";
-  if (base.diff === null || base.ci95 === null || base.verdict === "too few matches to compare") {
-    return `${matches(scored)} scored: too few to compare yet.`;
-  }
-  const verdict = displayVerdict(base);
-  return `${matches(scored)} scored. Against base rates: ${verdict} (log loss difference ${formatDifference(base.diff, base.ci95)}).`;
+  if (!hasResult(base)) return `${matches(scored)} scored: too few to compare yet.`;
+  const marketPart =
+    market && hasResult(market) ? ` Compared with bookmakers' odds: ${plainVerdict(market)}.` : "";
+  return `${matches(scored)} scored. Compared with league-average forecasts: ${plainVerdict(base)}.${marketPart}`;
 }
