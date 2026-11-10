@@ -8,6 +8,21 @@ test.describe("a team page with numbers (Premier League, with history)", () => {
     await page.goto("/premier-league/brentford/", { waitUntil: "networkidle" });
   });
 
+  test("explanations are body size", async ({ page }) => {
+    for (const selector of [
+      'section[aria-labelledby="now-heading"] .note',
+      "figure.finishing .intro",
+      "figure.finishing .key",
+      ".match-key",
+    ]) {
+      const size = await page
+        .locator(selector)
+        .first()
+        .evaluate((el) => getComputedStyle(el).fontSize);
+      expect(size, selector).toBe("16px");
+    }
+  });
+
   test("title, description and Open Graph are the team's", async ({ page }) => {
     await expect(page).toHaveTitle("Brentford 2026-27 predictions · TableTalk");
     const meta = (selector: string) => page.locator(selector).getAttribute("content");

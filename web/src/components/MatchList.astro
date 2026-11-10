@@ -14,6 +14,9 @@ interface Props {
 }
 const { matches, headingLevel = 3 } = Astro.props;
 const Heading = `h${headingLevel}` as "h3" | "h4";
+// The tick on a card marks the result that happened, so it is explained only
+// in a list that has a played match.
+const anyPlayed = matches.some((match) => match.status.kind === "played");
 
 const groups = new Map<string, MatchView[]>();
 for (const match of matches) {
@@ -22,6 +25,12 @@ for (const match of matches) {
 }
 ---
 
+<!-- A key to the cards, once per list. Static text, so it never moves anything. -->
+<p class="match-key">
+  Home, Draw and Away are the chance of each result. Most likely is the single likeliest score, which can be a
+  draw even when one team is favoured.
+  {anyPlayed && " ✓ marks what happened."}
+</p>
 <!-- Two lines on purpose: the browser rewrites "UTC" as "your time zone (BST)",
      and a single line could then wrap in the narrow match column and push the
      matches down after the page has appeared (layout shift). -->
@@ -56,6 +65,13 @@ for (const match of matches) {
     display: none;
   }
 
+  .match-key {
+    padding: var(--space-3) var(--space-4) 0;
+    color: var(--text-muted);
+  }
+
+  /* The time zone lines stay small: the browser rewrites "UTC" as a longer
+     name, and at body size a long one could wrap after the page appears. */
   .note .line {
     display: block;
   }

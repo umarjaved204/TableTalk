@@ -4,6 +4,22 @@ What changed and why, newest first. How things work today is in the
 [README](README.md) and [docs/](docs/); the detail of each change is in its
 commit and pull request.
 
+## 10 Nov 2026, later
+
+- **Explanations come first and are readable** (branch `explain-first`, PR 2
+  of the UI audit, findings 5 and 6). On a league page, what a chance means
+  is now said above the table instead of under all 20 rows. Explanations
+  that were small print (the table's key, the team page's note, the
+  finishing-position chart's text, the matches page's introductions) are
+  body size; table cells stay small, and the time zone lines under match
+  lists stay small, because the browser rewrites them to a longer name and
+  at body size that could wrap after the page appears.
+- **A key to the match cards.** Each match list now starts with one line:
+  Home, Draw and Away are the chance of each result, and Most likely is the
+  single likeliest score, which can be a draw even when one team is
+  favoured. Where the list has played matches it adds that the tick marks
+  what happened.
+
 ## 10 Nov 2026
 
 - **The home page says what its percentages mean** (branch `home-intro`, PR 1

@@ -3,6 +3,25 @@ import { DARK, hasSidewaysScroll, openAs } from "./helpers.ts";
 
 const PAGE = "/premier-league/";
 
+test("on a phone, what a chance means comes before the table, at body size", async ({ page }) => {
+  await openAs(page, PAGE, DARK, 360);
+  const intro = page.locator("[data-league-table] .intro");
+  await expect(intro).toContainText("Chances are the share of simulated seasons that end in that zone.");
+  const { introBottom, firstRowTop, size } = await page.evaluate(() => {
+    const p = document.querySelector("[data-league-table] .intro")!;
+    const row = document.querySelector("[data-league-table] tbody tr")!;
+    return {
+      introBottom: p.getBoundingClientRect().bottom,
+      firstRowTop: row.getBoundingClientRect().top,
+      size: getComputedStyle(p).fontSize,
+    };
+  });
+  expect(introBottom).toBeLessThanOrEqual(firstRowTop);
+  expect(size).toBe("16px");
+  // Said once: no second copy in the key under the table.
+  await expect(page.locator("[data-league-table] .key")).not.toContainText("Chances are the share");
+});
+
 // The accessibility runs for this page are in a11y-matrix.spec.ts.
 
 test("Barlow Condensed digits are equal width when rendered (tabular figures)", async ({ page }) => {

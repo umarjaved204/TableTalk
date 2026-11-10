@@ -76,6 +76,21 @@ test.describe("matches page: every status (London time, BST)", () => {
     await expect(page.locator("[data-recent-scope]")).toContainText("since 1 Sept, 05:40");
   });
 
+  test("a key to the match cards, once per list; the tick explained where results are shown", async ({
+    page,
+  }) => {
+    const key =
+      "Home, Draw and Away are the chance of each result. Most likely is the single likeliest score, which can be a draw even when one team is favoured.";
+    await expect(page.locator("#upcoming .match-key")).toHaveCount(1);
+    await expect(page.locator("#upcoming .match-key")).toHaveText(key);
+    await expect(page.locator("#recent .match-key")).toHaveCount(1);
+    await expect(page.locator("#recent .match-key")).toHaveText(`${key} ✓ marks what happened.`);
+    for (const selector of ["#upcoming .match-key", "#upcoming .intro"]) {
+      const size = await page.locator(selector).evaluate((el) => getComputedStyle(el).fontSize);
+      expect(size, selector).toBe("16px");
+    }
+  });
+
   test("a note that kick-off times can still change", async ({ page }) => {
     await expect(page.locator("#upcoming .note")).toContainText("Kick-off times can still change.");
   });
