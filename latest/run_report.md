@@ -1,4 +1,4 @@
-# TableTalk update, 2026-11-19T09:29:19Z
+# TableTalk update, 2026-11-20T09:09:34Z
 
 - Bundesliga: updated in 4s; results through 2026-11-08; 225 matches still to play
 - La Liga: updated in 6s; results through 2026-11-08; 261 matches still to play
