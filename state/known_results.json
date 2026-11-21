@@ -108,6 +108,18 @@
    "recorded_at": "2026-11-01T08:07:09Z",
    "season": "2026-27"
   },
+  "bundesliga|2026-27|Bayern Munich|1. FC Köln": {
+   "away_goals": 1,
+   "away_team": "1. FC Köln",
+   "competition": "bundesliga",
+   "date": "2026-11-20",
+   "home_goals": 1,
+   "home_team": "Bayern Munich",
+   "kickoff_utc": "2026-11-20T19:30:00Z",
+   "match_id": "fdorg:565859",
+   "recorded_at": "2026-11-21T08:45:19Z",
+   "season": "2026-27"
+  },
   "bundesliga|2026-27|Bayern Munich|Borussia Dortmund": {
    "away_goals": 2,
    "away_team": "Borussia Dortmund",
@@ -1078,6 +1090,18 @@
    "kickoff_utc": "2026-09-12T16:30:00Z",
    "match_id": "fdorg:564676",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "la_liga|2026-27|Athletic Bilbao|Espanyol": {
+   "away_goals": 1,
+   "away_team": "Espanyol",
+   "competition": "la_liga",
+   "date": "2026-11-20",
+   "home_goals": 0,
+   "home_team": "Athletic Bilbao",
+   "kickoff_utc": "2026-11-20T20:00:00Z",
+   "match_id": "fdorg:564748",
+   "recorded_at": "2026-11-21T08:45:19Z",
    "season": "2026-27"
   },
   "la_liga|2026-27|Athletic Bilbao|Getafe": {
@@ -3418,6 +3442,18 @@
    "kickoff_utc": "2026-10-25T16:15:00Z",
    "match_id": "fdorg:559655",
    "recorded_at": "2026-10-26T11:30:07Z",
+   "season": "2026-27"
+  },
+  "ligue_1|2026-27|Troyes|Le Havre": {
+   "away_goals": 1,
+   "away_team": "Le Havre",
+   "competition": "ligue_1",
+   "date": "2026-11-20",
+   "home_goals": 3,
+   "home_team": "Troyes",
+   "kickoff_utc": "2026-11-20T19:45:00Z",
+   "match_id": "fdorg:559622",
+   "recorded_at": "2026-11-21T08:45:19Z",
    "season": "2026-27"
   },
   "ligue_1|2026-27|Troyes|Le Mans": {
