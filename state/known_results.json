@@ -1824,6 +1824,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "la_liga|2026-27|Levante|Elche": {
+   "away_goals": 1,
+   "away_team": "Elche",
+   "competition": "la_liga",
+   "date": "2026-11-23",
+   "home_goals": 1,
+   "home_team": "Levante",
+   "kickoff_utc": "2026-11-23T20:00:00Z",
+   "match_id": "fdorg:564757",
+   "recorded_at": "2026-11-24T11:36:03Z",
+   "season": "2026-27"
+  },
   "la_liga|2026-27|Levante|Real Betis": {
    "away_goals": 2,
    "away_team": "Real Betis",
@@ -4020,6 +4032,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "premier_league|2026-27|Brentford|Everton": {
+   "away_goals": 0,
+   "away_team": "Everton",
+   "competition": "premier_league",
+   "date": "2026-11-23",
+   "home_goals": 4,
+   "home_team": "Brentford",
+   "kickoff_utc": "2026-11-23T20:00:00Z",
+   "match_id": "fdorg:560649",
+   "recorded_at": "2026-11-24T11:36:03Z",
+   "season": "2026-27"
+  },
   "premier_league|2026-27|Brentford|Liverpool": {
    "away_goals": 2,
    "away_team": "Liverpool",
@@ -5986,6 +6010,18 @@
    "kickoff_utc": "2026-10-19T16:30:00Z",
    "match_id": "fdorg:558576",
    "recorded_at": "2026-10-20T17:50:20Z",
+   "season": "2026-27"
+  },
+  "serie_a|2026-27|Monza|Fiorentina": {
+   "away_goals": 0,
+   "away_team": "Fiorentina",
+   "competition": "serie_a",
+   "date": "2026-11-23",
+   "home_goals": 3,
+   "home_team": "Monza",
+   "kickoff_utc": "2026-11-23T19:45:00Z",
+   "match_id": "fdorg:558519",
+   "recorded_at": "2026-11-24T11:36:03Z",
    "season": "2026-27"
   },
   "serie_a|2026-27|Monza|Napoli": {
