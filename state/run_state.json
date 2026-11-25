@@ -1,6 +1,6 @@
 {
  "date": "2026-11-25",
- "generated_at": "2026-11-25T10:27:09Z",
+ "generated_at": "2026-11-25T13:23:54Z",
  "last_try": false,
  "leagues": {
   "bundesliga": {
@@ -10,8 +10,8 @@
   },
   "la_liga": {
    "missing": [],
-   "results_complete": false,
-   "updated": false
+   "results_complete": true,
+   "updated": true
   },
   "ligue_1": {
    "missing": [],
