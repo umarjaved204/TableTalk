@@ -717,14 +717,22 @@ test.describe("no layout shift", () => {
     // exist, a different font stands in, and this comparison means nothing.
     // So it runs where Arial is installed (locally, before every merge) and
     // is skipped, with a note, where it isn't.
+    // Asked directly: does the fallback face's local() source load here?
+    // (Measuring text in "Arial" is not enough: Linux silently substitutes a
+    // look-alike for that name, but local() needs the real font.)
     await page.goto("/premier-league/");
-    const hasArial = await page.evaluate(() => {
-      const ctx = document.createElement("canvas").getContext("2d")!;
-      const width = (font: string) => {
-        ctx.font = font;
-        return ctx.measureText("mmmmmmmmmmlliiWW").width;
-      };
-      return width("40px Arial, monospace") !== width("40px monospace");
+    const hasArial = await page.evaluate(async () => {
+      const faces = [...document.fonts].filter((f) => f.family.replaceAll('"', "").endsWith(" Fallback"));
+      if (faces.length === 0) return false;
+      const loaded = await Promise.all(
+        faces.map((f) =>
+          f.load().then(
+            () => true,
+            () => false,
+          ),
+        ),
+      );
+      return loaded.every(Boolean);
     });
     test.skip(!hasArial, "Arial is not installed here, so the metric-matched fallback font can't be tested");
     // A late web font must not change how the header wraps, or the whole page would move.
