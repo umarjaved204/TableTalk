@@ -1,33 +1,65 @@
 // The crest review gallery: one standalone HTML page with every crest in the
 // registry, for review before any page uses them (Phase 4 approval).
 //
-//   node scripts/crest-gallery.mjs [--out crest-gallery/index.html] [--status status.html]
+//   node scripts/crest-gallery.mjs [--out crest-gallery/index.html]
+//                                  [--previous snapshot.json] [--status status.html]
+//   node scripts/crest-gallery.mjs --snapshot snapshot.json
 //
-// Written to crest-gallery/ (gitignored): it is a review tool, not part of
-// the site. Every picture is described in words too, so the page can be
-// read as text. It shows:
+// Written to crest-gallery/ (gitignored): a review tool, not part of the
+// site. Self-contained: the site's own fonts are embedded and nothing is
+// loaded from anywhere else. Every picture is also described in words, so
+// the page can be read as text. It shows:
+//   - with --previous, the designs as they were when the snapshot was taken
+//     next to the current ones, for every crest and mark that changed;
 //   - the league marks;
 //   - the crests in a real standings table and real fixture cards (from the
 //     local copy of the data in .data/, if there is one), on a light and a
 //     dark theme;
-//   - clubs whose colours could be confused, side by side at every size;
+//   - clubs whose crests could be confused, side by side at every size;
 //   - each club: its full and small crest on light and dark, the colours,
 //     the heritage behind the design, how close it may look to the official
-//     badge, and the alternatives for any design that may look too close;
+//     badge, and the alternatives;
+//   - the resemblance ratings and the file sizes, in tables;
 //   - the fallback crest that a club with no entry gets.
-// --status inserts an HTML fragment (a review status block) after the title.
+// --snapshot writes the current designs to a file (to compare against after
+// the next round of changes) and stops. --status inserts an HTML fragment
+// (a review status block) after the title.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import { parseArgs } from "node:util";
+import { gzipSync } from "node:zlib";
 import { LEAGUES } from "../src/data/leagues.ts";
 import { teamSlug } from "../src/data/teams.ts";
+import { identityFiles } from "../src/identity/build.ts";
 import { CLUBS } from "../src/identity/clubs/index.ts";
 import { fallbackDesign, renderCrest } from "../src/identity/crest.ts";
 import { LEAGUE_IDENTITIES, leagueMarkDesign } from "../src/identity/leagues.ts";
+import { SMALL_MAX, variantFor } from "../src/identity/sizes.ts";
 
 const { values: args } = parseArgs({
-  options: { out: { type: "string", default: "crest-gallery/index.html" }, status: { type: "string" } },
+  options: {
+    out: { type: "string", default: "crest-gallery/index.html" },
+    status: { type: "string" },
+    previous: { type: "string" },
+    snapshot: { type: "string" },
+  },
 });
+
+// Snapshot: the current designs as SVG, by club and league.
+if (args.snapshot) {
+  const snap = { taken: new Date().toISOString(), clubs: {}, marks: {} };
+  for (const c of CLUBS)
+    snap.clubs[c.slug] = {
+      full: renderCrest(c.full, `p-${c.slug}`),
+      small: renderCrest(c.small, `p-${c.slug}-s`),
+      resemblance: c.resemblance.level,
+    };
+  for (const l of LEAGUE_IDENTITIES) snap.marks[l.slug] = renderCrest(leagueMarkDesign(l), `pm-${l.slug}`);
+  writeFileSync(args.snapshot, JSON.stringify(snap), "utf8");
+  console.log(`wrote ${args.snapshot}: ${CLUBS.length} clubs, ${LEAGUE_IDENTITIES.length} marks`);
+  process.exit(0);
+}
 
 const esc = (s) =>
   String(s)
@@ -35,6 +67,14 @@ const esc = (s) =>
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+
+// The site's own fonts, embedded so the page loads nothing from elsewhere.
+const require = createRequire(import.meta.url);
+const font = (file) => readFileSync(require.resolve(file)).toString("base64");
+const FONTS = `
+@font-face { font-family:"Barlow Condensed"; font-weight:600; src:url(data:font/woff2;base64,${font("@fontsource/barlow-condensed/files/barlow-condensed-latin-600-normal.woff2")}) format("woff2"); }
+@font-face { font-family:"Barlow Condensed"; font-weight:700; src:url(data:font/woff2;base64,${font("@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2")}) format("woff2"); }
+@font-face { font-family:"Source Sans 3"; font-weight:200 900; src:url(data:font/woff2;base64,${font("@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2")}) format("woff2"); }`;
 
 // Every picture is defined once as a <symbol> and drawn with <use>, so the
 // page stays small however often a crest appears.
@@ -69,7 +109,7 @@ const bySlug = new Map(CLUBS.map((c) => [c.slug, c]));
 /** A club's crest at a size, or the fallback crest for a club with no entry. */
 function crestFor(name, size) {
   const club = bySlug.get(teamSlug(name));
-  const variant = size <= 24 ? "small" : "full";
+  const variant = variantFor(size);
   if (club) return use(crestKey(club, variant), size);
   const slug = teamSlug(name);
   return use(
@@ -121,22 +161,32 @@ function fixtures(id, count = 6) {
   return `<div class="pair">${THEMES.map((t) => `<div class="theme ${t.cls}"><p class="tname">${t.name}</p><div class="matches">${cards}</div></div>`).join("")}</div>`;
 }
 
-/** Groups of clubs whose colours could be confused, and what tells them apart. */
+/** Groups of clubs whose crests could be confused, and what tells them apart. */
 const CLASHES = [
   {
     title: "Manchester",
     slugs: ["manchester-city", "manchester-united"],
-    note: "Same city, both often abbreviated MAN. City: sky-blue French shield with a navy bee. United: red heater shield with a gold trident. Different colour, outline and symbol at every size.",
+    note: "Same city. City: sky-blue French shield with a navy three-masted ship and MCFC. United: red heater shield with a gold trident over a black wheel. Different colour, outline and symbol at every size.",
+  },
+  {
+    title: "Two ships",
+    slugs: ["manchester-city", "ipswich-town"],
+    note: "Both use a ship, so they are drawn apart on purpose. City: a navy three-masted ship with nine white sails, heading right, on a sky-blue French shield with gold rivers. Ipswich: a white single-masted ship with two sails and a red pennant, on a blue oval. Different silhouette (three masts against one), colour (navy on sky against white on blue) and outline.",
+  },
+  {
+    title: "Two lions",
+    slugs: ["aston-villa", "chelsea"],
+    note: "Not variations of one drawing. Villa: a whole lion rampant on the diagonal, with a curly mane and raised claws, in sky blue on a claret heater. Chelsea: only the head, in profile, with long flowing locks, in blue inside a white disc in a roundel.",
   },
   {
     title: "Sky blue",
     slugs: ["manchester-city", "coventry-city"],
-    note: "Both sky blue. City is a French shield with a navy bee; Coventry a roundel with a white phoenix and orange flames.",
+    note: "Both sky blue. City is a French shield with a navy ship; Coventry a roundel with a white phoenix and orange flames.",
   },
   {
-    title: "Red, white and gold",
-    slugs: ["arsenal", "liverpool", "nottingham-forest", "manchester-united"],
-    note: "Four red crests. Arsenal is the only roundel (white disc, red gun); Liverpool a round-bottomed shield (white bird); Forest a French shield (white bow); United a pointed heater (gold trident). At 16 px the outline does most of the work: circle, round bottom, ogee point, sharp point.",
+    title: "Red shields",
+    slugs: ["arsenal", "manchester-united", "liverpool", "nottingham-forest"],
+    note: "Four red crests. Arsenal and United now share the heater outline: Arsenal has a broad white border with a gold edge and white ARS and gun; United has a black edge, a black name band and a gold trident. Liverpool is a round-bottomed shield (white bird); Forest a French shield (white bow).",
   },
   {
     title: "Red stripes",
@@ -146,7 +196,7 @@ const CLASHES = [
   {
     title: "Royal blue",
     slugs: ["chelsea", "everton", "ipswich-town", "brighton-and-hove-albion"],
-    note: "Chelsea a roundel (lion's head), Everton a heater (tower), Ipswich an oval (ship), Brighton a heater with blue-and-white stripes (gull). Everton and Brighton share an outline: Everton's small crest is solid blue with a white tower, Brighton's has stripes at the point and a gull.",
+    note: "Chelsea a roundel (lion's head), Everton a heater (tower), Ipswich an oval (ship), Brighton a heater with blue-and-white stripes (gull).",
   },
   {
     title: "Black and white",
@@ -154,14 +204,9 @@ const CLASHES = [
     note: "Newcastle: striped heater with a castle in a black disc. Fulham: white roundel with a black cottage.",
   },
   {
-    title: "Claret, red and blue",
-    slugs: ["aston-villa", "crystal-palace"],
-    note: "Villa: claret heater with a sky-blue lion. Palace: French shield halved red and blue with a white glass palace.",
-  },
-  {
-    title: "Navy, white and yellow",
+    title: "Navy and white",
     slugs: ["tottenham-hotspur", "leeds-united"],
-    note: "Spurs: navy French shield with a white spur (a star-shaped rowel when small). Leeds: angular shield with a white rose and a yellow chevron.",
+    note: "Spurs: navy French shield with a white cockerel. Leeds: angular shield with a white rose and a yellow chevron.",
   },
 ];
 
@@ -224,30 +269,118 @@ function leagueSection() {
   const strip = (cls) =>
     `<div class="theme ${cls} strip">${LEAGUE_IDENTITIES.map((l) => {
       const k = markKey(l);
-      return `<figure>${use(k, 64, `${l.code} mark`)}${use(k, 24)}${use(k, 16)}<figcaption>${l.code}</figcaption></figure>`;
+      return `<figure>${use(k, 96, `${l.code} mark`)}${use(k, 24)}${use(k, 16)}<figcaption>${l.code}</figcaption></figure>`;
     }).join("")}</div>`;
   const notes = LEAGUE_IDENTITIES.map(
     (l) =>
-      `<li><b>${esc(LEAGUES.find((x) => x.id === l.leagueId).name)} (${l.code}):</b> ${esc(l.inspiration)}</li>`,
+      `<li><b>${esc(LEAGUES.find((x) => x.id === l.leagueId).name)} (${l.code}).</b> ${esc(l.inspiration)} <i>What it shows:</i> ${esc(l.looks)}</li>`,
   ).join("");
-  return `<div class="pair">${strip("t-light")}${strip("t-dark")}</div><ul>${notes}</ul>`;
+  return `<div class="pair">${strip("t-light")}${strip("t-dark")}</div><ul class="notes">${notes}</ul>`;
 }
 
 function fallbackSection() {
-  const examples = Object.entries({
-    bundesliga: "Hamburger SV",
-    ligue_1: "Paris FC",
-    la_liga: "Deportivo La Coruña",
-  });
+  const examples = ["Hamburger SV", "Paris FC", "Deportivo La Coruña"];
   return `<div class="pair">${THEMES.map(
     (t) =>
       `<div class="theme ${t.cls} strip">${examples
         .map(
-          ([, name]) =>
+          (name) =>
             `<figure>${crestFor(name, 64)}${crestFor(name, 24)}${crestFor(name, 16)}<figcaption>${esc(name)}</figcaption></figure>`,
         )
         .join("")}</div>`,
   ).join("")}</div>`;
+}
+
+// Previous against current, from a snapshot.
+function comparisonSection() {
+  if (!args.previous) return "";
+  const prev = JSON.parse(readFileSync(args.previous, "utf8"));
+  const same = (a, b) =>
+    a.replace(/"p-[a-z0-9-]+"|#p-[a-z0-9-]+/g, "") === b.replace(/"p-[a-z0-9-]+"|#p-[a-z0-9-]+/g, "");
+  const changed = [];
+  const unchanged = [];
+  for (const club of CLUBS) {
+    const was = prev.clubs[club.slug];
+    if (!was) continue;
+    const now = {
+      full: renderCrest(club.full, `p-${club.slug}`),
+      small: renderCrest(club.small, `p-${club.slug}-s`),
+    };
+    if (same(was.full, now.full) && same(was.small, now.small)) unchanged.push(club.name);
+    else changed.push({ club, was });
+  }
+  const rows = changed
+    .map(({ club, was }) => {
+      const pf = define(`prev-${club.slug}-full`, was.full.replaceAll('"p-', '"q-').replaceAll("#p-", "#q-"));
+      const ps = define(
+        `prev-${club.slug}-small`,
+        was.small.replaceAll('"p-', '"q-').replaceAll("#p-", "#q-"),
+      );
+      const cell = (cls) =>
+        `<div class="theme ${cls} cmp"><div><p class="tname">Previous</p>${use(pf, 96)}${use(ps, 24)}${use(ps, 16)}</div><span class="arrow" aria-hidden="true">→</span><div><p class="tname">Refined</p>${use(crestKey(club, "full"), 96)}${use(crestKey(club, "small"), 24)}${use(crestKey(club, "small"), 16)}</div></div>`;
+      const level =
+        was.resemblance === club.resemblance.level
+          ? `Resemblance: ${club.resemblance.level} (unchanged).`
+          : `Resemblance: ${was.resemblance}, now <b>${club.resemblance.level}</b>.`;
+      return `<div class="clash"><h3>${esc(club.name)}</h3><div class="pair">${cell("t-light")}${cell("t-dark")}</div><p class="looks"><b>Now:</b> ${esc(club.looks.full)} ${level}</p></div>`;
+    })
+    .join("");
+  const marks = LEAGUE_IDENTITIES.filter((l) => prev.marks[l.slug])
+    .map((l) => {
+      const pk = define(
+        `prev-mark-${l.slug}`,
+        prev.marks[l.slug].replaceAll('"pm-', '"qm-').replaceAll("#pm-", "#qm-"),
+      );
+      return `<figure>${use(pk, 64)}<span class="arrow" aria-hidden="true">→</span>${use(markKey(l), 64)}${use(markKey(l), 24)}${use(markKey(l), 16)}<figcaption>${l.code}</figcaption></figure>`;
+    })
+    .join("");
+  return `<section><h2>Previous and refined</h2>
+<p>${changed.length} crests changed since the last review; ${unchanged.length} kept as they were: ${esc(unchanged.join(", "))}. Each row shows the previous full crest (96 px) and small crest (24 and 16 px), then the refined one, on the light and the dark theme.</p>
+${rows}
+<h3>League marks</h3><p>Previous (the shared stripe template), then the refined mark at 64, 24 and 16 px.</p>
+<div class="pair"><div class="theme t-light strip">${marks}</div><div class="theme t-dark strip">${marks}</div></div>
+</section>`;
+}
+
+function resemblanceTable() {
+  const rows = CLUBS.slice()
+    .sort((a, b) => a.name.localeCompare(b.name, "en"))
+    .map(
+      (c) =>
+        `<tr><td>${esc(c.name)}</td><td class="res-cell res-${c.resemblance.level}">${c.resemblance.level}</td><td>${(c.alternatives ?? []).map((a) => esc(a.title)).join(", ") || "none"}</td></tr>`,
+    )
+    .join("");
+  const count = (lvl) => CLUBS.filter((c) => c.resemblance.level === lvl).length;
+  return `<section><h2>Resemblance ratings</h2>
+<p>${count("high")} high, ${count("medium")} medium, ${count("low")} low. Every high design has at least one alternative (a unit test checks). <b>These ratings are a design judgement, not legal advice, and approving the artwork is not legal clearance.</b> Any use of club names, colours or symbols on the public site is a separate decision.</p>
+<div class="scroll"><table><thead><tr><th>Club</th><th>Resemblance</th><th>Alternatives</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+}
+
+function sizesTable() {
+  const files = identityFiles();
+  const kb = (n) => (n / 1024).toFixed(1);
+  const size = (path) => {
+    const text = files.get(path);
+    return text ? [Buffer.byteLength(text), gzipSync(text).length] : [0, 0];
+  };
+  const rows = CLUBS.slice()
+    .sort((a, b) => a.name.localeCompare(b.name, "en"))
+    .map((c) => {
+      const [f, fz] = size(`src/identity/crests/${c.slug}.svg`);
+      const [s, sz] = size(`src/identity/crests/${c.slug}-small.svg`);
+      return `<tr><td>${esc(c.name)}</td><td class="num">${kb(f)}</td><td class="num">${kb(fz)}</td><td class="num">${kb(s)}</td><td class="num">${kb(sz)}</td></tr>`;
+    })
+    .join("");
+  const marks = LEAGUE_IDENTITIES.map((l) => {
+    const [m, mz] = size(`src/identity/marks/${l.slug}.svg`);
+    return `<tr><td>${esc(LEAGUES.find((x) => x.id === l.leagueId).name)} mark</td><td class="num">${kb(m)}</td><td class="num">${kb(mz)}</td><td></td><td></td></tr>`;
+  }).join("");
+  const all = [...files].filter(([p]) => p.endsWith(".svg"));
+  const total = all.reduce((n, [, t]) => n + Buffer.byteLength(t), 0);
+  const totalZ = all.reduce((n, [, t]) => n + gzipSync(t).length, 0);
+  return `<section><h2>File sizes</h2>
+<p>Each crest is a separate file, downloaded once and then cached for a year. Budgets (unit-tested): full crest 10 KB, small crest 3 KB, league mark 2 KB, before compression. All ${all.length} files together: ${kb(total)} KB, ${kb(totalZ)} KB compressed (gzip). A league page would load only its own clubs' small crests.</p>
+<div class="scroll"><table><thead><tr><th>File</th><th>Full KB</th><th>Full gzip</th><th>Small KB</th><th>Small gzip</th></tr></thead><tbody>${rows}${marks}</tbody></table></div></section>`;
 }
 
 const covered = [...new Set(CLUBS.map((c) => c.leagueId))];
@@ -270,16 +403,17 @@ const dataLine = source
 const body = `
 <header class="top"><h1>TableTalk crest gallery</h1>
 <p>Every crest in the registry, for review before any page uses them. ${CLUBS.length} clubs drawn so far, ${CLUBS.reduce((n, c) => n + (c.alternatives?.length ?? 0), 0)} alternative designs. Each picture is also described in words.</p>
-<ul class="chips"><li>Original drawings, no official artwork</li><li>Full crest from 28 px, small crest up to 24 px</li><li>Light: Matchday · Dark: Floodlights</li></ul></header>
+<ul class="chips"><li>Original drawings, no official artwork</li><li>Small crest at ${SMALL_MAX} px and below, full crest above</li><li>Light: Matchday · Dark: Floodlights</li><li>Not legal clearance</li></ul></header>
 ${status}
 <section><h2>How to read this page</h2>
 <ul>
 <li><b>Sizes.</b> Each crest is shown at 120 px and 40 px (full crest) and at 24 px and 16 px (small crest), first on the light theme, then on the dark theme. 24 px is a fixture card; 20 px a standings row; 16 px the smallest planned use.</li>
-<li><b>White keyline.</b> Every crest has a thin white outline, so dark crests (Newcastle, Fulham, Spurs) stay visible on the dark themes.</li>
-<li><b>Resemblance.</b> Every design is an original drawing. "Low", "medium" or "high" says how likely a supporter is to connect it with the official badge; every "high" design has at least one alternative to choose instead.</li>
+<li><b>White keyline.</b> Every crest and mark has a thin white outline, so dark designs (Newcastle, Fulham, Spurs, the Bundesliga mark) stay visible on the dark themes.</li>
+<li><b>Resemblance.</b> Every design is an original drawing. "Low", "medium" or "high" says how likely a supporter is to connect it with the official badge; every "high" design has at least one alternative. This is a design judgement, not legal clearance.</li>
 <li><b>${dataLine}</b></li>
 </ul></section>
-<section><h2>League marks</h2><p>TableTalk's own marks, not the competitions' logos: two slanted stripes in the country's flag colours and the league's initials, on a tile.</p>${leagueSection()}</section>
+${comparisonSection()}
+<section><h2>League marks</h2><p>TableTalk's own marks, not the competitions' logos: each takes one idea from its country's football culture and has its own outline, so the five stay apart by shape at 16 px. Shown at 96, 24 and 16 px.</p>${leagueSection()}</section>
 ${covered
   .map((id) => {
     const league = LEAGUES.find((l) => l.id === id);
@@ -287,23 +421,23 @@ ${covered
 <section><h2>${esc(league.name)}: fixture cards</h2><p>The next six matches with the 24 px small crest beside each team, and the model's chances.</p>${fixtures(id)}</section>`;
   })
   .join("")}
-<section><h2>Clubs that could be confused</h2><p>Groups with similar colours or names, side by side: full crest at 64 px, small crest at 24 px and 16 px.</p>${clashSection()}</section>
+<section><h2>Clubs that could be confused</h2><p>Groups with similar colours, names or symbols, side by side: full crest at 64 px, small crest at 24 px and 16 px.</p>${clashSection()}</section>
 ${leagueClubs.join("")}
+${resemblanceTable()}
+${sizesTable()}
 <section><h2>The fallback crest</h2><p>A club with no entry in the registry yet (a newly promoted club, or a club renamed in the data) gets this instead of a broken image: a plain grey shield with a dashed inner line and up to three initials, clearly a placeholder and never a guess at its colours. The build prints a warning naming the club and carries on, so the nightly data publish is never blocked. The examples are clubs from leagues whose crests are not drawn yet.</p>${fallbackSection()}</section>
 `;
 
 const html = `<!doctype html>
 <html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TableTalk Crest Gallery</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap">
-<style>
+<style>${FONTS}
 :root { --bg:#f5f4ee; --surface:#fff; --border:#dfddd3; --text:#0e1a13; --muted:#4a5a50; --accent:#0a6b3b; --warn-bg:#fdf0d5; --warn:#5c3d00;
   --display:"Barlow Condensed","Arial Narrow",sans-serif; --body:"Source Sans 3","Segoe UI",system-ui,sans-serif; color-scheme: light; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0a1210; --surface:#111b17; --border:#26352e; --text:#edf3ef; --muted:#a0b0a6; --accent:#3fd98a; --warn-bg:#3a2c0c; --warn:#ffe2a3; color-scheme: dark; } }
 :root[data-theme="dark"] { --bg:#0a1210; --surface:#111b17; --border:#26352e; --text:#edf3ef; --muted:#a0b0a6; --accent:#3fd98a; --warn-bg:#3a2c0c; --warn:#ffe2a3; color-scheme: dark; }
 * { box-sizing: border-box; }
-body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 var(--body); padding-block:0; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+body { margin:0; background:var(--bg); color:var(--text); font-family:var(--body); font-size:16px; line-height:1.5; padding-block:0; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
 main { max-width:1100px; margin:0 auto; padding:32px 0 80px; display:grid; gap:36px; }
 h1,h2,h3,h4 { font-family:var(--display); line-height:1.05; margin:0 0 8px; text-wrap:balance; }
 h1 { font-size:2.8rem; text-transform:uppercase; }
@@ -321,8 +455,13 @@ code { font-family:ui-monospace,Consolas,monospace; font-size:.85em; }
 .tname { font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin:0 0 6px; opacity:.8; }
 .sizes { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
 .strip { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; }
+.cmp { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+.cmp > div { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.cmp .tname { width:100%; }
+.arrow { font-size:1.6rem; opacity:.6; }
 figure { margin:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 figcaption { font-size:.85rem; font-weight:600; width:100%; }
+.notes li { margin-bottom:8px; }
 .standings { border-collapse:collapse; width:100%; font-size:.9rem; border-radius:8px; overflow:hidden; }
 .standings th, .standings td { padding:4px 8px; text-align:left; border-bottom:1px solid #8883; }
 .standings .num { text-align:right; font-variant-numeric:tabular-nums; width:3em; }
@@ -340,6 +479,7 @@ figcaption { font-size:.85rem; font-weight:600; width:100%; }
 .res-low { border-color:#2f8a55; background:color-mix(in srgb, #2f8a55 10%, transparent); }
 .res-medium { border-color:#c98a00; background:color-mix(in srgb, #c98a00 12%, transparent); }
 .res-high { border-color:#c0392b; background:color-mix(in srgb, #c0392b 12%, transparent); }
+.res-cell { font-weight:700; border-left-width:5px; border-left-style:solid; }
 .colours { display:flex; flex-wrap:wrap; gap:6px 16px; list-style:none; padding:0; margin:0 0 10px; font-size:.9rem; }
 .sw { display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid #8888; vertical-align:-2px; margin-right:6px; }
 .band { display:flex; align-items:center; gap:14px; border-radius:12px; padding:12px 16px; border:1px solid; margin-bottom:8px; }
@@ -350,6 +490,7 @@ figcaption { font-size:.85rem; font-weight:600; width:100%; }
 .scroll { overflow-x:auto; border:1px solid var(--border); border-radius:8px; background:var(--surface); margin-bottom:14px; }
 .scroll table { border-collapse:collapse; width:100%; font-size:.9rem; }
 .scroll th, .scroll td { text-align:left; vertical-align:top; padding:6px 10px; border-bottom:1px solid var(--border); }
+.scroll .num { text-align:right; font-variant-numeric:tabular-nums; }
 pre { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px; overflow-x:auto; font-size:.8rem; }
 </style></head>
 <body><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${[...symbols.values()].join("")}</defs></svg>

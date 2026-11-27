@@ -172,10 +172,10 @@
 
 [data-league="bundesliga"] {
   --club-1: #151515;
-  --club-2: #fc0;
+  --club-2: #ffce00;
   --club-ink: #fff;
   --club-muted: #dcdcdc;
-  --band-edge: color-mix(in srgb, #fc0 45%, transparent);
+  --band-edge: color-mix(in srgb, #ffce00 45%, transparent);
 }
 
 [data-league="la-liga"] {

@@ -1,6 +1,6 @@
 // Everything the identity system writes to disk, as text, in one place:
-//   src/identity/crests/<slug>.svg         full crest (28 px and up)
-//   src/identity/crests/<slug>-small.svg   small crest (up to 24 px)
+//   src/identity/crests/<slug>.svg         full crest (above 24 px)
+//   src/identity/crests/<slug>-small.svg   small crest (24 px and below)
 //   src/identity/marks/<league slug>.svg   league mark
 //   src/styles/identity.css                club and league colours for bands
 //
