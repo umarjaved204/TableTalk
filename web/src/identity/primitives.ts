@@ -26,7 +26,20 @@ export const STROKE = {
 } as const;
 
 export type ShapeName =
-  "heater" | "english" | "french" | "angular" | "roundel" | "oval" | "arch" | "badge" | "tablet";
+  | "heater"
+  | "english"
+  | "french"
+  | "angular"
+  | "roundel"
+  | "oval"
+  | "arch"
+  | "badge"
+  | "tablet"
+  | "crowned-roundel"
+  | "triangle"
+  | "lobed"
+  | "diamond"
+  | "catalan";
 
 const r1 = (v: number) => String(Math.round(v * 10) / 10);
 const pts = (list: [number, number][]) => list.map(([x, y]) => `${r1(x)} ${r1(y)}`).join("L");
@@ -132,6 +145,56 @@ export const SHAPES: Readonly<Record<ShapeName, (i: number) => string>> = {
       [C - hw, shoulder],
     ])}Z`;
   },
+  // A circle set low in the box, leaving room for a crown above it.
+  "crowned-roundel"(i) {
+    const r = 45 - i;
+    const cy = 71;
+    return `M${r1(C - r)} ${cy}A${r1(r)} ${r1(r)} 0 1 1 ${r1(C + r)} ${cy}A${r1(r)} ${r1(r)} 0 1 1 ${r1(C - r)} ${cy}Z`;
+  },
+  // An inverted triangle with gently curved sides, its top set low enough
+  // for a crown above it.
+  triangle(i) {
+    const top = 32 + i;
+    const l = 12 + i * 1.3;
+    const r = BOX - l;
+    const tip = 116 - i * 1.8;
+    return `M${r1(l)} ${r1(top)}L${r1(r)} ${r1(top)}Q${r1(r - 6)} 78 60 ${r1(tip)}Q${r1(l + 6)} 78 ${r1(l)} ${r1(top)}Z`;
+  },
+  // A shield with two rounded lobes at the top meeting in a dip, rounding
+  // down to a point: a heart-like outline.
+  lobed(i) {
+    const hw = 46 - i;
+    const l = C - hw;
+    const r = C + hw;
+    const dip = 18 + i;
+    const tip = 115 - i * 1.4;
+    return (
+      `M60 ${r1(dip)}C${r1(C - 10)} ${r1(6 + i)} ${r1(l)} ${r1(4 + i)} ${r1(l)} ${r1(28)}L${r1(l)} 58` +
+      `C${r1(l)} ${r1(86 - i * 0.6)} ${r1(C - 22 + i * 0.4)} ${r1(102 - i * 1.2)} 60 ${r1(tip)}C${r1(C + 22 - i * 0.4)} ${r1(102 - i * 1.2)} ${r1(r)} ${r1(86 - i * 0.6)} ${r1(r)} 58L${r1(r)} 28` +
+      `C${r1(r)} ${r1(4 + i)} ${r1(C + 10)} ${r1(6 + i)} 60 ${r1(dip)}Z`
+    );
+  },
+  // A diamond standing on its point.
+  diamond(i) {
+    const e = 4 + i * 1.4;
+    return `M60 ${r1(e)}L${r1(BOX - e)} 60L60 ${r1(BOX - e)}L${r1(e)} 60Z`;
+  },
+  // A Catalan-style shield: rounded lobes at the two top corners rising to a
+  // point at the centre, full sides, and a pointed base.
+  catalan(i) {
+    const hw = 46 - i;
+    const l = C - hw;
+    const r = C + hw;
+    const peak = 15 + i;
+    const shoulder = 7 + i;
+    const tip = 116 - i * 1.5;
+    return (
+      `M60 ${r1(peak)}C${r1(C - 12)} ${r1(22 + i)} ${r1(l + 8)} ${r1(shoulder - 4)} ${r1(l)} ${r1(shoulder + 8)}` +
+      `C${r1(l - 2)} 50 ${r1(l + 6)} 82 60 ${r1(tip)}C${r1(r - 6)} 82 ${r1(r + 2)} 50 ${r1(r)} ${r1(shoulder + 8)}` +
+      `C${r1(r - 8)} ${r1(shoulder - 4)} ${r1(C + 12)} ${r1(22 + i)} 60 ${r1(peak)}Z`
+    );
+  },
+
   // A rounded rectangle, a little taller than wide.
   tablet(i) {
     const hw = 46 - i;

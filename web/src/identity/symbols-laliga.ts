@@ -27,6 +27,92 @@ function turned(pts: readonly OutlinePoint[], deg: number, cx = 50, cy = 50): Ou
   });
 }
 
+/** The bat's outline: wings spread, scalloped trailing edges, ears up. */
+const BAT: OutlinePoint[] = [
+  [50, 36],
+  [46, 28, 1],
+  [44, 36],
+  [36, 32],
+  [24, 24],
+  [6, 26, 1],
+  [12, 38],
+  [10, 52, 1],
+  [20, 48],
+  [24, 60, 1],
+  [32, 52],
+  [40, 62, 1],
+  [44, 54],
+  [50, 66, 1],
+  [56, 54],
+  [60, 62, 1],
+  [68, 52],
+  [76, 60, 1],
+  [80, 48],
+  [90, 52, 1],
+  [88, 38],
+  [94, 26, 1],
+  [76, 24],
+  [64, 32],
+  [56, 36],
+  [54, 28, 1],
+];
+
+/** A lion walking left: small head, large rounded mane over the shoulders,
+ *  deep chest, narrow waist, the near forepaw raised. */
+const LION_WALKING: OutlinePoint[] = [
+  [4, 40, 1],
+  [6, 34],
+  [10, 30],
+  [14, 27],
+  [18, 20],
+  [26, 15],
+  [35, 15],
+  [43, 20],
+  [48, 28],
+  [58, 32],
+  [70, 32],
+  [80, 36],
+  [86, 44],
+  [87, 54],
+  [86, 66],
+  [88, 80],
+  [91, 84],
+  [84, 85, 1],
+  [80, 82],
+  [78, 68],
+  [73, 60],
+  [70, 70],
+  [72, 82],
+  [74, 85],
+  [66, 85, 1],
+  [64, 80],
+  [64, 64],
+  [54, 62],
+  [44, 62],
+  [42, 72],
+  [43, 82],
+  [46, 85],
+  [38, 85, 1],
+  [36, 80],
+  [35, 68],
+  [32, 64],
+  [28, 60],
+  [24, 62],
+  [16, 64],
+  [11, 63, 1],
+  [12, 59, 1],
+  [18, 57],
+  [24, 54],
+  [20, 52],
+  [16, 50],
+  [12, 48],
+  [10, 46],
+  [6, 44, 1],
+  [9, 42, 1],
+];
+/** Fine lines in the ground colour: the face's edge and two locks of the mane. */
+const LION_WALKING_LINES = "M15 28C12 36 13 44 17 50M28 18C25 30 27 44 32 56M40 20C38 30 40 42 44 52";
+
 export const LALIGA_SYMBOLS = {
   /** A royal crown with closed arches, an orb and a cross: the "Real" (royal)
    *  title granted to Spanish clubs by the king. */
@@ -92,44 +178,50 @@ export const LALIGA_SYMBOLS = {
     line("M25 27C22 34 22 41 25 47", ground, 1.6) +
     circle(14, 38, 1.6, ground),
 
-  /** A parakeet perched on a branch, long tail down: the Pericos. */
+  /** A parakeet perched on a branch in profile, facing left: a small round
+   *  head with a short hooked beak, a slim body, a folded wing and a long,
+   *  tapering tail. The Pericos. */
   parakeet: ({ main, accent, ground }) =>
     path(
       outline([
-        [44, 12],
-        [54, 14],
-        [60, 22],
-        [62, 34],
-        [60, 48],
-        [56, 58],
-        [62, 72],
-        [70, 92, 1],
-        [60, 80],
-        [52, 68],
-        [44, 62],
-        [38, 50],
-        [36, 36],
-        [34, 28],
-        [30, 26],
-        [26, 30, 1],
-        [28, 22],
-        [34, 15],
+        [40, 16],
+        [47, 15],
+        [52, 19],
+        [55, 27],
+        [57, 38],
+        [58, 50],
+        [60, 60],
+        [66, 74],
+        [74, 96, 1],
+        [62, 78],
+        [52, 66],
+        [46, 60],
+        [41, 50],
+        [39, 40],
+        [36, 32],
+        [34, 26],
+        [30, 26, 1],
+        [31, 22],
+        [35, 18],
       ]),
       main,
     ) +
     path(
       outline([
-        [44, 34],
-        [58, 34],
-        [64, 46],
-        [60, 60],
-        [50, 56],
+        [45, 32],
+        [53, 34],
+        [57, 46],
+        [59, 58],
+        [55, 62],
+        [49, 54],
+        [45, 42],
       ]),
       accent,
     ) +
-    circle(40, 22, 2.2, ground) +
-    line("M22 64L80 60", main, 3.5) +
-    line("M44 60L42 66M50 60L50 66", main, 2.5),
+    path("M34 21Q29 21 28 25Q30 27 33 26Z", ground) +
+    circle(41, 21, 1.8, ground) +
+    line("M18 62L84 58", main, 3.2) +
+    line("M47 60L45 65M53 61L53 66", main, 2.4),
 
   /** The Tower of Hercules, the Roman lighthouse at A Coruña: a square tower
    *  wrapped by the line of its old outer ramp, a lantern on top. */
@@ -158,52 +250,54 @@ export const LALIGA_SYMBOLS = {
     circle(76, 58, 3.5, ground) +
     line("M4 80q5 -5 10 0t10 0t10 0t10 0t10 0t10 0t10 0t10 0t10 0", accent, 3),
 
-  /** A fighting bull charging, head down and horns forward: the running of
-   *  the bulls at Pamplona's San Fermín festival. */
+  /** A fighting bull charging left: a deep chest and heavy shoulder hump,
+   *  head lowered with forward-curving horns, slim legs, tail swinging up. */
   bull: ({ main, ground }) =>
     path(
       outline([
-        [8, 44, 1],
-        [12, 36],
-        [16, 34],
-        [14, 26, 1],
-        [20, 32],
-        [28, 30],
-        [38, 24],
-        [50, 26],
-        [64, 30],
-        [76, 32],
-        [84, 36],
-        [90, 32],
-        [96, 26, 1],
-        [94, 36],
-        [88, 44],
-        [86, 56],
-        [88, 72],
-        [90, 78],
-        [84, 78, 1],
-        [80, 64],
-        [74, 58],
-        [70, 72],
-        [72, 78],
-        [65, 78, 1],
-        [62, 60],
-        [46, 60],
-        [40, 70],
-        [42, 78],
-        [35, 78, 1],
-        [34, 62],
-        [30, 56],
-        [26, 66],
-        [20, 74],
-        [14, 74, 1],
-        [16, 68],
-        [22, 56],
-        [18, 50],
-        [12, 50],
+        [8, 50, 1],
+        [10, 43],
+        [15, 39],
+        [12, 30, 1],
+        [19, 36],
+        [26, 34],
+        [34, 24],
+        [44, 22],
+        [54, 26],
+        [66, 30],
+        [78, 31],
+        [86, 34],
+        [92, 28],
+        [97, 22, 1],
+        [95, 32],
+        [89, 42],
+        [87, 54],
+        [88, 68],
+        [90, 80],
+        [84, 80, 1],
+        [81, 68],
+        [76, 58],
+        [72, 70],
+        [74, 80],
+        [67, 80, 1],
+        [65, 64],
+        [52, 62],
+        [44, 64],
+        [40, 72],
+        [41, 80],
+        [34, 80, 1],
+        [34, 66],
+        [30, 60],
+        [26, 68],
+        [21, 76],
+        [15, 76, 1],
+        [18, 68],
+        [22, 58],
+        [18, 54],
+        [12, 54],
       ]),
       main,
-    ) + circle(17, 39, 1.6, ground),
+    ) + circle(16, 44, 1.6, ground),
 
   /** A triskele: three spiralling arms turning from one centre, the Celtic
    *  sign of Galicia. */
@@ -222,39 +316,7 @@ export const LALIGA_SYMBOLS = {
 
   /** A bat with its wings spread, the rat penat on the arms of Valencia. */
   bat: ({ main, ground }) =>
-    path(
-      outline([
-        [50, 36],
-        [46, 28, 1],
-        [44, 36],
-        [36, 32],
-        [24, 24],
-        [6, 26, 1],
-        [12, 38],
-        [10, 52, 1],
-        [20, 48],
-        [24, 60, 1],
-        [32, 52],
-        [40, 62, 1],
-        [44, 54],
-        [50, 66, 1],
-        [56, 54],
-        [60, 62, 1],
-        [68, 52],
-        [76, 60, 1],
-        [80, 48],
-        [90, 52, 1],
-        [88, 38],
-        [94, 26, 1],
-        [76, 24],
-        [64, 32],
-        [56, 36],
-        [54, 28, 1],
-      ]),
-      main,
-    ) +
-    circle(46.5, 39, 1.4, ground) +
-    circle(53.5, 39, 1.4, ground),
+    path(outline(BAT), main) + circle(46.5, 39, 1.4, ground) + circle(53.5, 39, 1.4, ground),
 
   /** A biplane climbing to the left: Getafe's airfield, the first in Spain (1911). */
   biplane: ({ main, ground }) =>
@@ -390,4 +452,60 @@ export const LALIGA_SYMBOLS = {
     for (let k = 0; k < 4; k++) d += outline(turned(head, k * 90));
     return path(d, main);
   },
+
+  /** The bat with a keyline in the ground colour, for a bat set across the
+   *  top edge of a crest: the keyline keeps it clear on any background. */
+  "bat-keyline": ({ main, ground }) =>
+    `<path d="${outline(BAT)}" fill="${ground}" stroke="${ground}" stroke-width="7" stroke-linejoin="round"/>` +
+    path(outline(BAT), main) +
+    circle(46.5, 39, 1.4, ground) +
+    circle(53.5, 39, 1.4, ground),
+
+  /** A football: a central pentagon, five seams running out to the edge and
+   *  the part-pentagons at the rim, as on a stitched leather ball. */
+  football: ({ main, ground }) => {
+    const ring = (r: number, turn: number) =>
+      [0, 1, 2, 3, 4].map((k) => {
+        const a = ((turn + k * 72) * Math.PI) / 180;
+        return [50 + r * Math.cos(a), 50 + r * Math.sin(a)] as const;
+      });
+    const inner = ring(15, -90);
+    const outer = ring(31, -90);
+    const pent = `M${inner.map(([x, y]) => `${r1(x)} ${r1(y)}`).join("L")}Z`;
+    let seams = "";
+    let edges = "";
+    for (let k = 0; k < 5; k++) {
+      const [ix, iy] = inner[k] ?? [50, 50];
+      const [ox, oy] = outer[k] ?? [50, 50];
+      seams += `M${r1(ix)} ${r1(iy)}L${r1(ox)} ${r1(oy)}`;
+      const a = ((-90 + k * 72) * Math.PI) / 180;
+      const [ex, ey] = [50 + 46 * Math.cos(a), 50 + 46 * Math.sin(a)];
+      edges += lock(ex, ey, -90 + k * 72 + 180, 12, 16, 0);
+    }
+    return (
+      circle(50, 50, 44, ground) +
+      path(edges, main) +
+      path(pent, main) +
+      line(seams, main, 3) +
+      `<circle cx="50" cy="50" r="44" fill="none" stroke="${main}" stroke-width="4"/>`
+    );
+  },
+
+  /** A pennant on a pole, flying: two horizontal stripes. */
+  pennant: ({ main, accent }) =>
+    line("M18 10L18 92", main, 4) +
+    path("M18 14C40 10 60 18 86 22C62 30 40 36 18 40Z", accent) +
+    path("M18 27C40 24 58 26 76 26C58 32 40 36 18 40Z", main),
+
+  /** A lion walking left in heraldic style: a small head with the mouth open,
+   *  a large rounded mane over the shoulders, a deep chest, a narrow waist,
+   *  strong legs with the near forepaw raised, and the tail curving up over
+   *  the back to a tuft. The Lions of San Mamés. */
+  "lion-statant": ({ main, accent, ground }) =>
+    line("M84 46C94 40 96 28 90 20C88 16 90 11 94 10", main, 4) +
+    circle(94, 10, 4.2, main) +
+    path(outline(LION_WALKING), main) +
+    line(LION_WALKING_LINES, ground, 1.5) +
+    circle(13, 33, 1.6, ground) +
+    path("M6 41Q2 43 4 46Q7 44 10 43Z", accent),
 } satisfies Record<string, Draw>;

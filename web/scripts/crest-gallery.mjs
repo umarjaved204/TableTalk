@@ -173,32 +173,37 @@ const CLASHES = [
   {
     title: "Red and white stripes",
     slugs: ["atletico-madrid", "athletic-bilbao"],
-    note: "The two rojiblanco clubs (Atlético was founded by Basque students as a branch of Athletic). Atlético: a round-topped arch with a navy upper half and the seven stars of the Great Bear. Athletic: a pointed heater with a white upper half and a red lion walking.",
+    note: "The two rojiblanco clubs (Atlético was founded by Basque students as a branch of Athletic). Atlético: a pointed heater with a navy upper half and the seven stars of the Great Bear. Athletic: a round-bottomed shield with a white upper half and a red heraldic lion walking.",
   },
   {
     title: "Blue and garnet",
     slugs: ["barcelona", "levante"],
-    note: "Both blue and red-purple. Barcelona: a striped roundel in a gold and red senyera ring with FCB. Levante: a pointed heater halved blue and claret under a white chief, with a white frog.",
+    note: "Both blue and red-purple. Barcelona: a Catalan shield with raised shoulders, the senyera across the top, a cross medallion and FCB over blue and garnet stripes. Levante: a pointed heater halved blue and claret under a white chief, with a white frog.",
   },
   {
     title: "Blue and white",
     slugs: ["real-sociedad", "deportivo-la-coruna", "espanyol", "alaves", "malaga", "getafe"],
-    note: "Six blue-and-white clubs, kept apart by outline and symbol: Real Sociedad a rounded rectangle with the bay; Deportivo a heater with the tower on a white pale; Espanyol an oval with the parakeet; Alavés an angular shield with a large A; Málaga a round-bottomed shield with the anchovy disc; Getafe a French shield with the biplane on a white sash.",
+    note: "Six blue-and-white clubs, kept apart by outline and symbol: Real Sociedad a crowned roundel with a ball and a pennant; Deportivo a heater with the tower on a white pale; Espanyol an oval with the parakeet; Alavés an angular shield with a large A; Málaga a round-bottomed shield with the anchovy disc; Getafe a French shield with the biplane on a white sash.",
   },
   {
     title: "Green and white",
     slugs: ["real-betis", "racing-santander", "elche"],
-    note: "Betis: an oval in green, white and green bands with a crown and BETIS. Racing: a green roundel with the stela and a lettered ring. Elche: a white arch with a green band and a palm.",
+    note: "Betis: a crowned inverted triangle with green and white stripes and BETIS. Racing: a green roundel with the stela and a lettered ring. Elche: a white arch with a green band and a palm.",
   },
   {
     title: "White with a dark symbol",
     slugs: ["real-madrid", "valencia", "sevilla", "rayo-vallecano"],
-    note: "Real Madrid: a white round-bottomed shield with a gold crown and RM. Valencia: a black roundel with the bat. Sevilla: a white five-sided badge with NO8DO in red. Rayo: a white angular shield with a red sash and a black bolt.",
+    note: "Real Madrid: a crowned white roundel with an interlaced navy RM. Valencia: a round-bottomed shield with the black bat across its top over gold and red stripes. Sevilla: a lobed shield, red above with NO8DO, white below with SFC. Rayo: a white angular shield with a red sash and a black bolt.",
+  },
+  {
+    title: "Two crowned roundels",
+    slugs: ["real-madrid", "real-sociedad"],
+    note: "Both clubs' traditional badges are crowned circles, so both crests keep that form. Real Madrid: white with a gold rim and an interlaced navy RM. Real Sociedad: blue ring with its name, blue and white stripes, a football and a pennant.",
   },
   {
     title: "Madrid",
     slugs: ["real-madrid", "atletico-madrid", "getafe", "rayo-vallecano"],
-    note: "The four clubs of the Madrid area: white crown, striped arch with stars, blue shield with a biplane, white shield with a sash and a bolt.",
+    note: "The four clubs of the Madrid area: crowned white roundel with RM, pointed striped shield with stars, blue shield with a biplane, white shield with a sash and a bolt.",
   },
   {
     title: "Manchester",
