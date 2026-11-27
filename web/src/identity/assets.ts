@@ -13,6 +13,7 @@
 // astro.config.mjs turns that off for this folder so every crest is fetched
 // once and then comes from the cache on every page.
 import { fallbackDesign, renderCrest } from "./crest.ts";
+import type { CrestVariant } from "./sizes.ts";
 
 const URLS = import.meta.glob<string>("./{crests,marks}/*.{svg,png,webp}", {
   query: "?url",
@@ -21,14 +22,7 @@ const URLS = import.meta.glob<string>("./{crests,marks}/*.{svg,png,webp}", {
 });
 const RAW = import.meta.glob<string>("./crests/*.svg", { query: "?raw", import: "default", eager: true });
 
-/** At or below this size (CSS px) the small crest is used. */
-export const SMALL_MAX = 24;
-
-export type CrestVariant = "full" | "small";
-
-export function variantFor(size: number): CrestVariant {
-  return size <= SMALL_MAX ? "small" : "full";
-}
+export { SMALL_MAX, variantFor, type CrestVariant } from "./sizes.ts";
 
 export type CrestSource =
   /** A file: shown with <img src>. */

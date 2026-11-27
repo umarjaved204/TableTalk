@@ -7,6 +7,7 @@
 import { arcText, lineText, type ArcOptions, type LineOptions } from "./lettering.ts";
 import {
   BOX,
+  SHAPES,
   band,
   disc,
   pattern,
@@ -20,9 +21,15 @@ import {
 import { place, type Ink, type Placement, type SymbolName } from "./symbols.ts";
 
 export interface Kit {
+  /** The id of the field's clip path. shield() defines it; a design that
+   *  draws its own outline (a league mark) defines a clipPath with this id. */
+  readonly clip: string;
   /** The outline, its rim and its field. Patterns drawn after it stay inside the field. */
   shield(shape: ShapeName, o: { rim: string; field: string; rimWidth?: number }): string;
   pattern(p: Pattern): string;
+  /** The same outline again, inset by `i` units: a second band inside the rim
+   *  (Arsenal's white border inside its gold edge, say). */
+  inset(shape: ShapeName, i: number, fill: string): string;
   symbol(name: SymbolName, at: Placement, ink: Ink): string;
   /** Text on a straight line, centred on x. */
   text(text: string, o: LineOptions & { fill: string }): string;
@@ -41,8 +48,10 @@ export type Design = (k: Kit) => string[];
 
 function kit(clip: string): Kit {
   return {
+    clip,
     shield: (shape, o) => shield(shape, { ...o, clip }),
     pattern: (p) => pattern(p, clip),
+    inset: (shape, i, fill) => `<path d="${SHAPES[shape](i)}" fill="${fill}"/>`,
     symbol: place,
     text: (text, o) => `<path d="${lineText(text, o).d}" fill="${o.fill}"/>`,
     arc: (text, o) => `<path d="${arcText(text, { ...o, cx: BOX / 2, cy: BOX / 2 }).d}" fill="${o.fill}"/>`,

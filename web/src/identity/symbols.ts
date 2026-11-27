@@ -10,6 +10,8 @@
 //   ground  the colour behind the symbol, used to cut gaps between parts
 //           (where a wheel crosses a barrel, say), so parts never merge.
 
+import { REFINED } from "./symbols-refined.ts";
+
 export interface Ink {
   main: string;
   accent: string;
@@ -68,7 +70,7 @@ function waves(y0: number, rows: number, stroke: string, width = 4, gap = 9, x0 
   return line(d, stroke, width);
 }
 
-export const SYMBOLS = {
+const FIRST_ROUND = {
   /** A field gun side-on, facing left: Woolwich's Royal Arsenal, where the
    *  club was formed by munitions workers. A wheeled gun, not a bare barrel. */
   "field-gun": ({ main, ground }) =>
@@ -91,21 +93,6 @@ export const SYMBOLS = {
     line(fan(50, 64, 12, 27, 180, 360, 7), main, 3, "butt") +
     path("M50 64L50 30L66 64Z", accent) +
     path("M22 64L78 64L78 70L22 70Z", main),
-
-  /** A cormorant-like sea bird holding a sprig: Liverpool's port and its
-   *  bird legend, drawn new (standing, wing raised, no shield, no motto). */
-  "sea-bird": ({ main, accent, ground }) =>
-    path(
-      "M31 11C39 10 43 17 41 25C39 33 41 39 47 45C57 51 64 59 66 69L82 92L72 92L62 80" +
-        "C56 82 48 82 42 78C34 72 32 62 34 52C35 44 31 37 28 31C26 28 22 27 13 25L19 21C22 17 25 12 31 11Z",
-      main,
-    ) +
-    path("M46 46C53 33 61 21 75 12L73 23L84 20L75 33L86 35L71 46C65 52 59 55 54 55Z", main) +
-    line("M47 79L45 93M45 93L40 95M45 93L50 95M55 80L57 93M57 93L52 95M57 93L62 95", main, 3) +
-    circle(31, 18, 1.8, ground) +
-    line("M14 25L5 34", accent, 2.5) +
-    `<ellipse cx="7" cy="27" rx="4" ry="2" transform="rotate(-50 7 27)" fill="${accent}"/>` +
-    `<ellipse cx="12" cy="34" rx="4" ry="2" transform="rotate(20 12 34)" fill="${accent}"/>`,
 
   /** A ship's anchor with its ring and stock: the Mersey's port. */
   anchor: ({ main }) =>
@@ -170,49 +157,6 @@ export const SYMBOLS = {
     );
   },
 
-  /** A lion's head, front on, with a pointed mane: Chelsea's lion, from the
-   *  arms of the Cadogan family, lords of the manor. */
-  "lion-head": ({ main, accent, ground }) =>
-    path(starD(50, 52, 48, 33, 16), accent) +
-    circle(33, 30, 7, main) +
-    circle(67, 30, 7, main) +
-    path(
-      "M50 24C64 24 72 34 72 48C72 62 66 74 58 80L50 84L42 80C34 74 28 62 28 48C28 34 36 24 50 24Z",
-      main,
-    ) +
-    path("M35 45Q41 41 46 46Q41 49 35 45Z", ground) +
-    path("M65 45Q59 41 54 46Q59 49 65 45Z", ground) +
-    path("M42 58L58 58L50 67Z", ground) +
-    circle(43, 70, 6, ground) +
-    circle(57, 70, 6, ground) +
-    path("M42 58L58 58L50 67Z", main) +
-    path("M44 59.5L56 59.5L50 65Z", ground) +
-    line("M50 66L50 72", main, 2),
-
-  /** A lion rampant, facing left: the Scottish lion of Aston Villa's founders. */
-  "lion-rampant": ({ main, accent, ground }) =>
-    // Tail: an S-curve up behind the back, ending in a tuft.
-    line("M62 72C82 72 90 58 82 44C77 36 80 26 89 25", main, 5) +
-    path(starD(90, 24, 8, 3.5, 5, -60), main) +
-    // Body, rising from the hips to the chest.
-    path("M36 32C50 30 60 44 64 58C68 70 64 80 54 80C46 80 42 72 40 62C38 52 30 42 36 32Z", main) +
-    // Mane: a ring of points round the head and neck.
-    path(starD(38, 28, 20, 15.5, 9, -100), main) +
-    // Head, looking left, with the mouth open.
-    path("M19 15C26 8 37 11 39 20L38 31L28 35L19 34L13 30L20 27L11 24L15 19Z", main) +
-    // Forelegs raised, claws out.
-    line("M42 40L26 44L17 37", main, 8) +
-    line("M46 52L30 59L21 55", main, 8) +
-    path("M15 31L9 32L14 36ZM12 36L7 40L13 41Z", main) +
-    path("M19 50L13 51L18 55ZM16 55L11 59L17 60Z", main) +
-    // Hind legs: one planted, one stepping forward.
-    line("M58 74L64 86L60 95", main, 9) +
-    line("M54 95L71 95", main, 6) +
-    line("M48 74L36 82L28 78", main, 9) +
-    path("M24 74L18 76L24 80Z", main) +
-    circle(27, 19, 2.2, ground) +
-    path("M15 29L21 28L18 32Z", accent),
-
   /** A castle keep with three towers: Newcastle's castle on the Tyne. */
   castle: ({ main, ground }) =>
     path(
@@ -226,18 +170,6 @@ export const SYMBOLS = {
     path("M24 44L29 44L29 54L24 54Z", ground) +
     path("M71 44L76 44L76 54L71 54Z", ground) +
     line("M17 60L83 60", ground, 2),
-
-  /** A round lock-up tower with a domed roof: Everton's village tower. */
-  tower: ({ main, ground }) =>
-    path("M50 6L52 14L48 14Z", main) +
-    path("M30 34C30 20 40 14 50 14C60 14 70 20 70 34Z", main) +
-    path("M26 34L74 34L74 42L26 42Z", main) +
-    path("M32 42L68 42L70 86L30 86Z", main) +
-    path("M24 86L76 86L76 94L24 94Z", main) +
-    path("M43 86L43 72C43 64 57 64 57 72L57 86Z", ground) +
-    path("M38 50L44 50L44 60L38 60Z", ground) +
-    path("M56 50L62 50L62 60L56 60Z", ground) +
-    line("M26 38L74 38", ground, 1.5),
 
   /** A twisted-wrapper toffee: the Toffees, after the sweet shop near the old ground. */
   toffee: ({ main, accent, ground }) =>
@@ -279,21 +211,6 @@ export const SYMBOLS = {
     circle(50, 52, 9, ground) +
     line("M50 44L50 60M42 52L58 52", main, 2) +
     path("M40 92L40 74C40 64 60 64 60 74L60 92Z", ground),
-
-  /** A phoenix rising from flames: Coventry, rebuilt after the 1940 Blitz. */
-  phoenix: ({ main, accent }) =>
-    path(
-      "M46 52C36 46 24 36 12 16L22 21L20 9L31 20L32 6L40 23L44 10L47 30C49 38 50 44 50 50Z" +
-        "M54 52C64 46 76 36 88 16L78 21L80 9L69 20L68 6L60 23L56 10L53 30C51 38 50 44 50 50Z",
-      main,
-    ) +
-    path("M50 30C57 30 60 42 60 54C60 66 55 74 50 80C45 74 40 66 40 54C40 42 43 30 50 30Z", main) +
-    circle(51, 28, 7, main) +
-    path("M45 26L36 30L45 32Z", accent) +
-    circle(52, 26, 1.6, accent) +
-    path("M36 76Q42 88 50 97Q58 88 64 76Q57 82 50 78Q43 82 36 76Z", accent) +
-    path("M28 80Q34 88 42 92Q38 84 38 78Z", accent) +
-    path("M72 80Q66 88 58 92Q62 84 62 78Z", accent),
 
   /** A gabled riverside cottage: Craven Cottage, by the Thames. */
   cottage: ({ main, accent, ground }) =>
@@ -343,22 +260,6 @@ export const SYMBOLS = {
     path("M30 72L70 72L74 84L26 84Z", main) +
     path("M28 84L72 84L72 90L28 90Z", main),
 
-  /** A trident: the Red Devils' pitchfork, without the devil. */
-  trident: ({ main }) =>
-    path("M47 28L53 28L53 94L47 94Z", main) +
-    path("M50 4L58 22L53 20L53 30L47 30L47 20L42 22Z", main) +
-    path("M24 30L46 30L46 36L28 36L28 22L22 12L32 20L32 30Z", main) +
-    path("M76 30L54 30L54 36L72 36L72 22L78 12L68 20L68 30Z", main),
-
-  /** A locomotive's driving wheel: Newton Heath LYR, the railway workers' team the club began as. */
-  "rail-wheel": ({ main, ground }) =>
-    ringAt(50, 50, 38, main, 8) +
-    line(spokes(50, 50, 8, 36, 12), main, 3.5) +
-    // The counterweight: a solid segment opposite the crank.
-    path("M76 71.9A34 34 0 0 1 24 71.9L36.2 61.6A18 18 0 0 0 63.8 61.6Z", main) +
-    circle(50, 50, 10, main) +
-    circle(50, 50, 4, ground),
-
   /** The arched glass transept of the Crystal Palace, the 1851 exhibition hall. */
   "glass-palace": ({ main, ground }) =>
     path("M18 88L18 52A32 32 0 0 1 82 52L82 88Z", main) +
@@ -385,6 +286,10 @@ export const SYMBOLS = {
     `<ellipse cx="28" cy="64" rx="3.5" ry="5" fill="${ground}" opacity="0.55"/>` +
     `<ellipse cx="60" cy="68" rx="3.5" ry="5" fill="${ground}" opacity="0.55"/>`,
 } satisfies Record<string, Draw>;
+
+/** Every symbol: the first round of drawings, with the refined ones
+ *  (symbols-refined.ts) replacing those they redraw. */
+export const SYMBOLS = { ...FIRST_ROUND, ...REFINED };
 
 export type SymbolName = keyof typeof SYMBOLS;
 

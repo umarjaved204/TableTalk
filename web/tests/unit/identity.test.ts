@@ -227,7 +227,7 @@ describe("assets", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses the small crest up to 24 px and the full one from 25 px", () => {
+  it("uses the small crest at 24 px and below and the full one above (one threshold everywhere)", () => {
     expect(variantFor(16)).toBe("small");
     expect(variantFor(24)).toBe("small");
     expect(variantFor(25)).toBe("full");
@@ -294,5 +294,18 @@ describe("lettering", () => {
       expect(d).toBeLessThan(46 + 4 + 1);
       expect(y).toBeGreaterThan(60); // under the centre: the bottom of the ring
     }
+  });
+});
+
+describe("the review gallery script", () => {
+  const script = readFileSync(resolve("scripts/crest-gallery.mjs"), "utf8");
+
+  it("loads nothing from other sites (fonts are embedded)", () => {
+    expect(script).not.toMatch(/https?:\/\//);
+  });
+
+  it("takes the small-crest threshold from the shared size rule", () => {
+    expect(script).toContain('from "../src/identity/sizes.ts"');
+    expect(script).toContain("${SMALL_MAX} px");
   });
 });

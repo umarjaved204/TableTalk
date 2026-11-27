@@ -82,34 +82,57 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
     ],
     band: { bg: "#a5000c", ink: WHITE, muted: "#fbdcde", accent: "#f0cf7a" },
     inspiration:
-      "Formed in 1886 by workers at the Royal Arsenal in Woolwich, the army's munitions works. A wheeled field gun of the kind made there, inside a ring carrying the name and the founding year.",
+      "Formed in 1886 by workers at the Royal Arsenal in Woolwich, the army's munitions works. A traditional shield led by the club's initials, as in the redesign's reference, with a wheeled field gun of the kind made at Woolwich beneath them.",
     resemblance: {
       level: "high",
-      note: "A gun is the club's long-standing symbol. This one is a wheeled field gun facing left on a roundel, where the official badge has a bare cannon facing right on a shield, but the symbol and the red-and-white colours will still read as Arsenal's.",
+      note: "A red shield with a gun is the official badge's idea, and this composition follows it more closely than the first round's roundel did. The lettering (ARS, not ARSENAL), the wheeled field gun facing left and the white-and-gold border are new, but supporters will read it as Arsenal's badge. The roundel and Dial Square designs stay as alternatives.",
     },
     looks: {
-      full: "A red roundel with a navy edge. A white inner disc, edged in gold, holds a red wheeled field gun facing left. ARSENAL runs round the top of the red ring and 1886 round the bottom, with a small gold star on each side.",
-      small: "A red roundel with a navy edge and a white field gun filling it.",
+      full: "A red heater shield with a thin gold edge and a broad white border inside it. Large white ARS initials fill the upper half; below them, a white wheeled field gun faces left.",
+      small: "The red shield with its white border and a large white field gun.",
     },
     full: (k) => [
-      k.shield("roundel", { rim: ARS.navy, field: ARS.red, rimWidth: 3 }),
-      k.disc(60, 60, 38, WHITE, [ARS.gold, 2.5]),
-      k.symbol("field-gun", { x: 61, y: 61, size: 62 }, { main: ARS.red, accent: ARS.gold, ground: WHITE }),
-      k.arc("Arsenal", { r: 46.5, cap: 9.5, side: "top", fill: WHITE }),
-      k.arc("1886", { r: 46.5, cap: 8, side: "bottom", fill: WHITE }),
-      k.star(14, 60, 4, ARS.gold),
-      k.star(106, 60, 4, ARS.gold),
+      k.shield("heater", { rim: ARS.gold, field: WHITE, rimWidth: 2.5 }),
+      k.inset("heater", 8, ARS.red),
+      k.text("ARS", { x: 60, baseline: 60, cap: 31, tracking: 0.03, maxWidth: 68, fill: WHITE }),
+      k.symbol("field-gun", { x: 61, y: 80, size: 40 }, { main: WHITE, accent: WHITE, ground: ARS.red }),
     ],
     small: (k) => [
-      k.shield("roundel", { rim: ARS.navy, field: ARS.red, rimWidth: 7 }),
-      k.symbol("field-gun", { x: 61, y: 62, size: 86 }, { main: WHITE, accent: WHITE, ground: ARS.red }),
+      k.shield("heater", { rim: ARS.gold, field: WHITE, rimWidth: 3 }),
+      k.inset("heater", 10, ARS.red),
+      k.symbol("field-gun", { x: 61, y: 56, size: 78 }, { main: WHITE, accent: WHITE, ground: ARS.red }),
     ],
     alternatives: [
+      {
+        title: "Roundel",
+        note: "The first round's design: the field gun in a white disc inside a red ring carrying the name and the founding year. Further from the official badge's shape.",
+        looks: {
+          full: "A red roundel with a navy edge. A white inner disc, edged in gold, holds a red wheeled field gun facing left. ARSENAL runs round the top of the red ring and 1886 round the bottom, with a small gold star on each side.",
+          small: "A red roundel with a navy edge and a white field gun filling it.",
+        },
+        full: (k) => [
+          k.shield("roundel", { rim: ARS.navy, field: ARS.red, rimWidth: 3 }),
+          k.disc(60, 60, 38, WHITE, [ARS.gold, 2.5]),
+          k.symbol(
+            "field-gun",
+            { x: 61, y: 61, size: 62 },
+            { main: ARS.red, accent: ARS.gold, ground: WHITE },
+          ),
+          k.arc("Arsenal", { r: 46.5, cap: 9.5, side: "top", fill: WHITE }),
+          k.arc("1886", { r: 46.5, cap: 8, side: "bottom", fill: WHITE }),
+          k.star(14, 60, 4, ARS.gold),
+          k.star(106, 60, 4, ARS.gold),
+        ],
+        small: (k) => [
+          k.shield("roundel", { rim: ARS.navy, field: ARS.red, rimWidth: 7 }),
+          k.symbol("field-gun", { x: 61, y: 62, size: 86 }, { main: WHITE, accent: WHITE, ground: ARS.red }),
+        ],
+      },
       {
         title: "Dial Square",
         note: "The club's first name, after the Woolwich workshop named for the sundial over its entrance. Keeps the Woolwich story without the gun.",
         looks: {
-          full: "The same red ring and white disc, with a red sundial in place of the gun: hour lines fanning out from a navy triangular blade on a red base. ARSENAL round the top and DIAL SQUARE round the bottom.",
+          full: "A red ring and white disc, with a red sundial: hour lines fanning out from a navy triangular blade on a red base. ARSENAL round the top and DIAL SQUARE round the bottom.",
           small: "A red roundel with a white sundial.",
         },
         full: (k) => [
@@ -177,25 +200,46 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
     ],
     band: { bg: MCI.navy, ink: WHITE, muted: "#d3e6f5", accent: MCI.sky },
     inspiration:
-      "Industrial Manchester: the worker bee, the city's emblem of its mills and the people who worked them, over three gold bands for the rivers Irwell, Irk and Medlock from the city's arms.",
+      "Maritime Manchester: the Ship Canal, opened in 1894, made the inland city a port. A three-masted ship under full sail, over the three gold rivers of the city's arms (Irwell, Irk and Medlock), with the club's initials above.",
     resemblance: {
-      level: "low",
-      note: "The official badge is a roundel with a ship. The rivers appeared on an older club badge, but the bee and the French shield make this a new design.",
+      level: "high",
+      note: "A ship is the centre of the official badge, which is a roundel. Here the ship is a different drawing (three masts, stacked sails, heading right) on a French shield with gold rivers and MCFC, but the ship on sky blue will still read as City's. The bee design stays as the alternative.",
     },
     looks: {
-      full: "A sky-blue French shield with a navy edge. A navy band across the top reads CITY in white. Below, three thin gold diagonal bands rise to the right behind a navy and gold bee with white wings.",
-      small: "A sky-blue French shield with a large navy and gold bee.",
+      full: "A sky-blue French shield with a navy edge. A navy band across the top reads MCFC in white. Below, a navy three-masted ship with nine white sails heads right over two navy wavy lines, with three thin gold diagonal bands behind it.",
+      small: "A sky-blue French shield filled by the navy three-masted ship with white sails.",
     },
     full: (k) => [
       k.shield("french", { rim: MCI.navy, field: MCI.sky }),
-      k.pattern({ kind: "bends", colour: MCI.gold, count: 3, width: 4, gap: 5, offset: 26 }),
-      k.pattern({ kind: "chief", colour: MCI.navy, height: 33 }),
-      k.text("City", { x: 60, baseline: 28.5, cap: 13, fill: WHITE }),
-      k.symbol("bee", { x: 60, y: 66, size: 50 }, { main: MCI.navy, accent: MCI.gold, ground: WHITE }),
+      k.pattern({ kind: "bends", colour: MCI.gold, count: 3, width: 3.5, gap: 4.5, offset: 30 }),
+      k.pattern({ kind: "chief", colour: MCI.navy, height: 30 }),
+      k.text("MCFC", { x: 60, baseline: 26, cap: 13, tracking: 0.1, fill: WHITE }),
+      k.symbol("galleon", { x: 60, y: 69, size: 64 }, { main: MCI.navy, accent: WHITE, ground: MCI.sky }),
     ],
     small: (k) => [
       k.shield("french", { rim: MCI.navy, field: MCI.sky, rimWidth: 7 }),
-      k.symbol("bee", { x: 60, y: 58, size: 82 }, { main: MCI.navy, accent: MCI.gold, ground: WHITE }),
+      k.symbol("galleon", { x: 60, y: 57, size: 88 }, { main: MCI.navy, accent: WHITE, ground: MCI.sky }),
+    ],
+    alternatives: [
+      {
+        title: "Worker bee",
+        note: "Industrial Manchester instead of maritime: the worker bee, the city's emblem of its mills and the people who worked them. Further from the official badge, but Brentford also has a bee.",
+        looks: {
+          full: "A sky-blue French shield with a navy edge. A navy band across the top reads CITY in white. Below, three thin gold diagonal bands rise to the right behind a navy and gold bee with white wings.",
+          small: "A sky-blue French shield with a large navy and gold bee.",
+        },
+        full: (k) => [
+          k.shield("french", { rim: MCI.navy, field: MCI.sky }),
+          k.pattern({ kind: "bends", colour: MCI.gold, count: 3, width: 4, gap: 5, offset: 26 }),
+          k.pattern({ kind: "chief", colour: MCI.navy, height: 33 }),
+          k.text("City", { x: 60, baseline: 28.5, cap: 13, fill: WHITE }),
+          k.symbol("bee", { x: 60, y: 66, size: 50 }, { main: MCI.navy, accent: MCI.gold, ground: WHITE }),
+        ],
+        small: (k) => [
+          k.shield("french", { rim: MCI.navy, field: MCI.sky, rimWidth: 7 }),
+          k.symbol("bee", { x: 60, y: 58, size: 82 }, { main: MCI.navy, accent: MCI.gold, ground: WHITE }),
+        ],
+      },
     ],
   },
   {
@@ -218,7 +262,7 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
       note: "The bird is shared by the city and the club's official badge. This bird stands with one wing raised, with no gates, flames or motto, but it is still the same idea.",
     },
     looks: {
-      full: "A red round-bottomed shield with a dark red edge. A dark red band across the top reads LIVERPOOL in white. Below, a white sea bird stands with one wing raised and a gold sprig in its beak; 1892 in small gold figures at the foot.",
+      full: "A red round-bottomed shield with a dark red edge. A dark red band across the top reads LIVERPOOL in white. Below, a white cormorant-like sea bird stands with its long neck raised and one wing lifted in a sweep of three flight feathers, a gold sprig in its hooked beak; 1892 in small gold figures at the foot.",
       small: "A red round-bottomed shield with the white bird filling it.",
     },
     full: (k) => [
@@ -408,19 +452,19 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
     ],
     band: { bg: CHE.blue, ink: WHITE, muted: "#d8e5f5", accent: CHE.gold },
     inspiration:
-      "The lion of the Cadogan family, Viscounts Chelsea and lords of the manor, drawn as a lion's head with a pointed gold mane, inside a royal-blue ring.",
+      "The lion of the Cadogan family, Viscounts Chelsea and lords of the manor, drawn as a heraldic lion's head in profile with a flowing mane, inside a royal-blue ring.",
     resemblance: {
       level: "medium",
-      note: "The official badge has a whole lion holding a staff. This is a lion's head, front on, in a ring: same animal, different drawing.",
+      note: "The official badge has a whole lion holding a staff. This is a lion's head in profile, cut off at the neck, in a ring: same animal, a different heraldic form and drawing.",
     },
     looks: {
-      full: "A royal-blue roundel with a gold edge. A white inner disc, edged in gold, holds a blue lion's head, front on, with a pointed gold mane. CHELSEA runs round the top of the ring and 1905 round the bottom, with a small red star on each side.",
-      small: "A blue roundel with a gold edge, filled by a white lion's head with a gold mane.",
+      full: "A royal-blue roundel with a gold edge. A white inner disc, edged in gold, holds a blue lion's head in profile facing left, mouth open with a red tongue, its long mane sweeping back and curling down. CHELSEA runs round the top of the ring and 1905 round the bottom, with a small red star on each side.",
+      small: "A blue roundel with a gold edge, filled by the white lion's head in profile.",
     },
     full: (k) => [
       k.shield("roundel", { rim: CHE.gold, field: CHE.blue, rimWidth: 3 }),
       k.disc(60, 60, 38, WHITE, [CHE.gold, 2.5]),
-      k.symbol("lion-head", { x: 60, y: 60, size: 64 }, { main: CHE.blue, accent: CHE.gold, ground: WHITE }),
+      k.symbol("lion-head", { x: 62, y: 60, size: 66 }, { main: CHE.blue, accent: CHE.red, ground: WHITE }),
       k.arc("Chelsea", { r: 46.5, cap: 9.5, side: "top", fill: WHITE }),
       k.arc("1905", { r: 46.5, cap: 8, side: "bottom", fill: WHITE }),
       k.star(14, 60, 3.5, CHE.red),
@@ -428,7 +472,7 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
     ],
     small: (k) => [
       k.shield("roundel", { rim: CHE.gold, field: CHE.blue, rimWidth: 7 }),
-      k.symbol("lion-head", { x: 60, y: 60, size: 90 }, { main: WHITE, accent: CHE.gold, ground: CHE.blue }),
+      k.symbol("lion-head", { x: 63, y: 60, size: 92 }, { main: WHITE, accent: CHE.gold, ground: CHE.blue }),
     ],
   },
   {
@@ -450,7 +494,7 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
       note: "The tower is the centre of the official badge. This one is simpler and on a plain shield with no wreaths or motto, but it is clearly the same tower.",
     },
     looks: {
-      full: "A white heater shield with a blue edge. A blue band across the top reads EVERTON in white. Below, a blue round tower with a domed roof, a band of stone, two windows and an arched door.",
+      full: "A white heater shield with a blue edge. A blue band across the top reads EVERTON in white. Below, a blue round stone tower on a stepped plinth: courses of masonry, a moulded cornice, a ribbed dome with a ball finial, two narrow windows and an arched door.",
       small: "A blue heater shield with the tower in white.",
     },
     full: (k) => [
@@ -497,28 +541,48 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
     ],
     band: { bg: TOT.navy, ink: WHITE, muted: "#d9def0", accent: "#a9b8ee" },
     inspiration:
-      "Named after Harry Hotspur, Sir Henry Percy, the fourteenth-century knight whose family held land in Tottenham: a rider's spur, with its star-shaped rowel, under his name.",
+      "Named after Harry Hotspur, Sir Henry Percy, the fourteenth-century knight whose family held land in Tottenham. Fighting cocks wore spurs, which links his name to the club's bird: a spurred fighting cock standing tall, on its own, under his name.",
     resemblance: {
-      level: "low",
-      note: "The official badge is a cockerel on a ball. Spurs are only in the name.",
+      level: "high",
+      note: "A cockerel is the official badge's symbol (on a ball, facing right). This bird stands on its own, facing left, with sickle tail feathers and spurs, on a navy shield, but a cockerel on navy and white will read as Spurs'. The spur design stays as the alternative.",
     },
     looks: {
-      full: "A navy French shield. A white band across the top reads HOTSPUR in navy. Below, one large white rider's spur lies across the shield, its heel band curving down on the left and its star-shaped rowel on the right.",
-      small: "A navy French shield with one large white eight-pointed rowel.",
+      full: "A navy French shield. A white band across the top reads HOTSPUR in navy. Below, a white fighting cock stands facing left, chest out, with a red comb and wattle, arching sickle tail feathers and spurs on its legs.",
+      small: "A navy French shield filled by the white cockerel with its red comb.",
     },
     full: (k) => [
       k.shield("french", { rim: TOT.navy, field: TOT.navy }),
-      k.pattern({ kind: "chief", colour: WHITE, height: 32 }),
-      k.text("Hotspur", { x: 60, baseline: 27, cap: 10, maxWidth: 78, fill: TOT.navy }),
-      k.symbol(
-        "spur",
-        { x: 58, y: 68, size: 72, rotate: -6 },
-        { main: WHITE, accent: WHITE, ground: TOT.navy },
-      ),
+      k.pattern({ kind: "chief", colour: WHITE, height: 30 }),
+      k.text("Hotspur", { x: 60, baseline: 25.5, cap: 10, maxWidth: 78, fill: TOT.navy }),
+      k.symbol("cockerel", { x: 60, y: 72, size: 62 }, { main: WHITE, accent: "#d22630", ground: TOT.navy }),
     ],
     small: (k) => [
       k.shield("french", { rim: TOT.navy, field: TOT.navy, rimWidth: 7 }),
-      k.symbol("rowel", { x: 60, y: 57, size: 70 }, { main: WHITE, accent: WHITE, ground: TOT.navy }),
+      k.symbol("cockerel", { x: 59, y: 58, size: 88 }, { main: WHITE, accent: "#d22630", ground: TOT.navy }),
+    ],
+    alternatives: [
+      {
+        title: "Hotspur's spur",
+        note: "The first round's design: the rider's spur of Harry Hotspur himself, with its star-shaped rowel. Low resemblance to the official badge.",
+        looks: {
+          full: "A navy French shield. A white band across the top reads HOTSPUR in navy. Below, one large white rider's spur lies across the shield, its heel band curving down on the left and its star-shaped rowel on the right.",
+          small: "A navy French shield with one large white eight-pointed rowel.",
+        },
+        full: (k) => [
+          k.shield("french", { rim: TOT.navy, field: TOT.navy }),
+          k.pattern({ kind: "chief", colour: WHITE, height: 32 }),
+          k.text("Hotspur", { x: 60, baseline: 27, cap: 10, maxWidth: 78, fill: TOT.navy }),
+          k.symbol(
+            "spur",
+            { x: 58, y: 68, size: 72, rotate: -6 },
+            { main: WHITE, accent: WHITE, ground: TOT.navy },
+          ),
+        ],
+        small: (k) => [
+          k.shield("french", { rim: TOT.navy, field: TOT.navy, rimWidth: 7 }),
+          k.symbol("rowel", { x: 60, y: 57, size: 70 }, { main: WHITE, accent: WHITE, ground: TOT.navy }),
+        ],
+      },
     ],
   },
   {
@@ -534,30 +598,53 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
     ],
     band: { bg: BLACK, ink: WHITE, muted: "#e6e0d2", accent: HUL.amber },
     inspiration:
-      "The Tigers, in amber and black: tiger stripes at the edges of the shield, and the three crowns from the arms of the city of Hull down the middle.",
+      "The Tigers, in amber and black: a tiger prowling across the shield, head low and tail lifted, over the three crowns from the arms of the city of Hull.",
     resemblance: {
-      level: "low",
-      note: "The official badge is a tiger's head. Stripes and crowns are a different idea.",
+      level: "medium",
+      note: "The official badge is a tiger's head, front on. This is the whole animal in profile, prowling, with the city's crowns: the same animal, a different picture. The crowns design stays as the alternative.",
     },
     looks: {
-      full: "An amber round-bottomed shield with a black edge. A black band across the top reads HULL CITY in amber. Black tapering tiger stripes come in from both sides, and three black crowns stand one above the other down the middle.",
-      small: "The amber shield with tiger stripes at the sides and three black crowns down the middle.",
+      full: "An amber round-bottomed shield with a black edge. A black band across the top reads HULL CITY in amber. Below, a black tiger with amber stripes prowls to the left, head low and tail raised, above a row of three small black crowns.",
+      small: "The amber shield with the black tiger silhouette prowling across it.",
     },
     full: (k) => [
       k.shield("english", { rim: BLACK, field: HUL.amber }),
-      k.pattern({ kind: "tiger", colour: BLACK }),
       k.pattern({ kind: "chief", colour: BLACK, height: 28 }),
       k.text("Hull City", { x: 60, baseline: 23.5, cap: 8.5, maxWidth: 76, fill: HUL.amber }),
-      k.symbol("crown", { x: 60, y: 44, size: 24 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
-      k.symbol("crown", { x: 60, y: 66, size: 24 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
-      k.symbol("crown", { x: 60, y: 88, size: 24 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
+      k.symbol("tiger", { x: 60, y: 60, size: 74 }, { main: BLACK, accent: HUL.amber, ground: HUL.amber }),
+      k.symbol("crown", { x: 45, y: 95, size: 13 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
+      k.symbol("crown", { x: 60, y: 97, size: 13 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
+      k.symbol("crown", { x: 75, y: 95, size: 13 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
     ],
     small: (k) => [
       k.shield("english", { rim: BLACK, field: HUL.amber, rimWidth: 7 }),
-      k.pattern({ kind: "tiger", colour: BLACK }),
-      k.symbol("crown", { x: 60, y: 30, size: 32 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
-      k.symbol("crown", { x: 60, y: 59, size: 32 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
-      k.symbol("crown", { x: 60, y: 88, size: 32 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
+      k.symbol("tiger", { x: 60, y: 58, size: 92 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
+    ],
+    alternatives: [
+      {
+        title: "Three crowns",
+        note: "The first round's design: tiger stripes at the edges and the city's three crowns down the middle. Low resemblance to the official badge.",
+        looks: {
+          full: "An amber round-bottomed shield with a black edge. A black band across the top reads HULL CITY in amber. Black tapering tiger stripes come in from both sides, and three black crowns stand one above the other down the middle.",
+          small: "The amber shield with tiger stripes at the sides and three black crowns down the middle.",
+        },
+        full: (k) => [
+          k.shield("english", { rim: BLACK, field: HUL.amber }),
+          k.pattern({ kind: "tiger", colour: BLACK }),
+          k.pattern({ kind: "chief", colour: BLACK, height: 28 }),
+          k.text("Hull City", { x: 60, baseline: 23.5, cap: 8.5, maxWidth: 76, fill: HUL.amber }),
+          k.symbol("crown", { x: 60, y: 44, size: 24 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
+          k.symbol("crown", { x: 60, y: 66, size: 24 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
+          k.symbol("crown", { x: 60, y: 88, size: 24 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
+        ],
+        small: (k) => [
+          k.shield("english", { rim: BLACK, field: HUL.amber, rimWidth: 7 }),
+          k.pattern({ kind: "tiger", colour: BLACK }),
+          k.symbol("crown", { x: 60, y: 30, size: 32 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
+          k.symbol("crown", { x: 60, y: 59, size: 32 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
+          k.symbol("crown", { x: 60, y: 88, size: 32 }, { main: BLACK, accent: BLACK, ground: HUL.amber }),
+        ],
+      },
     ],
   },
   {
@@ -579,7 +666,7 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
       note: "A lion rampant in claret and blue is the official badge's main idea. This lion is a new drawing on a heater shield with a named chief, but it will still read as Villa's lion.",
     },
     looks: {
-      full: "A claret heater shield with a sky-blue edge. A sky-blue band across the top reads VILLA in claret. Below, a sky-blue lion rampant faces left, forepaws raised, with a curling tail.",
+      full: "A claret heater shield with a sky-blue edge. A sky-blue band across the top reads VILLA in claret. Below, a large sky-blue lion rampant faces left on the diagonal, mouth open with a yellow tongue, a mane of curls, forepaws raised with claws out and a curling tail with a curled tuft.",
       small: "A claret heater shield filled by the sky-blue lion.",
     },
     full: (k) => [
@@ -588,15 +675,15 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
       k.text("Villa", { x: 60, baseline: 24.5, cap: 11, fill: AVL.claret }),
       k.symbol(
         "lion-rampant",
-        { x: 58, y: 69, size: 64 },
+        { x: 58, y: 70, size: 74 },
         { main: AVL.sky, accent: AVL.gold, ground: AVL.claret },
       ),
     ],
     small: (k) => [
       k.shield("heater", { rim: AVL.sky, field: AVL.claret, rimWidth: 7 }),
       k.symbol(
-        "lion-rampant",
-        { x: 58, y: 56, size: 84 },
+        "lion-rampant-small",
+        { x: 57, y: 57, size: 94 },
         { main: AVL.sky, accent: AVL.gold, ground: AVL.claret },
       ),
     ],
@@ -687,7 +774,7 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
       note: "The official badge is an elephant and castle. The phoenix is from the city's later arms, not the club's badge.",
     },
     looks: {
-      full: "A sky-blue roundel with a navy edge. A navy inner disc, edged in white, holds a white phoenix with raised wings rising from orange flames. COVENTRY runs round the top of the ring in navy and 1883 round the bottom.",
+      full: "A sky-blue roundel with a navy edge. A navy inner disc, edged in white, holds a white phoenix rising from three orange flames, wings spread wide in broad pointed feathers and head turned to the left. COVENTRY runs round the top of the ring in navy and 1883 round the bottom.",
       small: "A sky-blue roundel filled by the white phoenix and its orange flames.",
     },
     full: (k) => [
@@ -894,15 +981,15 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
       note: "The official badge has a devil holding a trident, over a ship. The trident alone, with the railway wheel, is a different picture.",
     },
     looks: {
-      full: "A red heater shield with a black edge. A black band across the top reads UNITED in white. Below, a gold trident stands upright in front of a black locomotive driving wheel with spokes and a counterweight.",
+      full: "A red heater shield with a black edge. A black band across the top reads UNITED in white. Below, a tall gold trident with barbed prongs rises from a black locomotive driving wheel with spokes, a crank pin and a counterweight.",
       small: "A red heater shield with a large gold trident.",
     },
     full: (k) => [
       k.shield("heater", { rim: BLACK, field: MUN.red }),
       k.pattern({ kind: "chief", colour: BLACK, height: 28 }),
       k.text("United", { x: 60, baseline: 23.5, cap: 10, fill: WHITE }),
-      k.symbol("rail-wheel", { x: 60, y: 66, size: 60 }, { main: BLACK, accent: BLACK, ground: MUN.red }),
-      k.symbol("trident", { x: 60, y: 67, size: 66 }, { main: MUN.gold, accent: MUN.gold, ground: MUN.red }),
+      k.symbol("rail-wheel", { x: 60, y: 74, size: 52 }, { main: BLACK, accent: BLACK, ground: MUN.red }),
+      k.symbol("trident", { x: 60, y: 64, size: 74 }, { main: MUN.gold, accent: MUN.gold, ground: MUN.red }),
     ],
     small: (k) => [
       k.shield("heater", { rim: BLACK, field: MUN.red, rimWidth: 7 }),

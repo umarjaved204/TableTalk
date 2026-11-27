@@ -57,9 +57,9 @@ export interface ClubIdentity {
   inspiration: string;
   resemblance: { level: Resemblance; note: string };
   looks: Looks;
-  /** The crest at 28 px and up. */
+  /** The crest above 24 px (assets.ts SMALL_MAX). */
   full: Design;
-  /** The crest up to 24 px: fewer, bolder parts, still with one identifying element. */
+  /** The crest at 24 px and below: fewer, bolder parts, still with one identifying element. */
   small: Design;
   alternatives?: readonly CrestAlternative[];
 }
