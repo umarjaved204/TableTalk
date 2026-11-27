@@ -436,7 +436,7 @@ function compositionTable() {
     .join("");
   const shapes = new Map();
   for (const c of withType) {
-    const shape = /k\.shield\("(\w+)"/.exec(String(c.full))?.[1] ?? "?";
+    const shape = /k\.shield\("([\w-]+)"/.exec(String(c.full))?.[1] ?? "?";
     shapes.set(shape, (shapes.get(shape) ?? 0) + 1);
   }
   const shapeList = [...shapes]
