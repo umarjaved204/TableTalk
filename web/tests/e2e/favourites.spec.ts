@@ -710,6 +710,31 @@ test.describe("no layout shift", () => {
     page,
   }) => {
     test.setTimeout(120_000);
+    // The fallback faces in src/styles/fonts.css are Arial with Barlow's and
+    // Source Sans's metrics (local("Arial Bold"), local("Arial")). Arial is on
+    // Windows and macOS, but not on the Linux machines GitHub Actions runs
+    // (.github/workflows/pr-checks.yml): there the fallback face doesn't
+    // exist, a different font stands in, and this comparison means nothing.
+    // So it runs where Arial is installed (locally, before every merge) and
+    // is skipped, with a note, where it isn't.
+    // Asked directly: does the fallback face's local() source load here?
+    // (Measuring text in "Arial" is not enough: Linux silently substitutes a
+    // look-alike for that name, but local() needs the real font.)
+    await page.goto("/premier-league/");
+    const hasArial = await page.evaluate(async () => {
+      const faces = [...document.fonts].filter((f) => f.family.replaceAll('"', "").endsWith(" Fallback"));
+      if (faces.length === 0) return false;
+      const loaded = await Promise.all(
+        faces.map((f) =>
+          f.load().then(
+            () => true,
+            () => false,
+          ),
+        ),
+      );
+      return loaded.every(Boolean);
+    });
+    test.skip(!hasArial, "Arial is not installed here, so the metric-matched fallback font can't be tested");
     // A late web font must not change how the header wraps, or the whole page would move.
     const heights = async (fallback: boolean) => {
       if (fallback) await page.route(/\.woff2$/, (route) => route.abort());
