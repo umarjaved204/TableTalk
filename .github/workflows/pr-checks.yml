@@ -1,0 +1,71 @@
+# Checks for pull requests into main and redesign: the same checks that are
+# run by hand before each merge today (verify, and the browser suite on the
+# fixture data). Read-only: no secrets, no deploy, nothing written back.
+#
+# Lighthouse stays a local check: its blocking-time number swings too much on
+# shared runners to be a pass/fail gate, and locally it is already compared
+# with a build from before the change.
+
+name: PR checks
+
+on:
+  pull_request:
+    branches: [main, redesign]
+
+permissions: {}
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the pull request
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install the website's packages
+        working-directory: web
+        run: npm ci
+
+      # The data branch is public: the same two lines site.yml uses.
+      - name: Copy the published data into web/.data
+        run: |
+          git fetch --quiet --depth=1 origin refs/heads/data
+          git update-ref refs/remotes/origin/data FETCH_HEAD
+          cd web
+          npm run data -- --offline
+
+      - name: Check, test and build the site
+        working-directory: web
+        run: npm run verify
+
+      - name: Install the browsers the tests use
+        working-directory: web
+        run: npx playwright install --with-deps chromium webkit
+
+      # Builds its own site from tests/fixtures, never the live data.
+      - name: Browser tests on the fixture data
+        working-directory: web
+        run: npx playwright test
+
+      - name: Keep the test results when something fails
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results
+          path: web/test-results
+          retention-days: 7
