@@ -11,6 +11,7 @@
 //           (where a wheel crosses a barrel, say), so parts never merge.
 
 import { REFINED } from "./symbols-refined.ts";
+import { SILHOUETTES } from "./symbols-silhouettes.ts";
 
 export interface Ink {
   main: string;
@@ -287,9 +288,9 @@ const FIRST_ROUND = {
     `<ellipse cx="60" cy="68" rx="3.5" ry="5" fill="${ground}" opacity="0.55"/>`,
 } satisfies Record<string, Draw>;
 
-/** Every symbol: the first round of drawings, with the refined ones
- *  (symbols-refined.ts) replacing those they redraw. */
-export const SYMBOLS = { ...FIRST_ROUND, ...REFINED };
+/** Every symbol: the first round of drawings, with later rounds
+ *  (symbols-refined.ts, then symbols-silhouettes.ts) replacing those they redraw. */
+export const SYMBOLS = { ...FIRST_ROUND, ...REFINED, ...SILHOUETTES };
 
 export type SymbolName = keyof typeof SYMBOLS;
 

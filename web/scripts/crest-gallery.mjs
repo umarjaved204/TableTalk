@@ -266,16 +266,38 @@ ${alts}
 }
 
 function leagueSection() {
-  const strip = (cls) =>
-    `<div class="theme ${cls} strip">${LEAGUE_IDENTITIES.map((l) => {
-      const k = markKey(l);
-      return `<figure>${use(k, 96, `${l.code} mark`)}${use(k, 24)}${use(k, 16)}<figcaption>${l.code}</figcaption></figure>`;
-    }).join("")}</div>`;
-  const notes = LEAGUE_IDENTITIES.map(
-    (l) =>
-      `<li><b>${esc(LEAGUES.find((x) => x.id === l.leagueId).name)} (${l.code}).</b> ${esc(l.inspiration)} <i>What it shows:</i> ${esc(l.looks)}</li>`,
-  ).join("");
-  return `<div class="pair">${strip("t-light")}${strip("t-dark")}</div><ul class="notes">${notes}</ul>`;
+  // For each league: the cultural mark and each alternative concept side by
+  // side, so one direction can be chosen per league.
+  return LEAGUE_IDENTITIES.map((l) => {
+    const name = LEAGUES.find((x) => x.id === l.leagueId).name;
+    const options = [
+      {
+        key: markKey(l),
+        title: "Cultural",
+        inspiration: l.inspiration,
+        looks: l.looks,
+        resemblance: l.resemblance,
+      },
+      ...l.alternatives.map((c, n) => ({
+        key: define(`mark-${l.slug}-alt${n}`, renderCrest(c.mark, `m-${l.slug}-a${n}`)),
+        title: c.approach === "competition" ? `Competition-inspired: ${c.title}` : `Cultural: ${c.title}`,
+        inspiration: c.inspiration,
+        looks: c.looks,
+        resemblance: c.resemblance,
+      })),
+    ];
+    const cells = options
+      .map(
+        (o) => `<div class="option"><h4>${esc(o.title)}</h4><div class="pair">${THEMES.map(
+          (t) =>
+            `<div class="theme ${t.cls} sizes">${use(o.key, 96, `${name} mark, ${o.title}`)}${use(o.key, 24)}${use(o.key, 16)}</div>`,
+        ).join("")}</div>
+<p class="looks"><b>Idea:</b> ${esc(o.inspiration)}<br><b>What it shows:</b> ${esc(o.looks)}</p>
+<p class="res res-${o.resemblance.level}"><b>Resemblance to the competition's logo: ${o.resemblance.level}.</b> ${esc(o.resemblance.note)}</p></div>`,
+      )
+      .join("");
+    return `<article class="club"><header><h3>${esc(name)}</h3></header><div class="options">${cells}</div></article>`;
+  }).join("");
 }
 
 function fallbackSection() {
@@ -325,7 +347,12 @@ function comparisonSection() {
       return `<div class="clash"><h3>${esc(club.name)}</h3><div class="pair">${cell("t-light")}${cell("t-dark")}</div><p class="looks"><b>Now:</b> ${esc(club.looks.full)} ${level}</p></div>`;
     })
     .join("");
-  const marks = LEAGUE_IDENTITIES.filter((l) => prev.marks[l.slug])
+  const changedMarks = LEAGUE_IDENTITIES.filter(
+    (l) =>
+      prev.marks[l.slug] &&
+      !same(prev.marks[l.slug].replaceAll("pm-", "p-"), renderCrest(leagueMarkDesign(l), `p-${l.slug}`)),
+  );
+  const marks = changedMarks
     .map((l) => {
       const pk = define(
         `prev-mark-${l.slug}`,
@@ -337,8 +364,12 @@ function comparisonSection() {
   return `<section><h2>Previous and refined</h2>
 <p>${changed.length} crests changed since the last review; ${unchanged.length} kept as they were: ${esc(unchanged.join(", "))}. Each row shows the previous full crest (96 px) and small crest (24 and 16 px), then the refined one, on the light and the dark theme.</p>
 ${rows}
-<h3>League marks</h3><p>Previous (the shared stripe template), then the refined mark at 64, 24 and 16 px.</p>
-<div class="pair"><div class="theme t-light strip">${marks}</div><div class="theme t-dark strip">${marks}</div></div>
+${
+  changedMarks.length > 0
+    ? `<h3>League marks</h3><p>The previous mark, then the current one at 64, 24 and 16 px.</p>
+<div class="pair"><div class="theme t-light strip">${marks}</div><div class="theme t-dark strip">${marks}</div></div>`
+    : "<p>The league marks are unchanged since the last review; the new concepts to choose from are in the League marks section.</p>"
+}
 </section>`;
 }
 
@@ -413,7 +444,7 @@ ${status}
 <li><b>${dataLine}</b></li>
 </ul></section>
 ${comparisonSection()}
-<section><h2>League marks</h2><p>TableTalk's own marks, not the competitions' logos: each takes one idea from its country's football culture and has its own outline, so the five stay apart by shape at 16 px. Shown at 96, 24 and 16 px.</p>${leagueSection()}</section>
+<section><h2>League marks</h2><p>Two directions for each league, side by side, to choose one per league. <b>Cultural</b>: an idea from the country's football culture. <b>Competition-inspired</b>: built on what supporters already connect with the competition, drawn new with its own silhouette, lettering and composition. Neither copies or traces an official logo, but the competition-inspired ones are meant to be recognised, so their resemblance is higher. Each is shown at 96, 24 and 16 px on the light and dark themes.</p>${leagueSection()}</section>
 ${covered
   .map((id) => {
     const league = LEAGUES.find((l) => l.id === id);
@@ -462,6 +493,9 @@ code { font-family:ui-monospace,Consolas,monospace; font-size:.85em; }
 figure { margin:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 figcaption { font-size:.85rem; font-weight:600; width:100%; }
 .notes li { margin-bottom:8px; }
+.options { display:grid; gap:18px; }
+.option { border-top:1px dashed var(--border); padding-top:12px; }
+.option:first-child { border-top:0; padding-top:0; }
 .standings { border-collapse:collapse; width:100%; font-size:.9rem; border-radius:8px; overflow:hidden; }
 .standings th, .standings td { padding:4px 8px; text-align:left; border-bottom:1px solid #8883; }
 .standings .num { text-align:right; font-variant-numeric:tabular-nums; width:3em; }
