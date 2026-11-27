@@ -194,6 +194,8 @@ Grouped as in the pinned rules. "Pass" means no problem found in the code or the
 
 Each is independently shippable. Every PR also runs `npm run verify`, the e2e suite locally against fixtures, and `npm run lighthouse`.
 
+**Update, 27 Nov 2026:** PRs 1 to 3 shipped (#44, #45, #46). PRs 4 to 6 were not built on the old design. They are folded into the frontend redesign on the `redesign` branch: PR 4 (phone layout) into the home and league page branches, PR 5 (track record leads with its answer, lighter header and league links) into the site header and track record branches, and PR 6 (spacing and checklist tidy-up) into the final testing pass. Their findings and "What proves it" checks still apply there. The "Ideas flagged and not proposed" notes about fixed fonts, themes and colours were superseded by the redesign brief.
+
 | # | PR | Findings | Size | What proves it |
 | --- | --- | --- | --- | --- |
 | 1 | Home intro and plain track-record line | 1, 3 | S | H1 and lede test; no CLS change; unit tests for each verdict, incl. market missing |

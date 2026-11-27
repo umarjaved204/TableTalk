@@ -1,10 +1,12 @@
-/* Floodlights: stadium night with pitch green. The default dark theme. */
+/* Floodlights: an evening kick-off. Night-sky surfaces, a floodlit pitch-green
+   accent and warm white light in the artwork. The default dark theme. */
 [data-theme="floodlights"] {
   color-scheme: dark;
-  --bg: #0b1210;
-  --surface: #121b17;
-  --surface-2: #19241f;
-  --border: #26332c;
+  --bg: #0a1210;
+  --surface: #111b17;
+  --surface-2: #18241f;
+  --surface-raised: #1d2b25;
+  --border: #26352e;
   --border-strong: #6b8074;
   --text: #edf3ef;
   --text-muted: #a0b0a6;
@@ -14,4 +16,23 @@
   --pitch-line: rgb(63 217 138 / 16%);
   --warn-bg: #3a2c0c;
   --warn-text: #ffe2a3;
+  --shadow-color: #000;
+  --info-bg: #142a1f;
+
+  /* The brand band: a floodlit pitch at night, one step brighter than the
+     page and edged in pitch green so it stands out on a phone. */
+  --band-bg: #15462e;
+  --band-ink: #f3f8f4;
+  --band-muted: #b2d1bf;
+  --band-accent: #3fd98a;
+  --band-edge: rgb(63 217 138 / 45%);
+
+  /* Artwork: dark stands, a lit pitch, warm floodlights. */
+  --art-sky: #0d1714;
+  --art-stand: #17241f;
+  --art-roof: #24352d;
+  --art-pitch: #145a35;
+  --art-stripe: #11502f;
+  --art-line: rgb(255 255 255 / 45%);
+  --art-light: #fff3cf;
 }

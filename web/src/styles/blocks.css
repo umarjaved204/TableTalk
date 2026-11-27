@@ -1,0 +1,156 @@
+/* Shared building blocks of the redesign. Pages adopt them one at a time
+   (Phase 5); nothing here changes a page that doesn't use these classes.
+
+   .card         a content surface: one object, set off by border and fill
+   .panel-head   a panel's heading row, with a rule under it
+   .headline     the page's big condensed heading, with the short green stroke
+   .figure       a big number with its unit and a plain-words label under it
+   .explain      what a number means, in a tinted box with an "i" marker
+   .empty-state  nothing to show yet, and why (dashed, never alarming)
+   .band         the brand band, or a club's band when data-club is set */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  padding: var(--space-4);
+}
+
+@media (width >= 600px) {
+  .card {
+    padding: var(--space-5);
+  }
+}
+
+.panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-head > :is(h2, h3) {
+  font-size: var(--step-2);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+}
+
+.headline {
+  font-size: clamp(var(--step-4), 8vw, var(--step-6));
+  line-height: var(--leading-display);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-display);
+}
+
+.headline::after {
+  content: "";
+  display: block;
+  width: 2.2em;
+  height: var(--rule);
+  margin-top: var(--space-2);
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+}
+
+.figure {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+}
+
+.figure-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--step-5);
+  line-height: var(--leading-display);
+}
+
+.figure-unit {
+  font-size: 0.55em;
+  font-weight: 600;
+  margin-left: 0.05em;
+}
+
+.figure-label {
+  font-size: var(--step--1);
+  color: var(--text-muted);
+  line-height: var(--leading-tight);
+}
+
+.explain {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+  background: var(--info-bg);
+  border-radius: var(--radius-2);
+  padding: var(--space-3) var(--space-4);
+  max-width: var(--measure);
+}
+
+/* The "i" marker: drawn with CSS so it needs no icon file. Screen readers
+   read generated content, so it has empty alternative text (the part after
+   the slash) and is not announced; the box's own text says what it is.
+   Browsers without the alt-text syntax drop the declaration and show no
+   marker, never an announced one. tests/unit/blocks.test.ts checks this. */
+.explain::before {
+  content: "i" / "";
+  display: grid;
+  place-items: center;
+  width: 1.5em;
+  height: 1.5em;
+  margin-top: 0.05em;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.empty-state {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-2);
+  color: var(--text-muted);
+}
+
+.empty-state > :is(h2, h3, strong) {
+  color: var(--text);
+}
+
+.band {
+  --focus: var(--club-ink);
+
+  position: relative;
+  overflow: hidden;
+  background: var(--club-1);
+  color: var(--club-ink);
+  border: 1px solid var(--band-edge);
+  border-radius: var(--radius-3);
+}
+
+.band a {
+  color: inherit;
+}
+
+.band .muted {
+  color: var(--club-muted);
+}
+
+@media (forced-colors: active) {
+  .band {
+    border-color: CanvasText;
+  }
+
+  .explain::before {
+    border-color: CanvasText;
+    color: CanvasText;
+  }
+}

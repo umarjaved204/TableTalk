@@ -1,0 +1,131 @@
+/* Colours for the artwork in src/art/artwork.ts. Decoration only: the
+   artwork never sits under text in the scene and lines tones, and in the band
+   tone it is a single faint layer (--band-art-share) that band text is
+   tested against (tests/unit/themes.test.ts). */
+
+.art {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+/* Scene: the theme's --art-* colours. */
+.art[data-tone="scene"] .a-sky {
+  fill: var(--art-sky);
+}
+
+.art[data-tone="scene"] .a-stand {
+  fill: var(--art-stand);
+}
+
+.art[data-tone="scene"] :is(.a-roof, .a-mast, .a-lamp) {
+  fill: var(--art-roof);
+}
+
+.art[data-tone="scene"] .a-rows {
+  stroke: var(--art-roof);
+  stroke-width: 2;
+  fill: none;
+}
+
+.art[data-tone="scene"] .a-gangway {
+  stroke: var(--art-sky);
+  stroke-width: 4;
+  fill: none;
+}
+
+.art[data-tone="scene"] .a-pitch {
+  fill: var(--art-pitch);
+}
+
+.art[data-tone="scene"] .a-stripe {
+  fill: var(--art-stripe);
+}
+
+.art[data-tone="scene"] :is(.a-lines, .a-net, .a-ground, .a-frame) {
+  stroke: var(--art-line);
+  stroke-width: 2;
+  fill: none;
+}
+
+.art[data-tone="scene"] .a-spot {
+  fill: var(--art-line);
+}
+
+.art[data-tone="scene"] .a-bulb {
+  fill: var(--art-light);
+}
+
+.art[data-tone="scene"] .a-glow {
+  fill: var(--art-light);
+  opacity: 0.28;
+}
+
+.art[data-tone="scene"] .a-glow-wide {
+  opacity: 0.1;
+}
+
+.art[data-tone="scene"] .a-flag {
+  fill: var(--accent);
+}
+
+/* Lines: outlines only, in each theme's quiet pitch-line colour. */
+.art[data-tone="lines"] :is(.a-sky, .a-pitch, .a-stripe, .a-glow, .a-bulb) {
+  display: none;
+}
+
+.art[data-tone="lines"] * {
+  fill: none;
+  stroke: var(--pitch-line);
+  stroke-width: 2;
+}
+
+.art[data-tone="lines"] :is(.a-spot, .a-flag) {
+  fill: var(--pitch-line);
+  stroke: none;
+}
+
+.art[data-tone="lines"] .a-frame {
+  stroke: var(--border-strong);
+  stroke-width: 5;
+}
+
+/* Band: one faint tone of the band's ink. Only shapes that never overlap are
+   drawn, so the tint is never doubled behind text. */
+.art[data-tone="band"]
+  :is(.a-sky, .a-pitch, .a-glow, .a-bulb, .a-rows, .a-gangway, .a-lines, .a-flag, .a-spot) {
+  display: none;
+}
+
+.art[data-tone="band"] :is(.a-stand, .a-roof, .a-mast, .a-lamp, .a-stripe) {
+  fill: color-mix(in srgb, var(--club-ink) var(--band-art-share), transparent);
+}
+
+.art[data-tone="band"] :is(.a-net, .a-ground, .a-frame) {
+  fill: none;
+  stroke: color-mix(in srgb, var(--club-ink) var(--band-art-share), transparent);
+  stroke-width: 2;
+}
+
+.art[data-tone="band"] .a-frame {
+  stroke-width: 5;
+}
+
+/* Pitch in the band: lines only (the pitch shapes would overlap them). */
+.art-pitch[data-tone="band"] .a-stripe {
+  display: none;
+}
+
+.art-pitch[data-tone="band"] .a-lines {
+  display: inline;
+  fill: none;
+  stroke: color-mix(in srgb, var(--club-ink) var(--band-art-share), transparent);
+  stroke-width: 2;
+}
+
+@media (forced-colors: active) {
+  .art {
+    display: none;
+  }
+}

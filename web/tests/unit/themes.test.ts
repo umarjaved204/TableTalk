@@ -82,6 +82,16 @@ describe("theme files", () => {
     expect([...dataSets[0]!.tokens.keys()].sort()).toEqual([...dataSets[1]!.tokens.keys()].sort());
   });
 
+  it.each(THEMES.map((t) => [t.id]))(
+    "%s: the shadow colour is dark, never lighter than the page (no halo)",
+    (id) => {
+      const tokens = themeTokens.get(id)!;
+      const shadow = luminance(tokens.get("--shadow-color")!);
+      expect(shadow).toBeLessThan(0.02);
+      expect(shadow).toBeLessThanOrEqual(luminance(tokens.get("--bg")!));
+    },
+  );
+
   it("light themes use the light data set, dark themes the dark one", () => {
     for (const theme of THEMES) {
       const scheme = themeTokens.get(theme.id)!.get("color-scheme");
@@ -96,16 +106,23 @@ describe("theme files", () => {
 const TEXT = 4.5;
 const UI = 3;
 const CHECKS: [string, string, number, string][] = [
-  ...(["--bg", "--surface", "--surface-2"] as const).flatMap((bg): [string, string, number, string][] => [
-    ["--text", bg, TEXT, "body text"],
-    ["--text-muted", bg, TEXT, "muted text"],
-    ["--accent", bg, TEXT, "accent as text (links)"],
-    ["--focus", bg, UI, "focus ring"],
-  ]),
+  ...(["--bg", "--surface", "--surface-2", "--surface-raised", "--info-bg"] as const).flatMap(
+    (bg): [string, string, number, string][] => [
+      ["--text", bg, TEXT, "body text"],
+      ["--text-muted", bg, TEXT, "muted text"],
+      ["--accent", bg, TEXT, "accent as text (links)"],
+      ["--focus", bg, UI, "focus ring"],
+    ],
+  ),
   ["--on-accent", "--accent", TEXT, "text on accent (selected chip, buttons)"],
   ["--border-strong", "--bg", UI, "control border"],
   ["--border-strong", "--surface", UI, "control border"],
+  ["--border-strong", "--surface-raised", UI, "control border in a dialog or menu"],
   ["--warn-text", "--warn-bg", TEXT, "stale-data warning"],
+  // The brand band. Inside it the focus ring is --band-ink (global.css .band).
+  ["--band-ink", "--band-bg", TEXT, "text in the brand band (and its focus ring)"],
+  ["--band-muted", "--band-bg", TEXT, "secondary text in the brand band"],
+  ["--band-accent", "--band-bg", UI, "accent rule and large figures in the band"],
 ];
 const DATA_MARKS = ["--data-home", "--data-draw", "--data-away", "--zone-top", "--zone-rel"];
 
@@ -152,6 +169,22 @@ const TINT_SHARE =
       readFileSync(join(STYLES, "favourites.css"), "utf8"),
     )![1],
   ) / 100;
+
+// Artwork drawn inside the brand band: the band's ink mixed into the band at
+// --band-art-share (tokens/base.css). Text may sit on top of it, so it must
+// stay readable there too.
+const ART_SHARE =
+  Number(/--band-art-share:\s*(\d+)%/.exec(readFileSync(join(STYLES, "tokens/base.css"), "utf8"))![1]) / 100;
+
+describe.each(THEMES.map((t) => [t.id]))("brand band artwork: %s", (id) => {
+  const tokens = themeTokens.get(id)!;
+  const art = mix(tokens.get("--band-ink")!, tokens.get("--band-bg")!, ART_SHARE);
+
+  it("band text and secondary text stay readable on the artwork (>= 4.5)", () => {
+    expect(contrast(tokens.get("--band-ink")!, art)).toBeGreaterThanOrEqual(TEXT);
+    expect(contrast(tokens.get("--band-muted")!, art)).toBeGreaterThanOrEqual(TEXT);
+  });
+});
 
 describe.each(THEMES.map((t) => [t.id]))("favourite team marking: %s", (id) => {
   const tokens = themeTokens.get(id)!;
