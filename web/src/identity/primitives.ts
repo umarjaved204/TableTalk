@@ -25,7 +25,24 @@ export const STROKE = {
   detail: 2.5,
 } as const;
 
-export type ShapeName = "heater" | "english" | "french" | "angular" | "roundel" | "oval";
+export type ShapeName =
+  | "heater"
+  | "english"
+  | "french"
+  | "angular"
+  | "roundel"
+  | "oval"
+  | "arch"
+  | "badge"
+  | "tablet"
+  | "crowned-roundel"
+  | "triangle"
+  | "lobed"
+  | "diamond"
+  | "catalan"
+  | "tall-diamond"
+  | "tapered"
+  | "egg";
 
 const r1 = (v: number) => String(Math.round(v * 10) / 10);
 const pts = (list: [number, number][]) => list.map(([x, y]) => `${r1(x)} ${r1(y)}`).join("L");
@@ -103,6 +120,126 @@ export const SHAPES: Readonly<Record<ShapeName, (i: number) => string>> = {
     const rx = 46 - i;
     const ry = 57 - i;
     return `M${r1(C - rx)} 60A${r1(rx)} ${r1(ry)} 0 1 1 ${r1(C + rx)} 60A${r1(rx)} ${r1(ry)} 0 1 1 ${r1(C - rx)} 60Z`;
+  },
+  // A round-topped arch over straight sides and a pointed base, like a
+  // window in a Spanish church front.
+  arch(i) {
+    const hw = 44 - i;
+    const top = 6 + i;
+    const spring = top + hw;
+    const tip = 115 - i * 1.4;
+    return (
+      `M${r1(C - hw)} ${r1(spring)}A${r1(hw)} ${r1(hw)} 0 0 1 ${r1(C + hw)} ${r1(spring)}` +
+      `L${r1(C + hw)} 78Q${r1(C + hw)} 96 60 ${r1(tip)}Q${r1(C - hw)} 96 ${r1(C - hw)} 78Z`
+    );
+  },
+  // A five-sided badge: flat top, straight sides, two straight edges meeting
+  // at a broad point.
+  badge(i) {
+    const hw = 47 - i;
+    const top = 8 + i;
+    const shoulder = 76 - i * 0.3;
+    const tip = 114 - i * 1.5;
+    return `M${pts([
+      [C - hw, top],
+      [C + hw, top],
+      [C + hw, shoulder],
+      [C, tip],
+      [C - hw, shoulder],
+    ])}Z`;
+  },
+  // A circle set low in the box, leaving room for a crown above it.
+  "crowned-roundel"(i) {
+    const r = 45 - i;
+    const cy = 71;
+    return `M${r1(C - r)} ${cy}A${r1(r)} ${r1(r)} 0 1 1 ${r1(C + r)} ${cy}A${r1(r)} ${r1(r)} 0 1 1 ${r1(C - r)} ${cy}Z`;
+  },
+  // An inverted triangle with gently curved sides, its top set low enough
+  // for a crown above it.
+  triangle(i) {
+    const top = 32 + i;
+    const l = 12 + i * 1.3;
+    const r = BOX - l;
+    const tip = 116 - i * 1.8;
+    return `M${r1(l)} ${r1(top)}L${r1(r)} ${r1(top)}Q${r1(r - 6)} 78 60 ${r1(tip)}Q${r1(l + 6)} 78 ${r1(l)} ${r1(top)}Z`;
+  },
+  // A shield with two rounded lobes at the top meeting in a dip, rounding
+  // down to a point: a heart-like outline.
+  lobed(i) {
+    const hw = 46 - i;
+    const l = C - hw;
+    const r = C + hw;
+    const dip = 18 + i;
+    const tip = 115 - i * 1.4;
+    return (
+      `M60 ${r1(dip)}C${r1(C - 10)} ${r1(6 + i)} ${r1(l)} ${r1(4 + i)} ${r1(l)} ${r1(28)}L${r1(l)} 58` +
+      `C${r1(l)} ${r1(86 - i * 0.6)} ${r1(C - 22 + i * 0.4)} ${r1(102 - i * 1.2)} 60 ${r1(tip)}C${r1(C + 22 - i * 0.4)} ${r1(102 - i * 1.2)} ${r1(r)} ${r1(86 - i * 0.6)} ${r1(r)} 58L${r1(r)} 28` +
+      `C${r1(r)} ${r1(4 + i)} ${r1(C + 10)} ${r1(6 + i)} 60 ${r1(dip)}Z`
+    );
+  },
+  // A diamond standing on its point.
+  diamond(i) {
+    const e = 4 + i * 1.4;
+    return `M60 ${r1(e)}L${r1(BOX - e)} 60L60 ${r1(BOX - e)}L${r1(e)} 60Z`;
+  },
+  // A Catalan-style shield: rounded lobes at the two top corners rising to a
+  // point at the centre, full sides, and a pointed base.
+  catalan(i) {
+    const hw = 46 - i;
+    const l = C - hw;
+    const r = C + hw;
+    const peak = 15 + i;
+    const shoulder = 7 + i;
+    const tip = 116 - i * 1.5;
+    return (
+      `M60 ${r1(peak)}C${r1(C - 12)} ${r1(22 + i)} ${r1(l + 8)} ${r1(shoulder - 4)} ${r1(l)} ${r1(shoulder + 8)}` +
+      `C${r1(l - 2)} 50 ${r1(l + 6)} 82 60 ${r1(tip)}C${r1(r - 6)} 82 ${r1(r + 2)} 50 ${r1(r)} ${r1(shoulder + 8)}` +
+      `C${r1(r - 8)} ${r1(shoulder - 4)} ${r1(C + 12)} ${r1(22 + i)} 60 ${r1(peak)}Z`
+    );
+  },
+
+  // A tall, narrow diamond set low, for a crown above and a circle behind it.
+  "tall-diamond"(i) {
+    const e = i * 1.6;
+    return `M60 ${r1(24 + e)}L${r1(93 - i)} 70L60 ${r1(117 - e)}L${r1(27 + i)} 70Z`;
+  },
+  // A broad shield with a straight top, set low for a crown above it, its
+  // sides tapering in long curves to a point.
+  tapered(i) {
+    const top = 30 + i;
+    const l = 8 + i;
+    const r = BOX - l;
+    const tip = 117 - i * 1.6;
+    return (
+      `M${r1(l)} ${r1(top)}Q60 ${r1(top - 6)} ${r1(r)} ${r1(top)}` +
+      `C${r1(r - 2)} 70 ${r1(C + 22 - i * 0.3)} 100 60 ${r1(tip)}C${r1(C - 22 + i * 0.3)} 100 ${r1(l + 2)} 70 ${r1(l)} ${r1(top)}Z`
+    );
+  },
+  // A tall egg-shaped shield: rounded top, full sides, tapering to a point.
+  egg(i) {
+    const top = 10 + i;
+    const hw = 44 - i;
+    const tip = 117 - i * 1.6;
+    return (
+      `M60 ${r1(top)}C${r1(C + hw * 0.9)} ${r1(top)} ${r1(C + hw)} 34 ${r1(C + hw)} 58` +
+      `C${r1(C + hw)} 84 ${r1(C + 14)} 104 60 ${r1(tip)}C${r1(C - 14)} 104 ${r1(C - hw)} 84 ${r1(C - hw)} 58` +
+      `C${r1(C - hw)} 34 ${r1(C - hw * 0.9)} ${r1(top)} 60 ${r1(top)}Z`
+    );
+  },
+  // A rounded rectangle, a little taller than wide.
+  tablet(i) {
+    const hw = 46 - i;
+    const top = 6 + i;
+    const bottom = 114 - i;
+    const r = Math.max(4, 16 - i);
+    const l = C - hw;
+    const rr = C + hw;
+    return (
+      `M${r1(l + r)} ${r1(top)}L${r1(rr - r)} ${r1(top)}Q${r1(rr)} ${r1(top)} ${r1(rr)} ${r1(top + r)}` +
+      `L${r1(rr)} ${r1(bottom - r)}Q${r1(rr)} ${r1(bottom)} ${r1(rr - r)} ${r1(bottom)}` +
+      `L${r1(l + r)} ${r1(bottom)}Q${r1(l)} ${r1(bottom)} ${r1(l)} ${r1(bottom - r)}` +
+      `L${r1(l)} ${r1(top + r)}Q${r1(l)} ${r1(top)} ${r1(l + r)} ${r1(top)}Z`
+    );
   },
 };
 

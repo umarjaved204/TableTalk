@@ -8,8 +8,7 @@
 // resemblance note: drawing a familiar idea anew is not permission to use it.
 import type { Design } from "./crest.ts";
 import { lineText } from "./lettering.ts";
-import { outline } from "./outline.ts";
-import { LION_PASSANT } from "./symbols-silhouettes.ts";
+import { outline, type OutlinePoint } from "./outline.ts";
 import type { Resemblance } from "./types.ts";
 
 export interface LeagueConcept {
@@ -36,26 +35,53 @@ function hexagon(r: number): string {
   return `M${p.join("L")}Z`;
 }
 
-/** Premier League: an original lion, walking, in white on deep plum, with two
- *  banks of floodlights in the top corners and England's red line below. */
+/** Premier League: an original heraldic lion's head in profile, facing left,
+ *  white on deep plum: a broad brow and short muzzle, the mouth slightly open,
+ *  a mane of rounded scalloped lobes, and the neck cut off straight (couped).
+ *  Unlike Chelsea's head, which has long flowing locks and a ragged neck, and
+ *  unlike the competition's crowned, front-facing lion. Red line for England below. */
 function premierLeagueLion(clip: string): string[] {
   const plum = "#2b1442";
   const tile = "M28 6L92 6Q114 6 114 28L114 92Q114 114 92 114L28 114Q6 114 6 92L6 28Q6 6 28 6Z";
-  // A bank of floodlights.
-  const lamps = (x: number) => `<path d="M${x} 14h18v10h-18Z" fill="#ffe9a8"/>`;
+  // The head and mane as one outline: the face on the left, then the mane's
+  // rounded lobes sweeping back and down, then the straight-cut neck.
+  const head: OutlinePoint[] = [
+    [15, 52, 1],
+    [19, 43],
+    [26, 33],
+    [36, 26],
+    [42, 15],
+    [53, 17],
+    [62, 9],
+    [70, 20],
+    [83, 17],
+    [84, 32],
+    [96, 38],
+    [89, 50],
+    [98, 60],
+    [86, 66],
+    [90, 80],
+    [76, 78],
+    [72, 98, 1],
+    [44, 98, 1],
+    [43, 87],
+    [37, 79],
+    [30, 75],
+    [25, 69, 1],
+    [30, 65, 1],
+    [19, 62],
+    [16, 58],
+  ];
   return [
     `<defs><clipPath id="${clip}"><path d="${tile}"/></clipPath></defs>`,
     `<path d="${tile}" ${KEYLINE}/>`,
     `<path d="${tile}" fill="${plum}"/>`,
-    lamps(14),
-    lamps(88),
-    `<g transform="translate(8 20) scale(1.02)">` +
-      `<path d="M84 48C96 44 98 30 92 22C89 18 91 13 95 12" fill="none" stroke="${WHITE}" stroke-width="4.4" stroke-linecap="round"/>` +
-      `<circle cx="95" cy="12" r="4.5" fill="${WHITE}"/>` +
-      `<path d="${outline(LION_PASSANT)}" fill="${WHITE}"/>` +
-      `<path d="M25 27C22 34 22 41 25 47" fill="none" stroke="${plum}" stroke-width="1.6"/>` +
-      `<circle cx="14" cy="38" r="1.6" fill="${plum}"/></g>`,
-    `<path d="M24 100L96 100L96 105L24 105Z" fill="#e4002b"/>`,
+    `<path d="${outline(head)}" fill="${WHITE}"/>`,
+    `<path d="M40 30C47 42 48 60 42 76M56 24C63 36 66 52 62 66M70 26C76 38 80 52 78 66" fill="none" stroke="${plum}" stroke-width="2" stroke-linecap="round"/>`,
+    `<path d="M24 35Q31 30 38 35M18 58Q23 61 28 59" fill="none" stroke="${plum}" stroke-width="1.8" stroke-linecap="round"/>`,
+    `<path d="M27 40Q32 37 36 41Q32 43 27 40Z" fill="${plum}"/>`,
+    `<path d="M17 53L22 54" stroke="${plum}" stroke-width="2" stroke-linecap="round"/>`,
+    `<path d="M24 104L96 104L96 108L24 108Z" fill="#e4002b"/>`,
   ];
 }
 
@@ -82,8 +108,9 @@ function laLigaInitials(clip: string): string[] {
   ];
 }
 
-/** Bundesliga: a footballer in an overhead (bicycle) kick, in white on a black
- *  diamond, striking a gold ball, with red and gold across the lower corner. */
+/** Bundesliga: an upright footballer striking a volley, the kicking leg
+ *  swung up in front at hip height, arms out for balance, the ball just
+ *  leaving the foot. White on a black diamond, with red and gold below. */
 function bundesligaPlayer(clip: string): string[] {
   const black = "#151515";
   const diamond = "M60 4L116 60L60 116L4 60Z";
@@ -93,19 +120,19 @@ function bundesligaPlayer(clip: string): string[] {
     `<defs><clipPath id="${clip}"><path d="${diamond}"/></clipPath></defs>`,
     `<path d="${diamond}" ${KEYLINE}/>`,
     `<path d="${diamond}" fill="${black}"/>`,
-    `<g clip-path="url(#${clip})"><path d="M0 88L120 88L120 98L0 98Z" fill="#dd0000"/><path d="M0 98L120 98L120 120L0 120Z" fill="#ffce00"/></g>`,
-    // Torso from shoulders (low left) to hips (high right), head below the shoulders.
-    limb("M42 70L57 53", 12),
-    `<circle cx="35" cy="77" r="7.5" fill="${WHITE}"/>`,
-    // Kicking leg up over the body, the other leg bent below.
-    limb("M57 53L63 41L70 34", 7.5),
-    limb("M57 53L70 57L78 67", 7),
-    // Arms reaching back towards the ground.
-    limb("M45 67L33 63L25 67", 6),
-    limb("M47 71L43 81", 6),
-    // The ball, just above the striking foot.
-    `<circle cx="76" cy="29" r="7.5" fill="#ffce00" stroke="${black}" stroke-width="1.5"/>`,
-    `<path d="M76 24.5L80 27.5L78.5 32L73.5 32L72 27.5Z" fill="${black}"/>`,
+    `<g clip-path="url(#${clip})"><path d="M0 92L120 92L120 101L0 101Z" fill="#dd0000"/><path d="M0 101L120 101L120 120L0 120Z" fill="#ffce00"/></g>`,
+    // Head, torso leaning back.
+    `<circle cx="66" cy="27" r="7" fill="${WHITE}"/>`,
+    limb("M64 36L60 58", 11),
+    // Standing leg, slightly bent, and the kicking leg swung up in front.
+    limb("M60 58L64 72L62 86", 8),
+    limb("M60 58L46 62L32 56", 8),
+    // Arms out for balance.
+    limb("M64 40L78 36L86 42", 6),
+    limb("M62 41L50 44L44 38", 6),
+    // The ball, just off the foot.
+    `<circle cx="22" cy="50" r="7.5" fill="#ffce00" stroke="${black}" stroke-width="1.5"/>`,
+    `<path d="M22 45.5L26 48.5L24.5 53L19.5 53L18 48.5Z" fill="${black}"/>`,
   ];
 }
 
@@ -150,15 +177,15 @@ function ligue1Initials(clip: string): string[] {
 /** The competition-inspired concept for each league, by league id. */
 export const COMPETITION_CONCEPTS: Readonly<Record<string, LeagueConcept>> = {
   premier_league: {
-    title: "Lion and floodlights",
+    title: "Lion's head",
     approach: "competition",
     inspiration:
-      "The lion supporters already connect with the Premier League, drawn new as a whole lion walking (heraldry's lion passant) rather than a crowned head, on the deep plum, with two banks of floodlights for English football at night.",
+      "The lion supporters already connect with the Premier League, drawn new as a heraldic lion's head in profile with a scalloped mane and a clean-cut neck, on the deep plum, with a red line for England.",
     looks:
-      "A deep plum rounded tile. A white lion walks to the left across the middle, small head in a large mane, one forepaw raised, tail curving up to a tuft. Two small banks of floodlights sit in the top corners and a red line runs along the bottom.",
+      "A deep plum rounded tile. A white lion's head in profile faces left: broad brow, short muzzle, mouth slightly open, a plum eye, and a mane of rounded lobes round the back of the head, two fine plum lines marking the face and the mane. The neck is cut off straight. A red line runs along the bottom.",
     resemblance: {
       level: "high",
-      note: "A lion on purple is the competition's best-known idea. This lion is a different animal pose (whole, walking, no crown) and composition, but supporters will connect it with the Premier League's lion. The floodlight pylon mark stays as the cultural option.",
+      note: "A lion on purple is the competition's best-known idea. This head is in profile with no crown, a scalloped mane and a straight-cut neck (the official lion is crowned and faces the viewer), and it differs from Chelsea's flowing-maned, ragged-necked head, but supporters will connect it with the Premier League. The floodlight pylon mark stays as the cultural option.",
     },
     mark: (k) => premierLeagueLion(k.clip),
   },
@@ -176,15 +203,15 @@ export const COMPETITION_CONCEPTS: Readonly<Record<string, LeagueConcept>> = {
     mark: (k) => laLigaInitials(k.clip),
   },
   bundesliga: {
-    title: "Overhead kick",
+    title: "Volley",
     approach: "competition",
     inspiration:
-      "A footballer in mid-air, the idea supporters connect with the Bundesliga's mark, here in a different pose: an overhead kick, upside down, striking a gold ball, on a black diamond with red and gold below.",
+      "A footballer in action, the idea supporters connect with the Bundesliga's mark, here upright and in a different pose: striking a volley with the kicking leg swung up in front, arms out for balance, on a black diamond with red and gold below.",
     looks:
-      "A black diamond. A white footballer is upside down in an overhead kick: head and arms towards the lower left, one leg reaching up to the right to strike a gold ball near the top corner. Red and gold bands cross the lower corner.",
+      "A black diamond. A white footballer stands upright in the middle, leaning back slightly, the kicking leg swung up in front at hip height and arms spread for balance; a gold ball leaves the foot on the left. Red and gold bands cross the lower corner.",
     resemblance: {
       level: "high",
-      note: "A white player silhouette is the official mark's idea, though there the player is upright and on a red rectangle. The pose, shape and colours here are different, but the idea is the same. The oak leaf mark stays as the cultural option.",
+      note: "A white player silhouette is the official mark's idea, though there the player strikes a ball at their feet on a red rectangle. The pose (a volley at hip height), shape and colours here are different, but the idea is the same. The oak leaf mark stays as the cultural option.",
     },
     mark: (k) => bundesligaPlayer(k.clip),
   },

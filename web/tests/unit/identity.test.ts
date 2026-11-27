@@ -21,8 +21,8 @@ import { LEAGUE_IDENTITIES } from "../../src/identity/leagues.ts";
 import { LetteringError, arcText, lineText, mapPath } from "../../src/identity/lettering.ts";
 import type { BandColours } from "../../src/identity/types.ts";
 
-/** Leagues whose crests are drawn. The other four follow on the crest-registry branch. */
-const COVERED = ["premier_league"];
+/** Leagues whose crests are drawn so far; the rest follow league by league. */
+const COVERED = ["premier_league", "la_liga"];
 
 const SEASON = JSON.parse(readFileSync(resolve("tests/fixtures/clubs-2026-27.json"), "utf8")) as {
   leagues: Record<string, string[]>;

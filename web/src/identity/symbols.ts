@@ -11,6 +11,7 @@
 //           (where a wheel crosses a barrel, say), so parts never merge.
 
 import { REFINED } from "./symbols-refined.ts";
+import { LALIGA_SYMBOLS } from "./symbols-laliga.ts";
 import { SILHOUETTES } from "./symbols-silhouettes.ts";
 
 export interface Ink {
@@ -290,7 +291,7 @@ const FIRST_ROUND = {
 
 /** Every symbol: the first round of drawings, with later rounds
  *  (symbols-refined.ts, then symbols-silhouettes.ts) replacing those they redraw. */
-export const SYMBOLS = { ...FIRST_ROUND, ...REFINED, ...SILHOUETTES };
+export const SYMBOLS = { ...FIRST_ROUND, ...REFINED, ...SILHOUETTES, ...LALIGA_SYMBOLS };
 
 export type SymbolName = keyof typeof SYMBOLS;
 

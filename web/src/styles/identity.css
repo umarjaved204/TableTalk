@@ -162,6 +162,166 @@
   --band-edge: color-mix(in srgb, #ff8a9a 45%, transparent);
 }
 
+[data-club="barcelona"] {
+  --club-1: #7a0d36;
+  --club-2: #edbb00;
+  --club-ink: #fff;
+  --club-muted: #f6dbe5;
+  --band-edge: color-mix(in srgb, #edbb00 45%, transparent);
+}
+
+[data-club="real-madrid"] {
+  --club-1: #1f3c88;
+  --club-2: #febe10;
+  --club-ink: #fff;
+  --club-muted: #dbe4f5;
+  --band-edge: color-mix(in srgb, #febe10 45%, transparent);
+}
+
+[data-club="atletico-madrid"] {
+  --club-1: #272e61;
+  --club-2: #f36b5c;
+  --club-ink: #fff;
+  --club-muted: #dfe4f3;
+  --band-edge: color-mix(in srgb, #f36b5c 45%, transparent);
+}
+
+[data-club="real-betis"] {
+  --club-1: #005a2e;
+  --club-2: #a8e6c8;
+  --club-ink: #fff;
+  --club-muted: #e0f3e9;
+  --band-edge: color-mix(in srgb, #a8e6c8 45%, transparent);
+}
+
+[data-club="real-sociedad"] {
+  --club-1: #00559a;
+  --club-2: #8fc6f2;
+  --club-ink: #fff;
+  --club-muted: #dce9f6;
+  --band-edge: color-mix(in srgb, #8fc6f2 45%, transparent);
+}
+
+[data-club="sevilla"] {
+  --club-1: #a4161a;
+  --club-2: #ffd166;
+  --club-ink: #fff;
+  --club-muted: #fbe0e1;
+  --band-edge: color-mix(in srgb, #ffd166 45%, transparent);
+}
+
+[data-club="racing-santander"] {
+  --club-1: #005832;
+  --club-2: #9be0b8;
+  --club-ink: #fff;
+  --club-muted: #dff3e8;
+  --band-edge: color-mix(in srgb, #9be0b8 45%, transparent);
+}
+
+[data-club="athletic-bilbao"] {
+  --club-1: #b0111c;
+  --club-2: #ffd1d4;
+  --club-ink: #fff;
+  --club-muted: #fde0e2;
+  --band-edge: color-mix(in srgb, #ffd1d4 45%, transparent);
+}
+
+[data-club="alaves"] {
+  --club-1: #002f6c;
+  --club-2: #8ec2ff;
+  --club-ink: #fff;
+  --club-muted: #d9e6f5;
+  --band-edge: color-mix(in srgb, #8ec2ff 45%, transparent);
+}
+
+[data-club="espanyol"] {
+  --club-1: #00539f;
+  --club-2: #9fd0ff;
+  --club-ink: #fff;
+  --club-muted: #dbe8f6;
+  --band-edge: color-mix(in srgb, #9fd0ff 45%, transparent);
+}
+
+[data-club="deportivo-la-coruna"] {
+  --club-1: #00315f;
+  --club-2: #8ec2ff;
+  --club-ink: #fff;
+  --club-muted: #d9e6f5;
+  --band-edge: color-mix(in srgb, #8ec2ff 45%, transparent);
+}
+
+[data-club="villarreal"] {
+  --club-1: #005187;
+  --club-2: #ffe114;
+  --club-ink: #fff;
+  --club-muted: #dfe6f2;
+  --band-edge: color-mix(in srgb, #ffe114 45%, transparent);
+}
+
+[data-club="osasuna"] {
+  --club-1: #0a346f;
+  --club-2: #ff7b7b;
+  --club-ink: #fff;
+  --club-muted: #dbe3f2;
+  --band-edge: color-mix(in srgb, #ff7b7b 45%, transparent);
+}
+
+[data-club="celta-vigo"] {
+  --club-1: #0b3a6b;
+  --club-2: #8ac3ee;
+  --club-ink: #fff;
+  --club-muted: #d7e8f6;
+  --band-edge: color-mix(in srgb, #8ac3ee 45%, transparent);
+}
+
+[data-club="valencia"] {
+  --club-1: #111;
+  --club-2: #ff9a5c;
+  --club-ink: #fff;
+  --club-muted: #e6e6e6;
+  --band-edge: color-mix(in srgb, #ff9a5c 45%, transparent);
+}
+
+[data-club="getafe"] {
+  --club-1: #00477f;
+  --club-2: #8ec2ff;
+  --club-ink: #fff;
+  --club-muted: #d8e6f4;
+  --band-edge: color-mix(in srgb, #8ec2ff 45%, transparent);
+}
+
+[data-club="rayo-vallecano"] {
+  --club-1: #a8151d;
+  --club-2: #ffd1d3;
+  --club-ink: #fff;
+  --club-muted: #fde0e1;
+  --band-edge: color-mix(in srgb, #ffd1d3 45%, transparent);
+}
+
+[data-club="levante"] {
+  --club-1: #6b1230;
+  --club-2: #8cb8ff;
+  --club-ink: #fff;
+  --club-muted: #f6dbe4;
+  --band-edge: color-mix(in srgb, #8cb8ff 45%, transparent);
+}
+
+[data-club="elche"] {
+  --club-1: #045c2a;
+  --club-2: #a6e3bc;
+  --club-ink: #fff;
+  --club-muted: #d8efe0;
+  --band-edge: color-mix(in srgb, #a6e3bc 45%, transparent);
+}
+
+[data-club="malaga"] {
+  --club-1: #0a3a6e;
+  --club-2: #8ec2ff;
+  --club-ink: #fff;
+  --club-muted: #dbe8f6;
+  --band-edge: color-mix(in srgb, #8ec2ff 45%, transparent);
+}
+
 [data-league="premier-league"] {
   --club-1: #2b1442;
   --club-2: #ff6b81;
