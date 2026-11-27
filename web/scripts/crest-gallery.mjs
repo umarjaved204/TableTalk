@@ -21,6 +21,8 @@
 //     badge, and the alternatives;
 //   - the resemblance ratings and the file sizes, in tables;
 //   - the fallback crest that a club with no entry gets.
+// --league <id> (premier_league, la_liga, ...) limits the clubs shown to one
+// league, for a league's own review; the league marks are always shown.
 // --snapshot writes the current designs to a file (to compare against after
 // the next round of changes) and stops. --status inserts an HTML fragment
 // (a review status block) after the title.
@@ -43,6 +45,7 @@ const { values: args } = parseArgs({
     status: { type: "string" },
     previous: { type: "string" },
     snapshot: { type: "string" },
+    league: { type: "string" },
   },
 });
 
@@ -106,6 +109,10 @@ const markKey = (league) =>
   define(`mark-${league.slug}`, renderCrest(leagueMarkDesign(league), `m-${league.slug}`));
 
 const bySlug = new Map(CLUBS.map((c) => [c.slug, c]));
+/** The clubs this gallery shows: all, or one league's with --league. */
+const SHOWN = args.league ? CLUBS.filter((c) => c.leagueId === args.league) : CLUBS;
+if (args.league && SHOWN.length === 0) throw new Error(`no clubs in league "${args.league}"`);
+const shownSlugs = new Set(SHOWN.map((c) => c.slug));
 /** A club's crest at a size, or the fallback crest for a club with no entry. */
 function crestFor(name, size) {
   const club = bySlug.get(teamSlug(name));
@@ -164,6 +171,36 @@ function fixtures(id, count = 6) {
 /** Groups of clubs whose crests could be confused, and what tells them apart. */
 const CLASHES = [
   {
+    title: "Red and white stripes",
+    slugs: ["atletico-madrid", "athletic-bilbao"],
+    note: "The two rojiblanco clubs (Atlético was founded by Basque students as a branch of Athletic). Atlético: a round-topped arch with a navy upper half and the seven stars of the Great Bear. Athletic: a pointed heater with a white upper half and a red lion walking.",
+  },
+  {
+    title: "Blue and garnet",
+    slugs: ["barcelona", "levante"],
+    note: "Both blue and red-purple. Barcelona: a striped roundel in a gold and red senyera ring with FCB. Levante: a pointed heater halved blue and claret under a white chief, with a white frog.",
+  },
+  {
+    title: "Blue and white",
+    slugs: ["real-sociedad", "deportivo-la-coruna", "espanyol", "alaves", "malaga", "getafe"],
+    note: "Six blue-and-white clubs, kept apart by outline and symbol: Real Sociedad a rounded rectangle with the bay; Deportivo a heater with the tower on a white pale; Espanyol an oval with the parakeet; Alavés an angular shield with a large A; Málaga a round-bottomed shield with the anchovy disc; Getafe a French shield with the biplane on a white sash.",
+  },
+  {
+    title: "Green and white",
+    slugs: ["real-betis", "racing-santander", "elche"],
+    note: "Betis: an oval in green, white and green bands with a crown and BETIS. Racing: a green roundel with the stela and a lettered ring. Elche: a white arch with a green band and a palm.",
+  },
+  {
+    title: "White with a dark symbol",
+    slugs: ["real-madrid", "valencia", "sevilla", "rayo-vallecano"],
+    note: "Real Madrid: a white round-bottomed shield with a gold crown and RM. Valencia: a black roundel with the bat. Sevilla: a white five-sided badge with NO8DO in red. Rayo: a white angular shield with a red sash and a black bolt.",
+  },
+  {
+    title: "Madrid",
+    slugs: ["real-madrid", "atletico-madrid", "getafe", "rayo-vallecano"],
+    note: "The four clubs of the Madrid area: white crown, striped arch with stars, blue shield with a biplane, white shield with a sash and a bolt.",
+  },
+  {
     title: "Manchester",
     slugs: ["manchester-city", "manchester-united"],
     note: "Same city. City: sky-blue French shield with a navy three-masted ship and MCFC. United: red heater shield with a gold trident over a black wheel. Different colour, outline and symbol at every size.",
@@ -211,7 +248,7 @@ const CLASHES = [
 ];
 
 function clashSection() {
-  return CLASHES.filter((g) => g.slugs.every((s) => bySlug.has(s)))
+  return CLASHES.filter((g) => g.slugs.every((s) => shownSlugs.has(s)))
     .map((g) => {
       const clubs = g.slugs.map((s) => bySlug.get(s));
       const strip = (cls) =>
@@ -373,15 +410,42 @@ ${
 </section>`;
 }
 
+/** How each club's crest is composed, counted per league, so a league never
+ *  drifts back to one arrangement. */
+function compositionTable() {
+  const withType = SHOWN.filter((c) => c.composition);
+  if (withType.length === 0) return "";
+  const counts = new Map();
+  for (const c of withType) counts.set(c.composition, [...(counts.get(c.composition) ?? []), c.name]);
+  const rows = [...counts]
+    .sort((a, b) => b[1].length - a[1].length)
+    .map(
+      ([type, names]) =>
+        `<tr><td>${esc(type)}</td><td class="num">${names.length}</td><td>${esc(names.join(", "))}</td></tr>`,
+    )
+    .join("");
+  const shapes = new Map();
+  for (const c of withType) {
+    const shape = /k\.shield\("(\w+)"/.exec(String(c.full))?.[1] ?? "?";
+    shapes.set(shape, (shapes.get(shape) ?? 0) + 1);
+  }
+  const shapeList = [...shapes]
+    .sort((a, b) => b[1] - a[1])
+    .map(([sh, n]) => `${sh} ${n}`)
+    .join(", ");
+  return `<section><h2>Compositions</h2><p>How each crest is put together, so repetition is visible. No arrangement is used by more than a few clubs. Outlines used: ${esc(shapeList)}.</p>
+<div class="scroll"><table><thead><tr><th>Composition</th><th>Clubs</th><th>Which</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+}
+
 function resemblanceTable() {
-  const rows = CLUBS.slice()
+  const rows = SHOWN.slice()
     .sort((a, b) => a.name.localeCompare(b.name, "en"))
     .map(
       (c) =>
         `<tr><td>${esc(c.name)}</td><td class="res-cell res-${c.resemblance.level}">${c.resemblance.level}</td><td>${(c.alternatives ?? []).map((a) => esc(a.title)).join(", ") || "none"}</td></tr>`,
     )
     .join("");
-  const count = (lvl) => CLUBS.filter((c) => c.resemblance.level === lvl).length;
+  const count = (lvl) => SHOWN.filter((c) => c.resemblance.level === lvl).length;
   return `<section><h2>Resemblance ratings</h2>
 <p>${count("high")} high, ${count("medium")} medium, ${count("low")} low. Every high design has at least one alternative (a unit test checks). <b>These ratings are a design judgement, not legal advice, and approving the artwork is not legal clearance.</b> Any use of club names, colours or symbols on the public site is a separate decision.</p>
 <div class="scroll"><table><thead><tr><th>Club</th><th>Resemblance</th><th>Alternatives</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
@@ -394,7 +458,7 @@ function sizesTable() {
     const text = files.get(path);
     return text ? [Buffer.byteLength(text), gzipSync(text).length] : [0, 0];
   };
-  const rows = CLUBS.slice()
+  const rows = SHOWN.slice()
     .sort((a, b) => a.name.localeCompare(b.name, "en"))
     .map((c) => {
       const [f, fz] = size(`src/identity/crests/${c.slug}.svg`);
@@ -414,7 +478,7 @@ function sizesTable() {
 <div class="scroll"><table><thead><tr><th>File</th><th>Full KB</th><th>Full gzip</th><th>Small KB</th><th>Small gzip</th></tr></thead><tbody>${rows}${marks}</tbody></table></div></section>`;
 }
 
-const covered = [...new Set(CLUBS.map((c) => c.leagueId))];
+const covered = [...new Set(SHOWN.map((c) => c.leagueId))];
 const leagueClubs = covered.map((id) => {
   const league = LEAGUES.find((l) => l.id === id);
   return `<section><h2>${esc(league.name)}: every club</h2><p>In alphabetical order.</p>${CLUBS.filter(
@@ -433,7 +497,7 @@ const dataLine = source
 
 const body = `
 <header class="top"><h1>TableTalk crest gallery</h1>
-<p>Every crest in the registry, for review before any page uses them. ${CLUBS.length} clubs drawn so far, ${CLUBS.reduce((n, c) => n + (c.alternatives?.length ?? 0), 0)} alternative designs. Each picture is also described in words.</p>
+<p>${args.league ? `The ${esc(LEAGUES.find((l) => l.id === args.league)?.name ?? args.league)} crests, for this league's review` : "Every crest in the registry, for review"} before any page uses them. ${SHOWN.length} clubs shown (${CLUBS.length} drawn so far), ${SHOWN.reduce((n, c) => n + (c.alternatives?.length ?? 0), 0)} alternative designs. Each picture is also described in words.</p>
 <ul class="chips"><li>Original drawings, no official artwork</li><li>Small crest at ${SMALL_MAX} px and below, full crest above</li><li>Light: Matchday · Dark: Floodlights</li><li>Not legal clearance</li></ul></header>
 ${status}
 <section><h2>How to read this page</h2>
@@ -454,6 +518,7 @@ ${covered
   .join("")}
 <section><h2>Clubs that could be confused</h2><p>Groups with similar colours, names or symbols, side by side: full crest at 64 px, small crest at 24 px and 16 px.</p>${clashSection()}</section>
 ${leagueClubs.join("")}
+${compositionTable()}
 ${resemblanceTable()}
 ${sizesTable()}
 <section><h2>The fallback crest</h2><p>A club with no entry in the registry yet (a newly promoted club, or a club renamed in the data) gets this instead of a broken image: a plain grey shield with a dashed inner line and up to three initials, clearly a placeholder and never a guess at its colours. The build prints a warning naming the club and carries on, so the nightly data publish is never blocked. The examples are clubs from leagues whose crests are not drawn yet.</p>${fallbackSection()}</section>
