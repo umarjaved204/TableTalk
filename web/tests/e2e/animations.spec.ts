@@ -900,13 +900,40 @@ test.describe("reduced motion", () => {
 
   test("the team page's Make this my team shows the star without a pop", async ({ page }) => {
     await open(page, "/premier-league/arsenal/", 1280);
+    // Record, in the page, each time data-fav-just-saved is added or removed,
+    // with the page's own clock. The attribute lives for 2 s from the click,
+    // and in WebKit the click and the two checks below can take longer than
+    // that between them, so looking for it afterwards found it already gone
+    // (it failed about 12 runs in 20 on Windows, the same on redesign before
+    // this change). The record shows what happened however long the test's
+    // own steps take.
+    await page.evaluate(() => {
+      const log: { set: boolean; at: number }[] = [];
+      (window as unknown as { __justSaved: typeof log }).__justSaved = log;
+      new MutationObserver(() =>
+        log.push({
+          set: document.documentElement.hasAttribute("data-fav-just-saved"),
+          at: performance.now(),
+        }),
+      ).observe(document.documentElement, { attributes: true, attributeFilter: ["data-fav-just-saved"] });
+    });
     await page.locator('[data-fav-action="choose-this"]').click();
     expect(await running(page), "no animation with reduced motion").toEqual([]);
     expect(await stars(page.locator(".team-head h1")), "the star shows").toBe(1);
-    // No pop means no animationend: the 2 s fallback removes the attribute.
-    const root = page.locator("html");
-    await expect(root).toHaveAttribute("data-fav-just-saved", "");
-    await expect(root).not.toHaveAttribute("data-fav-just-saved", "", { timeout: 4000 });
+    // The attribute was set once and then removed: with no pop there is no
+    // animationend, so it is the 2 s fallback timer that removes it. The
+    // record's times can lag the change itself by a frame or more, so the
+    // check is that it lived well past the 420 ms a pop would take, not 2 s
+    // to the millisecond.
+    const record = () =>
+      page.evaluate(() => (window as unknown as { __justSaved: { set: boolean; at: number }[] }).__justSaved);
+    await expect
+      .poll(async () => (await record()).map((change) => change.set), { timeout: 4000 })
+      .toEqual([true, false]);
+    const [added, removed] = await record();
+    const lived = (removed?.at ?? 0) - (added?.at ?? 0);
+    expect(lived, "removed by the 2 s fallback, not by an animation ending").toBeGreaterThanOrEqual(1000);
+    expect(lived, "removed by the 2 s fallback, not by an animation ending").toBeLessThan(3500);
   });
 
   test("choosing a theme changes it at once, without a crossfade", async ({ page }) => {
