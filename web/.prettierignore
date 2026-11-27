@@ -13,3 +13,7 @@ test-results/
 # Copies kept byte for byte as the pipeline writes them (tests compare them).
 contracts/
 tests/fixtures/data-1.2.0-replay/
+# Written by scripts/crest-glyphs.py, byte for byte the same on every run.
+src/identity/glyphs.json
+# The crest gallery (scripts/crest-gallery.mjs): local only, not committed.
+crest-gallery/

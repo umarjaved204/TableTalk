@@ -710,6 +710,18 @@ check Cloudflare's and GitHub's docs again.
   Domain plus a redirect.
 - **Before announcing the site:** the manual keyboard, NVDA, real-phone and
   reduced-motion passes in [web/docs/accessibility-review.md](../web/docs/accessibility-review.md).
+- **Each new season, or a "no crest for" warning: club crests.** A club with
+  no entry in the crest registry (`web/src/identity/clubs/`) gets a plain grey
+  placeholder crest with its initials, and the build prints
+  `no crest for "<club>"` (a warning on the run's page in GitHub Actions).
+  The build and the nightly publish carry on. This happens to newly
+  promoted clubs, and to a club the data renames (its slug changes). To add
+  the club: write its entry in its league's file there, run
+  `node scripts/make-crests.mjs` in `web/`, review it in the gallery
+  (`node scripts/crest-gallery.mjs`, then open `web/crest-gallery/index.html`),
+  update `web/tests/fixtures/clubs-<season>.json` to the new season's clubs,
+  and commit. Only a new letter on a crest needs the Python font step
+  (`web/scripts/crest-glyphs.py`, instructions at its top).
 
 ## Dated follow-ups
 
