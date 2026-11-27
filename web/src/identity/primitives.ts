@@ -39,7 +39,10 @@ export type ShapeName =
   | "triangle"
   | "lobed"
   | "diamond"
-  | "catalan";
+  | "catalan"
+  | "tall-diamond"
+  | "tapered"
+  | "egg";
 
 const r1 = (v: number) => String(Math.round(v * 10) / 10);
 const pts = (list: [number, number][]) => list.map(([x, y]) => `${r1(x)} ${r1(y)}`).join("L");
@@ -195,6 +198,34 @@ export const SHAPES: Readonly<Record<ShapeName, (i: number) => string>> = {
     );
   },
 
+  // A tall, narrow diamond set low, for a crown above and a circle behind it.
+  "tall-diamond"(i) {
+    const e = i * 1.6;
+    return `M60 ${r1(24 + e)}L${r1(93 - i)} 70L60 ${r1(117 - e)}L${r1(27 + i)} 70Z`;
+  },
+  // A broad shield with a straight top, set low for a crown above it, its
+  // sides tapering in long curves to a point.
+  tapered(i) {
+    const top = 30 + i;
+    const l = 8 + i;
+    const r = BOX - l;
+    const tip = 117 - i * 1.6;
+    return (
+      `M${r1(l)} ${r1(top)}Q60 ${r1(top - 6)} ${r1(r)} ${r1(top)}` +
+      `C${r1(r - 2)} 70 ${r1(C + 22 - i * 0.3)} 100 60 ${r1(tip)}C${r1(C - 22 + i * 0.3)} 100 ${r1(l + 2)} 70 ${r1(l)} ${r1(top)}Z`
+    );
+  },
+  // A tall egg-shaped shield: rounded top, full sides, tapering to a point.
+  egg(i) {
+    const top = 10 + i;
+    const hw = 44 - i;
+    const tip = 117 - i * 1.6;
+    return (
+      `M60 ${r1(top)}C${r1(C + hw * 0.9)} ${r1(top)} ${r1(C + hw)} 34 ${r1(C + hw)} 58` +
+      `C${r1(C + hw)} 84 ${r1(C + 14)} 104 60 ${r1(tip)}C${r1(C - 14)} 104 ${r1(C - hw)} 84 ${r1(C - hw)} 58` +
+      `C${r1(C - hw)} 34 ${r1(C - hw * 0.9)} ${r1(top)} 60 ${r1(top)}Z`
+    );
+  },
   // A rounded rectangle, a little taller than wide.
   tablet(i) {
     const hw = 46 - i;

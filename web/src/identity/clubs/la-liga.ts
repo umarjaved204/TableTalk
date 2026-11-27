@@ -44,6 +44,16 @@ function rivetsAt(cx: number, cy: number, r: number, n: number, fill: string, si
   return `<g fill="${fill}">${out}</g>`;
 }
 
+/** A column of chain links down a line (the division of a shield). */
+function chainColumn(x: number, y0: number, y1: number, step: number, colour: string): string {
+  let d = "";
+  let k = 0;
+  for (let y = y0; y <= y1; y += step) {
+    d += k++ % 2 === 0 ? `M${x} ${y - 3.4}a2.2 3.4 0 1 0 0 6.8a2.2 3.4 0 1 0 0 -6.8` : `M${x} ${y - 2.4}v4.8`;
+  }
+  return `<path d="${d}" fill="none" stroke="${colour}" stroke-width="1.8"/>`;
+}
+
 /** A row of chain links, alternately an oval link seen flat and one seen edge on. */
 function chainRow(x0: number, x1: number, y: number, step: number, colour: string): string {
   let d = "";
@@ -92,10 +102,10 @@ const ATH = { red: "#ee2523" };
 const ALA = { blue: "#0761af", navy: "#002f6c" };
 const ESP = { blue: "#007fc8", navy: "#003a70", yellow: "#f6d04d" };
 const DEP = { blue: "#0058a3", navy: "#00315f" };
-const VIL = { yellow: "#ffe114", navy: "#005187" };
+const VIL = { yellow: "#ffe114", navy: "#005187", red: "#d5232f", gold: "#e3b23c" };
 const OSA = { red: "#d91a21", navy: "#0a346f", gold: "#f2c230", cream: "#f6ead0" };
 const CEL = { sky: "#8ac3ee", navy: "#0b3a6b" };
-const VAL = { orange: "#ee7f1b", gold: "#f5c400", red: "#da291c" };
+const VAL = { orange: "#ee7f1b", gold: "#f5c400", red: "#da291c", blue: "#1e88c9" };
 const GET = { blue: "#005999", navy: "#002b52" };
 const RAY = { red: "#e53027" };
 const LEV = { blue: "#165aa8", claret: "#8a1538", navy: "#0c2c5c" };
@@ -735,42 +745,49 @@ export const LA_LIGA: readonly ClubIdentity[] = [
     colours: [
       { name: "Yellow", hex: VIL.yellow },
       { name: "Navy", hex: VIL.navy },
+      { name: "Red", hex: VIL.red },
     ],
     band: { bg: VIL.navy, ink: WHITE, muted: "#dfe6f2", accent: VIL.yellow },
     inspiration:
-      "The Yellow Submarine, the nickname from the Beatles song the supporters took up, seen through a riveted porthole set in the yellow diamond the club has long used.",
+      "The club's traditional structure, reinterpreted: a tall yellow diamond standing in front of a large navy circle, a small royal crown above its point for Vila-real, the royal town (vila reial) it is named after, and inside the diamond the Yellow Submarine, the nickname from the Beatles song the supporters took up. Red appears only as a fine edge.",
     resemblance: {
-      level: "medium",
-      note: "A yellow diamond echoes the official badge's outline. The porthole and submarine are the nickname, not on the badge.",
+      level: "high",
+      note: "A tall yellow diamond over a blue circle with a crown above is the official badge's structure. Here the diamond is plain yellow with a red edge (not red-and-yellow stripes), there are no CVF letters, and the submarine is the centrepiece, but the structure will read as Villarreal's badge. The porthole roundel and the porthole diamond are lower-resemblance alternatives.",
     },
-    composition: "diamond with a porthole",
+    composition: "tall diamond before a circle, crowned",
     looks: {
-      full: "A yellow diamond standing on its point, with a navy edge. In the middle, a round porthole: a thick navy ring studded with white rivets around a yellow window, in which a navy submarine sits on the surface over a navy wavy line.",
-      small: "The yellow diamond with a navy edge and the navy submarine across it.",
+      full: "A large navy circle with a white keyline. In front of it stands a tall, narrow yellow diamond with a fine red edge, its top and bottom points reaching past the circle. A navy submarine sits across the middle of the diamond on a navy wavy line, and a small gold crown with red jewels rests above the diamond's top point.",
+      small: "The navy circle with the tall yellow diamond in front and the navy submarine across it.",
     },
     full: (k) => [
-      k.shield("diamond", { rim: VIL.navy, field: VIL.yellow, rimWidth: 5 }),
-      k.disc(60, 60, 34, VIL.navy),
-      k.disc(60, 60, 27, VIL.yellow),
-      rivetsAt(60, 60, 30.5, 12, WHITE, 1.4),
+      `<circle cx="60" cy="70" r="37" fill="${WHITE}" stroke="${WHITE}" stroke-width="5"/>`,
+      `<circle cx="60" cy="70" r="37" fill="${VIL.navy}"/>`,
+      k.shield("tall-diamond", { rim: VIL.red, field: VIL.yellow, rimWidth: 2.5 }),
       k.symbol(
         "submarine",
-        { x: 60, y: 61, size: 50 },
+        { x: 60, y: 71, size: 48 },
         { main: VIL.navy, accent: VIL.navy, ground: VIL.yellow },
+      ),
+      k.symbol(
+        "royal-crown",
+        { x: 60, y: 12, size: 24 },
+        { main: VIL.gold, accent: VIL.red, ground: VIL.navy },
       ),
     ],
     small: (k) => [
-      k.shield("diamond", { rim: VIL.navy, field: VIL.yellow, rimWidth: 7 }),
+      `<circle cx="60" cy="70" r="40" fill="${WHITE}" stroke="${WHITE}" stroke-width="5"/>`,
+      `<circle cx="60" cy="70" r="40" fill="${VIL.navy}"/>`,
+      k.shield("tall-diamond", { rim: VIL.red, field: VIL.yellow, rimWidth: 3 }),
       k.symbol(
         "submarine",
-        { x: 58, y: 61, size: 74 },
+        { x: 60, y: 71, size: 54 },
         { main: VIL.navy, accent: VIL.navy, ground: VIL.yellow },
       ),
     ],
     alternatives: [
       {
         title: "Porthole roundel",
-        note: "The first La Liga design, approved before the silhouette review: the porthole as the whole crest. Lower resemblance to the official badge's outline.",
+        note: "The first La Liga design: the porthole as the whole crest. Low resemblance to the official badge.",
         looks: {
           full: "A yellow roundel with a thick navy rim studded with white rivets, like a porthole. Inside, a navy submarine sits on the surface with its conning tower and periscope up, round portholes along its side, over a navy wavy line.",
           small: "The yellow porthole with its navy rim, filled by the navy submarine.",
@@ -793,6 +810,33 @@ export const LA_LIGA: readonly ClubIdentity[] = [
           ),
         ],
       },
+      {
+        title: "Porthole diamond",
+        note: "The second-round design: a square diamond with the porthole inside it. Medium resemblance.",
+        looks: {
+          full: "A yellow diamond standing on its point, with a navy edge. In the middle, a round porthole: a thick navy ring studded with white rivets around a yellow window, in which a navy submarine sits on the surface over a navy wavy line.",
+          small: "The yellow diamond with a navy edge and the navy submarine across it.",
+        },
+        full: (k) => [
+          k.shield("diamond", { rim: VIL.navy, field: VIL.yellow, rimWidth: 5 }),
+          k.disc(60, 60, 34, VIL.navy),
+          k.disc(60, 60, 27, VIL.yellow),
+          rivetsAt(60, 60, 30.5, 12, WHITE, 1.4),
+          k.symbol(
+            "submarine",
+            { x: 60, y: 61, size: 50 },
+            { main: VIL.navy, accent: VIL.navy, ground: VIL.yellow },
+          ),
+        ],
+        small: (k) => [
+          k.shield("diamond", { rim: VIL.navy, field: VIL.yellow, rimWidth: 7 }),
+          k.symbol(
+            "submarine",
+            { x: 58, y: 61, size: 74 },
+            { main: VIL.navy, accent: VIL.navy, ground: VIL.yellow },
+          ),
+        ],
+      },
     ],
   },
   {
@@ -809,25 +853,68 @@ export const LA_LIGA: readonly ClubIdentity[] = [
     ],
     band: { bg: OSA.navy, ink: WHITE, muted: "#dbe3f2", accent: "#ff7b7b" },
     inspiration:
-      "Pamplona and Navarre, on a traditional shield: the gold chains of Navarre's arms across a navy chief, and a cream fighting bull charging across the red of the Rojillos, for the running of the bulls at the San Fermín festival.",
+      "The club's broad, tapering shield, divided red and navy, with a gold border and a royal crown above for the Kingdom of Navarre. A gold chain runs down the line between the halves (the chains of Navarre's arms), and a crowned gold lion walks across it. The club's name runs across the top.",
     resemblance: {
-      level: "medium",
-      note: "Red and navy and Navarre's chains are regional emblems that the official badge also draws on. The charging bull is not on the badge.",
+      level: "high",
+      note: "A red-and-navy tapered shield with a gold border, a crown and a crowned lion is the official badge's structure. Here there is no white inner shield and no CAO letters: the chain runs down the division and the lion straddles both halves, in our own drawing. Still, the whole will read as Osasuna's badge. The charging bull design is the lower-resemblance alternative.",
     },
-    composition: "chain chief over a bold symbol",
+    composition: "divided shield with a chain on the division",
     looks: {
-      full: "A red French shield with square shoulders and a navy edge. A navy band across the top carries a row of gold chain links. Below, a cream bull charges to the left, head down and horns forward, with a deep chest and a raised shoulder.",
-      small: "The red French shield with the cream charging bull filling it.",
+      full: "A broad shield with a gold border, tapering to a point, red on the left half and navy on the right. OSASUNA in white capitals runs across the top. A gold chain runs down the line between the halves, and a crowned gold lion with a spiky heraldic mane walks to the left across the middle, over the chain. A gold crown rests above the shield.",
+      small: "The broad red and navy shield with a gold border and the gold lion across it.",
     },
     full: (k) => [
-      k.shield("french", { rim: OSA.navy, field: OSA.red }),
-      k.pattern({ kind: "chief", colour: OSA.navy, height: 30 }),
-      chainRow(22, 98, 20, 7, OSA.gold),
-      k.symbol("bull", { x: 60, y: 66, size: 70 }, { main: OSA.cream, accent: OSA.cream, ground: OSA.red }),
+      k.shield("tapered", { rim: OSA.gold, field: OSA.red, rimWidth: 3 }),
+      k.pattern({ kind: "halves", colour: OSA.navy, side: "right" }),
+      chainColumn(60, 46, 108, 7, OSA.gold),
+      k.text("Osasuna", { x: 60, baseline: 44, cap: 8, tracking: 0.2, maxWidth: 80, fill: WHITE }),
+      k.symbol(
+        "lion-crowned",
+        { x: 60, y: 72, size: 56 },
+        { main: OSA.gold, accent: OSA.gold, ground: OSA.navy },
+      ),
+      k.symbol(
+        "royal-crown",
+        { x: 60, y: 15, size: 30 },
+        { main: OSA.gold, accent: OSA.red, ground: OSA.navy },
+      ),
     ],
     small: (k) => [
-      k.shield("french", { rim: OSA.navy, field: OSA.red, rimWidth: 7 }),
-      k.symbol("bull", { x: 60, y: 58, size: 96 }, { main: OSA.cream, accent: OSA.cream, ground: OSA.red }),
+      k.shield("tapered", { rim: OSA.gold, field: OSA.red, rimWidth: 5 }),
+      k.pattern({ kind: "halves", colour: OSA.navy, side: "right" }),
+      k.symbol(
+        "lion-crowned",
+        { x: 60, y: 66, size: 76 },
+        { main: OSA.gold, accent: OSA.gold, ground: OSA.navy },
+      ),
+    ],
+    alternatives: [
+      {
+        title: "Charging bull",
+        note: "The second-round design: San Fermín's charging bull in cream under a navy chief of chains. Medium resemblance.",
+        looks: {
+          full: "A red French shield with square shoulders and a navy edge. A navy band across the top carries a row of gold chain links. Below, a cream bull charges to the left, head down and horns forward.",
+          small: "The red French shield with the cream charging bull filling it.",
+        },
+        full: (k) => [
+          k.shield("french", { rim: OSA.navy, field: OSA.red }),
+          k.pattern({ kind: "chief", colour: OSA.navy, height: 30 }),
+          chainRow(22, 98, 20, 7, OSA.gold),
+          k.symbol(
+            "bull",
+            { x: 60, y: 66, size: 70 },
+            { main: OSA.cream, accent: OSA.cream, ground: OSA.red },
+          ),
+        ],
+        small: (k) => [
+          k.shield("french", { rim: OSA.navy, field: OSA.red, rimWidth: 7 }),
+          k.symbol(
+            "bull",
+            { x: 60, y: 58, size: 96 },
+            { main: OSA.cream, accent: OSA.cream, ground: OSA.red },
+          ),
+        ],
+      },
     ],
   },
   {
@@ -872,36 +959,33 @@ export const LA_LIGA: readonly ClubIdentity[] = [
     founded: 1919,
     short: "VAL",
     colours: [
-      { name: "White", hex: WHITE },
-      { name: "Black", hex: BLACK },
-      { name: "Orange", hex: VAL.orange },
       { name: "Gold and red (senyera)", hex: VAL.gold },
+      { name: "Black", hex: BLACK },
+      { name: "Blue", hex: VAL.blue },
     ],
     band: { bg: BLACK, ink: WHITE, muted: "#e6e6e6", accent: "#ff9a5c" },
     inspiration:
-      "The bat (rat penat) of the arms of Valencia, which King James I is said to have taken as an omen, spreading its wings across the top of a round-bottomed shield, as on the club's traditional badge: the gold and red stripes of the Valencian senyera beneath it and the founding year below.",
+      "The club's tall, tapering shield with the bat (rat penat) of Valencia's arms spreading its wings as its top edge, and the gold and red stripes of the Valencian senyera filling the shield, as on the traditional badge. A blue medallion with VCF, in the blue of the senyera's crowned band, sits low in the stripes.",
     resemblance: {
       level: "high",
-      note: "A black bat across the top of a shield with the senyera is the official badge's structure. The bat is our own drawing and there are no VCF letters, but this will read as Valencia's badge. The bat roundel and the orange blossom are lower-resemblance alternatives.",
+      note: "A tall shield under a bat, filled with senyera stripes, is the official badge's structure. Here there is no white and blue name band under the bat and no ball; the letters VCF sit in a blue medallion in our own setting. It will still read as Valencia's badge. The bat roundel and the orange blossom are lower-resemblance alternatives.",
     },
-    composition: "symbol crowning the shield",
+    composition: "symbol forming the top edge",
     looks: {
-      full: "A round-bottomed white shield with a black edge. A black bat with its wings spread, outlined in white, sits across the top edge. Under it, a band of gold with four red vertical stripes; below a black line, 1919 in black on white.",
-      small: "The white shield with the black bat across its top and the gold and red stripes beneath.",
+      full: "A tall, egg-shaped shield with a black edge, tapering to a point, filled with gold and red vertical stripes. A black bat outlined in white spreads its wings across the top, forming the upper edge. Low in the stripes, a blue medallion with a white ring holds VCF in white.",
+      small: "The tall gold and red striped shield with the black bat across its top.",
     },
     full: (k) => [
-      k.shield("english", { rim: BLACK, field: WHITE }),
-      k.pattern({ kind: "chief", colour: VAL.gold, height: 60 }),
-      k.pattern({ kind: "stripes", colour: VAL.red, count: 9, to: 60 }),
-      k.rule(60, BLACK, 3),
-      k.text("1919", { x: 60, baseline: 92, cap: 16, tracking: 0.08, fill: BLACK }),
-      k.symbol("bat-keyline", { x: 60, y: 26, size: 84 }, { main: BLACK, accent: BLACK, ground: WHITE }),
+      k.shield("egg", { rim: BLACK, field: VAL.gold }),
+      k.pattern({ kind: "stripes", colour: VAL.red, count: 9 }),
+      k.disc(60, 82, 14, VAL.blue, [WHITE, 2]),
+      k.text("VCF", { x: 60, baseline: 86.5, cap: 9, tracking: 0.08, fill: WHITE }),
+      k.symbol("bat-keyline", { x: 60, y: 24, size: 92 }, { main: BLACK, accent: BLACK, ground: WHITE }),
     ],
     small: (k) => [
-      k.shield("english", { rim: BLACK, field: WHITE, rimWidth: 7 }),
-      k.pattern({ kind: "chief", colour: VAL.gold, height: 64 }),
-      k.pattern({ kind: "stripes", colour: VAL.red, count: 7, to: 64 }),
-      k.symbol("bat-keyline", { x: 60, y: 27, size: 92 }, { main: BLACK, accent: BLACK, ground: WHITE }),
+      k.shield("egg", { rim: BLACK, field: VAL.gold, rimWidth: 6 }),
+      k.pattern({ kind: "stripes", colour: VAL.red, count: 7 }),
+      k.symbol("bat-keyline", { x: 60, y: 24, size: 96 }, { main: BLACK, accent: BLACK, ground: WHITE }),
     ],
     alternatives: [
       {

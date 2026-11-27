@@ -508,4 +508,82 @@ export const LALIGA_SYMBOLS = {
     line(LION_WALKING_LINES, ground, 1.5) +
     circle(13, 33, 1.6, ground) +
     path("M6 41Q2 43 4 46Q7 44 10 43Z", accent),
+
+  /** A crowned lion walking left in a slender heraldic style: pointed
+   *  flame-like tufts down the neck and chest, the near forepaw raised, a
+   *  small crown on its head and the tail held high to a forked tuft. Drawn
+   *  apart from Athletic's round-maned lion. Navarre's royal heritage. */
+  "lion-crowned": ({ main, accent, ground }) =>
+    line("M82 46C92 40 95 27 89 18", main, 3.6) +
+    path(
+      outline([
+        [89, 20],
+        [86, 11, 1],
+        [91, 15],
+        [95, 8, 1],
+        [93, 18],
+      ]),
+      main,
+    ) +
+    path(
+      outline([
+        [6, 34, 1],
+        [8, 28],
+        [13, 23],
+        [19, 20],
+        [24, 19],
+        [27, 11, 1],
+        [31, 18],
+        [37, 12, 1],
+        [39, 20],
+        [46, 15, 1],
+        [45, 24],
+        [53, 23, 1],
+        [48, 31],
+        [55, 36],
+        [66, 38],
+        [76, 40],
+        [82, 46],
+        [84, 54],
+        [83, 64],
+        [85, 78],
+        [88, 82],
+        [81, 83, 1],
+        [78, 78],
+        [76, 66],
+        [71, 60],
+        [68, 70],
+        [70, 80],
+        [72, 83],
+        [64, 83, 1],
+        [62, 78],
+        [62, 64],
+        [52, 60],
+        [44, 60],
+        [42, 70],
+        [43, 80],
+        [46, 83],
+        [38, 83, 1],
+        [36, 78],
+        [35, 66],
+        [32, 63],
+        [30, 68, 1],
+        [26, 60],
+        [20, 64, 1],
+        [22, 55],
+        [14, 56],
+        [9, 55, 1],
+        [10, 51, 1],
+        [16, 49],
+        [22, 46],
+        [20, 42],
+        [14, 40],
+        [10, 38, 1],
+        [12, 36, 1],
+        [7, 36, 1],
+      ]),
+      main,
+    ) +
+    path("M10 21L10 14L13.5 17.5L17 12L20.5 17.5L24 14L24 21Z", accent) +
+    circle(15, 29, 1.5, ground),
 } satisfies Record<string, Draw>;

@@ -23,6 +23,7 @@
 //   - the fallback crest that a club with no entry gets.
 // --league <id> (premier_league, la_liga, ...) limits the clubs shown to one
 // league, for a league's own review; the league marks are always shown.
+// --clubs slug,slug limits it to named clubs (a targeted revision's review).
 // --snapshot writes the current designs to a file (to compare against after
 // the next round of changes) and stops. --status inserts an HTML fragment
 // (a review status block) after the title.
@@ -46,6 +47,7 @@ const { values: args } = parseArgs({
     previous: { type: "string" },
     snapshot: { type: "string" },
     league: { type: "string" },
+    clubs: { type: "string" },
   },
 });
 
@@ -110,8 +112,11 @@ const markKey = (league) =>
 
 const bySlug = new Map(CLUBS.map((c) => [c.slug, c]));
 /** The clubs this gallery shows: all, or one league's with --league. */
-const SHOWN = args.league ? CLUBS.filter((c) => c.leagueId === args.league) : CLUBS;
-if (args.league && SHOWN.length === 0) throw new Error(`no clubs in league "${args.league}"`);
+const onlyClubs = args.clubs ? new Set(args.clubs.split(",")) : null;
+const SHOWN = CLUBS.filter(
+  (c) => (!args.league || c.leagueId === args.league) && (!onlyClubs || onlyClubs.has(c.slug)),
+);
+if (SHOWN.length === 0) throw new Error("no clubs match --league/--clubs");
 const shownSlugs = new Set(SHOWN.map((c) => c.slug));
 /** A club's crest at a size, or the fallback crest for a club with no entry. */
 function crestFor(name, size) {
@@ -363,7 +368,7 @@ function comparisonSection() {
     a.replace(/"p-[a-z0-9-]+"|#p-[a-z0-9-]+/g, "") === b.replace(/"p-[a-z0-9-]+"|#p-[a-z0-9-]+/g, "");
   const changed = [];
   const unchanged = [];
-  for (const club of CLUBS) {
+  for (const club of SHOWN) {
     const was = prev.clubs[club.slug];
     if (!was) continue;
     const now = {
