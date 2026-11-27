@@ -5,6 +5,7 @@
   --bg: #000;
   --surface: #000;
   --surface-2: #101010;
+  --surface-raised: #000;
   --border: #fff;
   --border-strong: #fff;
   --text: #fff;
@@ -15,4 +16,22 @@
   --pitch-line: rgb(255 255 255 / 35%);
   --warn-bg: #000;
   --warn-text: #ff0;
+  --shadow-color: #000;
+  --info-bg: #000;
+
+  /* The brand band: black, set off by a white border where it is drawn. */
+  --band-bg: #000;
+  --band-ink: #fff;
+  --band-muted: #e6e6e6;
+  --band-accent: #ff0;
+  --band-edge: #fff;
+
+  /* Artwork: white line drawing on black. */
+  --art-sky: #000;
+  --art-stand: #000;
+  --art-roof: #000;
+  --art-pitch: #000;
+  --art-stripe: #000;
+  --art-line: #fff;
+  --art-light: #ff0;
 }

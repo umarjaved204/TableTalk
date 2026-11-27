@@ -4,6 +4,7 @@
   --bg: #172a21;
   --surface: #1c3328;
   --surface-2: #213b2f;
+  --surface-raised: #264335;
   --border: #34574a;
   --border-strong: #8fb09e;
   --text: #f3f0e6;
@@ -14,4 +15,22 @@
   --pitch-line: rgb(243 240 230 / 22%);
   --warn-bg: #3d3514;
   --warn-text: #fff0b3;
+  --shadow-color: #000;
+  --info-bg: #24402f;
+
+  /* The brand band: the board's darker frame. */
+  --band-bg: #0f1f18;
+  --band-ink: #f3f0e6;
+  --band-muted: #c9d0c3;
+  --band-accent: #f0e28c;
+  --band-edge: transparent;
+
+  /* Artwork: drawn in chalk on the board. */
+  --art-sky: #1a2f25;
+  --art-stand: #223c30;
+  --art-roof: #2c4c3d;
+  --art-pitch: #1f382c;
+  --art-stripe: #1c3328;
+  --art-line: rgb(243 240 230 / 55%);
+  --art-light: #f0e28c;
 }

@@ -10,6 +10,8 @@
 @import "./themes/contrast.css";
 @import "./data-colours.css";
 @import "./favourites.css";
+@import "./art.css";
+@import "./blocks.css";
 
 *,
 *::before,

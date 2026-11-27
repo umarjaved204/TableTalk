@@ -4,6 +4,7 @@
   --bg: #0c0d2a;
   --surface: #14163a;
   --surface-2: #1c1f4a;
+  --surface-raised: #22255a;
   --border: #2b3068;
   --border-strong: #7178b8;
   --text: #eef0ff;
@@ -14,4 +15,22 @@
   --pitch-line: rgb(51 224 240 / 16%);
   --warn-bg: #3a2f10;
   --warn-text: #ffe2a3;
+  --shadow-color: #000;
+  --info-bg: #182249;
+
+  /* The brand band: deep indigo under cyan light. */
+  --band-bg: #171a52;
+  --band-ink: #eef0ff;
+  --band-muted: #b9bef0;
+  --band-accent: #33e0f0;
+  --band-edge: transparent;
+
+  /* Artwork: indigo stands, cool white light. */
+  --art-sky: #10123a;
+  --art-stand: #1a1d4a;
+  --art-roof: #272b66;
+  --art-pitch: #12305a;
+  --art-stripe: #102b52;
+  --art-line: rgb(51 224 240 / 45%);
+  --art-light: #c8f7ff;
 }

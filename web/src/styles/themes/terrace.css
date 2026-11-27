@@ -4,6 +4,7 @@
   --bg: #232527;
   --surface: #2c2f31;
   --surface-2: #35383b;
+  --surface-raised: #3a3d40;
   --border: #45494d;
   --border-strong: #8c9196;
   --text: #f3f1eb;
@@ -14,4 +15,22 @@
   --pitch-line: rgb(255 179 0 / 16%);
   --warn-bg: #45391a;
   --warn-text: #ffe7b0;
+  --shadow-color: #000;
+  --info-bg: #3a3527;
+
+  /* The brand band: a scoreboard panel. */
+  --band-bg: #161718;
+  --band-ink: #f3f1eb;
+  --band-muted: #c3c0b8;
+  --band-accent: #ffb300;
+  --band-edge: transparent;
+
+  /* Artwork: concrete stands, amber light. */
+  --art-sky: #26292b;
+  --art-stand: #34373a;
+  --art-roof: #474b4f;
+  --art-pitch: #2d4a34;
+  --art-stripe: #29442f;
+  --art-line: rgb(243 241 235 / 40%);
+  --art-light: #ffd36b;
 }

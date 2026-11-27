@@ -18,6 +18,18 @@
   --step-3: 1.95rem;
   --step-4: 2.44rem;
   --step-5: 3.05rem;
+  --step-6: 3.81rem; /* hero figures and the home headline on wide screens */
+  --step-7: 4.77rem;
+
+  /* Display type: the condensed face is for headlines, names and big figures;
+     running text, tables and controls stay in the text face. */
+  --leading-display: 1;
+  --leading-tight: 1.15;
+  --leading-body: 1.55;
+  --tracking-display: 0.01em;
+  --tracking-caps: 0.04em; /* upper-case headings */
+  --tracking-label: 0.08em; /* small upper-case labels */
+  --measure: 68ch; /* running text line length */
 
   /* Spacing: 4px grid. */
   --space-1: 4px;
@@ -29,11 +41,40 @@
   --space-8: 32px;
   --space-10: 40px;
   --space-12: 48px;
+  --space-16: 64px;
   --radius-1: 4px;
   --radius-2: 8px;
+  --radius-3: 12px; /* bands and hero panels */
   --radius-pill: 999px;
-  --shadow-1: 0 1px 2px color-mix(in srgb, var(--text) 12%, transparent);
-  --shadow-2: 0 8px 28px color-mix(in srgb, var(--text) 18%, transparent);
+  --rule: 3px; /* heading rules and the short headline stroke */
+
+  /* Shadows use each theme's --shadow-color, always a dark colour: mixing
+     them from --text gave dark themes a light halo around dialogs. */
+  --shadow-1: 0 1px 2px color-mix(in srgb, var(--shadow-color) 12%, transparent);
+  --shadow-2: 0 8px 28px color-mix(in srgb, var(--shadow-color) 18%, transparent);
+
+  /* Zone tints: the data colours (data-colours.css) at three strengths, for
+     shading behind charts and table rows. Inner zones are the strongest, so
+     nested zones stay apart. Shape (edge markers, outlines) always carries
+     the meaning too; a tint alone never does. */
+  --zone-top-tint-1: color-mix(in srgb, var(--zone-top) 22%, transparent);
+  --zone-top-tint-2: color-mix(in srgb, var(--zone-top) 13%, transparent);
+  --zone-top-tint-3: color-mix(in srgb, var(--zone-top) 7%, transparent);
+  --zone-rel-tint-1: color-mix(in srgb, var(--zone-rel) 22%, transparent);
+  --zone-rel-tint-2: color-mix(in srgb, var(--zone-rel) 13%, transparent);
+
+  /* Club colours: decoration only (hero bands, crest surrounds), never data.
+     These defaults are the theme's own band; a club page sets data-club and
+     the generated club stylesheet (Phase 3) replaces all three. --club-ink is
+     always the text colour checked against --club-1. */
+  --club-1: var(--band-bg);
+  --club-2: var(--band-accent);
+  --club-ink: var(--band-ink);
+  --club-muted: var(--band-muted);
+
+  /* Artwork drawn in a band takes the band's ink at this strength, so text
+     on top of it keeps its contrast (tests/unit/themes.test.ts checks it). */
+  --band-art-share: 12%;
 
   /* Sizes */
   --tap-min: 24px; /* WCAG 2.2 AA minimum target */

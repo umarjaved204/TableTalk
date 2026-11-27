@@ -1,0 +1,16 @@
+---
+// Decorative football artwork (src/art/artwork.ts), coloured by the theme
+// (src/styles/art.css). Always aria-hidden: it never carries information.
+// Size it from the parent: the SVG fills the width and keeps its ratio, and
+// its width and height attributes reserve the space before CSS loads.
+import { artSvg, type ArtName, type ArtTone } from "../art/artwork.ts";
+
+interface Props {
+  name: ArtName;
+  tone?: ArtTone;
+}
+
+const { name, tone = "scene" } = Astro.props;
+---
+
+<Fragment set:html={artSvg(name, tone)} />

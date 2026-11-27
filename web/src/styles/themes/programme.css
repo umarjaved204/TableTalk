@@ -4,6 +4,7 @@
   --bg: #f3ead8;
   --surface: #fbf6ea;
   --surface-2: #ece0c8;
+  --surface-raised: #fffaf0;
   --border: #dccdb0;
   --border-strong: #8a7a60;
   --text: #221912;
@@ -14,4 +15,22 @@
   --pitch-line: rgb(155 28 28 / 18%);
   --warn-bg: #f5dfb0;
   --warn-text: #4d2e00;
+  --shadow-color: #221912;
+  --info-bg: #efe3c9;
+
+  /* The brand band: a programme cover in deep red and gold. */
+  --band-bg: #7a1616;
+  --band-ink: #fffaf0;
+  --band-muted: #f2d6c6;
+  --band-accent: #f2c46d;
+  --band-edge: transparent;
+
+  /* Artwork: a printed stand in faded inks. */
+  --art-sky: #efe4cd;
+  --art-stand: #e2d3b4;
+  --art-roof: #c8b48d;
+  --art-pitch: #6f8a4b;
+  --art-stripe: #678145;
+  --art-line: rgb(251 246 234 / 80%);
+  --art-light: #fff4d8;
 }
