@@ -13,3 +13,5 @@ dist-e2e/
 dist-rollover/
 # Lighthouse reports (npm run lighthouse).
 lighthouse/
+# The crest review gallery (node scripts/crest-gallery.mjs): local only.
+crest-gallery/

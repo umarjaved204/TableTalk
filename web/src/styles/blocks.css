@@ -7,7 +7,17 @@
    .figure       a big number with its unit and a plain-words label under it
    .explain      what a number means, in a tinted box with an "i" marker
    .empty-state  nothing to show yet, and why (dashed, never alarming)
-   .band         the brand band, or a club's band when data-club is set */
+   .band         the brand band, or a club's band when data-club is set
+   .crest        a club crest (ClubCrest.astro), and .league-mark a league's mark */
+
+/* Crests and marks are square images with width and height set; they never
+   shrink in a flex row and sit on the text's middle in running text. */
+.crest,
+.league-mark {
+  flex: none;
+  display: inline-block;
+  vertical-align: middle;
+}
 
 .card {
   background: var(--surface);

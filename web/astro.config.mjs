@@ -29,6 +29,15 @@ export default defineConfig({
   prefetch: false,
   // No code blocks on the site; Shiki's inline styles would break the CSP.
   markdown: { syntaxHighlight: false },
+  vite: {
+    build: {
+      // Crests and league marks (src/identity/) are always separate files,
+      // never data: addresses written into the page: a league page shows
+      // about 20 crests, and as files each is downloaded once and cached
+      // (decision D5). Everything else keeps Vite's default.
+      assetsInlineLimit: (file) => (/[\\/]src[\\/]identity[\\/]/.test(file) ? false : undefined),
+    },
+  },
   security: {
     // Content Security Policy as a <meta> tag, because the script hashes
     // change with every build; the host's fixed headers (public/_headers)

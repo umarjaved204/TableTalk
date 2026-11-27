@@ -1,3 +1,9 @@
 # Font licences ship byte for byte as the packages' own LICENSE files (LF),
 # so they stay LF on every platform (tests/unit/fonts.test.ts compares them).
 public/fonts/*.txt text eol=lf
+# Written by scripts/make-crests.mjs with LF line endings, and served as they
+# are: kept LF on every platform so the files are byte for byte the same on
+# Windows and in CI (tests/unit/identity.test.ts compares them with the designs).
+src/identity/crests/*.svg text eol=lf
+src/identity/marks/*.svg text eol=lf
+src/styles/identity.css text eol=lf

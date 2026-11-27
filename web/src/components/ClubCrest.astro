@@ -1,0 +1,44 @@
+---
+// A club's crest at a given size. Up to 24 px it shows the small crest
+// (fewer, bolder parts); from 28 px the full one. Width and height are
+// always set, so the crest never moves the layout as it loads.
+//
+// Decorative by default (alt=""): the club's name is almost always written
+// next to it, and a screen reader shouldn't say the name twice. Pass `label`
+// where the crest stands alone, and it is announced as "<club> crest".
+//
+// `inline` writes the SVG into the page instead of linking the file: for the
+// team page's hero, so the largest crest paints with no extra request.
+// A club with no crest yet gets the fallback crest (and a build warning),
+// never a broken image or a failed build. See src/identity/assets.ts.
+import { crestInline, crestSource, svgElement, variantFor } from "../identity/assets.ts";
+
+interface Props {
+  slug: string;
+  name: string;
+  /** Size in CSS pixels (the crest is square). */
+  size: number;
+  label?: boolean;
+  inline?: boolean;
+  loading?: "lazy" | "eager";
+  class?: string;
+}
+
+const { slug, name, size, label = false, inline = false, loading = "lazy", class: extra } = Astro.props;
+const cls = ["crest", extra].filter(Boolean).join(" ");
+const alt = label ? `${name} crest` : "";
+
+let src: string | undefined;
+let svg = inline ? crestInline(slug, name) : undefined;
+if (svg === undefined) {
+  const source = crestSource(slug, name, variantFor(size));
+  if (source.kind === "file") src = source.src;
+  else svg = source.svg;
+}
+---
+
+{src ? (
+  <img class={cls} src={src} width={size} height={size} alt={alt} loading={loading} decoding="async" />
+) : (
+  <Fragment set:html={svgElement(svg ?? "", size, cls, label ? alt : undefined)} />
+)}

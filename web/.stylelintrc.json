@@ -20,7 +20,7 @@
       "customSyntax": "postcss-html"
     },
     {
-      "files": ["src/styles/themes/*.css", "src/styles/data-colours.css"],
+      "files": ["src/styles/themes/*.css", "src/styles/data-colours.css", "src/styles/identity.css"],
       "rules": {
         "color-no-hex": null,
         "function-disallowed-list": null

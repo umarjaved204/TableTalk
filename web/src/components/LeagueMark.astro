@@ -1,0 +1,21 @@
+---
+// A league's mark (src/identity/leagues.ts): TableTalk's own tile with the
+// league's initials, not the competition's logo. Decorative by default, as
+// the league's name is written beside it; pass `label` where it stands alone.
+import { leagueMarkUrl } from "../identity/assets.ts";
+
+interface Props {
+  /** The league's URL slug ("premier-league"). */
+  slug: string;
+  name: string;
+  size: number;
+  label?: boolean;
+  class?: string;
+}
+
+const { slug, name, size, label = false, class: extra } = Astro.props;
+const src = leagueMarkUrl(slug);
+const cls = ["league-mark", extra].filter(Boolean).join(" ");
+---
+
+{src && <img class={cls} src={src} width={size} height={size} alt={label ? name : ""} decoding="async" />}

@@ -1,0 +1,211 @@
+/* Club and league band colours. Written by scripts/make-crests.mjs from
+   src/identity/ (clubs/*.ts and leagues.ts): edit those, then run the
+   script. Never edited by hand; tests/unit/identity.test.ts checks it. */
+
+[data-club="arsenal"] {
+  --club-1: #a5000c;
+  --club-2: #f0cf7a;
+  --club-ink: #fff;
+  --club-muted: #fbdcde;
+  --band-edge: color-mix(in srgb, #f0cf7a 45%, transparent);
+}
+
+[data-club="brighton-and-hove-albion"] {
+  --club-1: #004a9f;
+  --club-2: #9fd0ff;
+  --club-ink: #fff;
+  --club-muted: #e3edfa;
+  --band-edge: color-mix(in srgb, #9fd0ff 45%, transparent);
+}
+
+[data-club="manchester-city"] {
+  --club-1: #1c2c5b;
+  --club-2: #6cabdd;
+  --club-ink: #fff;
+  --club-muted: #d3e6f5;
+  --band-edge: color-mix(in srgb, #6cabdd 45%, transparent);
+}
+
+[data-club="liverpool"] {
+  --club-1: #a50d26;
+  --club-2: #e8c547;
+  --club-ink: #fff;
+  --club-muted: #fbdde2;
+  --band-edge: color-mix(in srgb, #e8c547 45%, transparent);
+}
+
+[data-club="bournemouth"] {
+  --club-1: #a3190f;
+  --club-2: #ffb3aa;
+  --club-ink: #fff;
+  --club-muted: #fde6e3;
+  --band-edge: color-mix(in srgb, #ffb3aa 45%, transparent);
+}
+
+[data-club="brentford"] {
+  --club-1: #b8000d;
+  --club-2: #f2b705;
+  --club-ink: #fff;
+  --club-muted: #fde1e3;
+  --band-edge: color-mix(in srgb, #f2b705 45%, transparent);
+}
+
+[data-club="leeds-united"] {
+  --club-1: #1d428a;
+  --club-2: #ffcd00;
+  --club-ink: #fff;
+  --club-muted: #dbe3f3;
+  --band-edge: color-mix(in srgb, #ffcd00 45%, transparent);
+}
+
+[data-club="chelsea"] {
+  --club-1: #034694;
+  --club-2: #d1a33b;
+  --club-ink: #fff;
+  --club-muted: #d8e5f5;
+  --band-edge: color-mix(in srgb, #d1a33b 45%, transparent);
+}
+
+[data-club="everton"] {
+  --club-1: #039;
+  --club-2: #f2cf73;
+  --club-ink: #fff;
+  --club-muted: #dbe2f7;
+  --band-edge: color-mix(in srgb, #f2cf73 45%, transparent);
+}
+
+[data-club="tottenham-hotspur"] {
+  --club-1: #132257;
+  --club-2: #a9b8ee;
+  --club-ink: #fff;
+  --club-muted: #d9def0;
+  --band-edge: color-mix(in srgb, #a9b8ee 45%, transparent);
+}
+
+[data-club="hull-city"] {
+  --club-1: #111;
+  --club-2: #f5a12d;
+  --club-ink: #fff;
+  --club-muted: #e6e0d2;
+  --band-edge: color-mix(in srgb, #f5a12d 45%, transparent);
+}
+
+[data-club="aston-villa"] {
+  --club-1: #670e36;
+  --club-2: #95bfe5;
+  --club-ink: #fff;
+  --club-muted: #f3d9e4;
+  --band-edge: color-mix(in srgb, #95bfe5 45%, transparent);
+}
+
+[data-club="newcastle-united"] {
+  --club-1: #111;
+  --club-2: #d9bd86;
+  --club-ink: #fff;
+  --club-muted: #e2e2e2;
+  --band-edge: color-mix(in srgb, #d9bd86 45%, transparent);
+}
+
+[data-club="coventry-city"] {
+  --club-1: #0b2240;
+  --club-2: #59b4e5;
+  --club-ink: #fff;
+  --club-muted: #d5e9f6;
+  --band-edge: color-mix(in srgb, #59b4e5 45%, transparent);
+}
+
+[data-club="fulham"] {
+  --club-1: #111;
+  --club-2: #ff6b6b;
+  --club-ink: #fff;
+  --club-muted: #e2e2e2;
+  --band-edge: color-mix(in srgb, #ff6b6b 45%, transparent);
+}
+
+[data-club="ipswich-town"] {
+  --club-1: #0044a9;
+  --club-2: #9cc0ff;
+  --club-ink: #fff;
+  --club-muted: #d9e4f6;
+  --band-edge: color-mix(in srgb, #9cc0ff 45%, transparent);
+}
+
+[data-club="nottingham-forest"] {
+  --club-1: #b30000;
+  --club-2: #ffb3b3;
+  --club-ink: #fff;
+  --club-muted: #ffdede;
+  --band-edge: color-mix(in srgb, #ffb3b3 45%, transparent);
+}
+
+[data-club="sunderland"] {
+  --club-1: #b5101f;
+  --club-2: #f2c94c;
+  --club-ink: #fff;
+  --club-muted: #fde0e3;
+  --band-edge: color-mix(in srgb, #f2c94c 45%, transparent);
+}
+
+[data-club="manchester-united"] {
+  --club-1: #b01e12;
+  --club-2: #fbe122;
+  --club-ink: #fff;
+  --club-muted: #fde0dc;
+  --band-edge: color-mix(in srgb, #fbe122 45%, transparent);
+}
+
+[data-club="crystal-palace"] {
+  --club-1: #1b458f;
+  --club-2: #ff8a9a;
+  --club-ink: #fff;
+  --club-muted: #dbe3f3;
+  --band-edge: color-mix(in srgb, #ff8a9a 45%, transparent);
+}
+
+[data-league="premier-league"] {
+  --club-1: #2b1442;
+  --club-2: #ff6b81;
+  --club-ink: #fff;
+  --club-muted: #ded3ea;
+  --band-edge: color-mix(in srgb, #ff6b81 45%, transparent);
+}
+
+[data-league="bundesliga"] {
+  --club-1: #151515;
+  --club-2: #fc0;
+  --club-ink: #fff;
+  --club-muted: #dcdcdc;
+  --band-edge: color-mix(in srgb, #fc0 45%, transparent);
+}
+
+[data-league="la-liga"] {
+  --club-1: #8b0f1c;
+  --club-2: #ffc400;
+  --club-ink: #fff;
+  --club-muted: #f8dadd;
+  --band-edge: color-mix(in srgb, #ffc400 45%, transparent);
+}
+
+[data-league="serie-a"] {
+  --club-1: #0a4f8f;
+  --club-2: #7fe0a2;
+  --club-ink: #fff;
+  --club-muted: #d6e6f5;
+  --band-edge: color-mix(in srgb, #7fe0a2 45%, transparent);
+}
+
+[data-league="ligue-1"] {
+  --club-1: #0d2a5c;
+  --club-2: #ff6b81;
+  --club-ink: #fff;
+  --club-muted: #d8e0ef;
+  --band-edge: color-mix(in srgb, #ff6b81 45%, transparent);
+}
+
+[data-theme="contrast"] :is([data-club], [data-league]) {
+  --club-1: var(--band-bg);
+  --club-2: var(--band-accent);
+  --club-ink: var(--band-ink);
+  --club-muted: var(--band-muted);
+  --band-edge: var(--border);
+}

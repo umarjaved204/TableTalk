@@ -1,0 +1,3 @@
+# Only for scripts/crest-glyphs.py, a dev-only step run by hand. Not part of
+# the website or the pipeline. Pinned so the letter outlines are reproducible.
+fonttools==4.60.1
