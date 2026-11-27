@@ -56,6 +56,11 @@ export interface ClubIdentity {
   /** The heritage behind the design, in a sentence or two. */
   inspiration: string;
   resemblance: { level: Resemblance; note: string };
+  /** The kind of composition, in a few words ("monogram", "ring of lettering",
+   *  "full-width scene"): the gallery counts them per league, so a league
+   *  never drifts back to one template. Not set on the Premier League crests,
+   *  which were approved before it was added. */
+  composition?: string;
   looks: Looks;
   /** The crest above 24 px (assets.ts SMALL_MAX). */
   full: Design;

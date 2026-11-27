@@ -25,7 +25,8 @@ export const STROKE = {
   detail: 2.5,
 } as const;
 
-export type ShapeName = "heater" | "english" | "french" | "angular" | "roundel" | "oval";
+export type ShapeName =
+  "heater" | "english" | "french" | "angular" | "roundel" | "oval" | "arch" | "badge" | "tablet";
 
 const r1 = (v: number) => String(Math.round(v * 10) / 10);
 const pts = (list: [number, number][]) => list.map(([x, y]) => `${r1(x)} ${r1(y)}`).join("L");
@@ -103,6 +104,48 @@ export const SHAPES: Readonly<Record<ShapeName, (i: number) => string>> = {
     const rx = 46 - i;
     const ry = 57 - i;
     return `M${r1(C - rx)} 60A${r1(rx)} ${r1(ry)} 0 1 1 ${r1(C + rx)} 60A${r1(rx)} ${r1(ry)} 0 1 1 ${r1(C - rx)} 60Z`;
+  },
+  // A round-topped arch over straight sides and a pointed base, like a
+  // window in a Spanish church front.
+  arch(i) {
+    const hw = 44 - i;
+    const top = 6 + i;
+    const spring = top + hw;
+    const tip = 115 - i * 1.4;
+    return (
+      `M${r1(C - hw)} ${r1(spring)}A${r1(hw)} ${r1(hw)} 0 0 1 ${r1(C + hw)} ${r1(spring)}` +
+      `L${r1(C + hw)} 78Q${r1(C + hw)} 96 60 ${r1(tip)}Q${r1(C - hw)} 96 ${r1(C - hw)} 78Z`
+    );
+  },
+  // A five-sided badge: flat top, straight sides, two straight edges meeting
+  // at a broad point.
+  badge(i) {
+    const hw = 47 - i;
+    const top = 8 + i;
+    const shoulder = 76 - i * 0.3;
+    const tip = 114 - i * 1.5;
+    return `M${pts([
+      [C - hw, top],
+      [C + hw, top],
+      [C + hw, shoulder],
+      [C, tip],
+      [C - hw, shoulder],
+    ])}Z`;
+  },
+  // A rounded rectangle, a little taller than wide.
+  tablet(i) {
+    const hw = 46 - i;
+    const top = 6 + i;
+    const bottom = 114 - i;
+    const r = Math.max(4, 16 - i);
+    const l = C - hw;
+    const rr = C + hw;
+    return (
+      `M${r1(l + r)} ${r1(top)}L${r1(rr - r)} ${r1(top)}Q${r1(rr)} ${r1(top)} ${r1(rr)} ${r1(top + r)}` +
+      `L${r1(rr)} ${r1(bottom - r)}Q${r1(rr)} ${r1(bottom)} ${r1(rr - r)} ${r1(bottom)}` +
+      `L${r1(l + r)} ${r1(bottom)}Q${r1(l)} ${r1(bottom)} ${r1(l)} ${r1(bottom - r)}` +
+      `L${r1(l)} ${r1(top + r)}Q${r1(l)} ${r1(top)} ${r1(l + r)} ${r1(top)}Z`
+    );
   },
 };
 
