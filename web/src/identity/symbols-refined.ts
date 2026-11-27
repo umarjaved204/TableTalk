@@ -1,9 +1,10 @@
 // The second round of symbol drawings (the refinement pass after the first
-// gallery review, 27 Nov 2026): heraldic animals and birds drawn from shared
-// parts (limbs, flame-shaped locks and feathers, claws) so they carry the
-// same weight of line across the collection, and the new ship, tiger and
-// cockerel. Same rules as symbols.ts: original drawings in a 100 x 100 box,
-// coloured by role (main, accent, ground).
+// gallery review, 27 Nov 2026): Chelsea's lion's head, City's ship, and the
+// redrawn phoenix, tower, trident and wheel, built from flame-shaped locks so
+// they carry the same weight of line as the rest. The lion rampant, tiger,
+// cockerel and sea bird of this round were redrawn again as smooth
+// silhouettes (symbols-silhouettes.ts). Same rules as symbols.ts: original
+// drawings in a 100 x 100 box, coloured by role (main, accent, ground).
 import type { Ink } from "./symbols.ts";
 
 type Draw = (ink: Ink) => string;
@@ -14,18 +15,6 @@ const line = (d: string, stroke: string, width: number, cap = "round") =>
   `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${width}" stroke-linecap="${cap}" stroke-linejoin="round"/>`;
 const circle = (cx: number, cy: number, r: number, fill: string) =>
   `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}"/>`;
-
-/** A limb: a tapered band from (x1, y1), w1 wide, to (x2, y2), w2 wide, with round ends. */
-export function limb(x1: number, y1: number, x2: number, y2: number, w1: number, w2: number): string {
-  const a = Math.atan2(y2 - y1, x2 - x1) + Math.PI / 2;
-  const [cx, cy] = [Math.cos(a), Math.sin(a)];
-  const p = (x: number, y: number, w: number, s: number) =>
-    `${r1(x + (s * w * cx) / 2)} ${r1(y + (s * w * cy) / 2)}`;
-  return (
-    `M${p(x1, y1, w1, 1)}L${p(x2, y2, w2, 1)}A${r1(w2 / 2)} ${r1(w2 / 2)} 0 0 0 ${p(x2, y2, w2, -1)}` +
-    `L${p(x1, y1, w1, -1)}A${r1(w1 / 2)} ${r1(w1 / 2)} 0 0 0 ${p(x1, y1, w1, 1)}Z`
-  );
-}
 
 /** A flame-shaped lock (mane lock, feather, flame): a base `w` wide at (x, y),
  *  running `len` towards `deg` and curling `bend` degrees on the way to its point. */
@@ -46,39 +35,6 @@ export function lock(x: number, y: number, deg: number, len: number, w: number, 
   );
 }
 
-/** Three claws at (x, y), pointing towards `deg`. */
-function claws(x: number, y: number, deg: number, len = 5.5): string {
-  return [-30, 0, 30].map((t) => lock(x, y, deg + t, len, 2.8, 0)).join("");
-}
-
-/** Locks set along an arc round (cx, cy), each pointing outwards and curling by `bend`. */
-function mane(
-  cx: number,
-  cy: number,
-  r: number,
-  from: number,
-  to: number,
-  n: number,
-  len: number,
-  w: number,
-  bend: number,
-): string {
-  let d = "";
-  for (let k = 0; k < n; k++) {
-    const deg = from + ((to - from) * k) / (n - 1);
-    const a = (deg * Math.PI) / 180;
-    d += lock(
-      cx + r * Math.cos(a),
-      cy + r * Math.sin(a),
-      deg,
-      len * (0.85 + 0.15 * Math.sin(k * 1.7)),
-      w,
-      bend,
-    );
-  }
-  return d;
-}
-
 function waves(y0: number, rows: number, stroke: string, width = 3, gap = 8, x0 = 6, x1 = 94): string {
   let d = "";
   for (let k = 0; k < rows; k++) {
@@ -89,69 +45,7 @@ function waves(y0: number, rows: number, stroke: string, width = 3, gap = 8, x0 
   return line(d, stroke, width);
 }
 
-/** A lion rampant facing left, in heraldic proportions: the body on a
- *  diagonal from a round haunch up to a deep chest, head up with the mouth
- *  open, a curling mane drawn as rounded locks, both forepaws raised with
- *  claws out (the near one highest), one hind leg planted and the other
- *  stepping forward, the tail rising in an S to a curled tuft. Aston Villa's
- *  Scottish lion. */
-function lionRampant({ main, accent, ground }: Ink, detail: boolean): string {
-  const curls = (pts: [number, number, number][]) =>
-    `<g fill="${main}">${pts.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join("")}</g>`;
-  // Curls set along an arc, sharing one fill and one thin ground-coloured edge
-  // (in a group, so the file carries the colours once).
-  const mane = ([cx, cy]: [number, number], r: number, a0: number, a1: number, n: number, cr: number) => {
-    let out = "";
-    for (let k = 0; k < n; k++) {
-      const a = ((a0 + ((a1 - a0) * k) / (n - 1)) * Math.PI) / 180;
-      out += `<circle cx="${r1(cx + r * Math.cos(a))}" cy="${r1(cy + r * Math.sin(a))}" r="${cr}"/>`;
-    }
-    return `<g fill="${main}" stroke="${ground}" stroke-width="1.2">${out}</g>`;
-  };
-  return (
-    line("M70 72C86 70 90 56 86 44C83 36 86 28 92 25", main, 4) +
-    curls([
-      [92, 22, 4.2],
-      [97, 19, 3],
-      [89, 17, 3],
-      [96, 26, 2.8],
-    ]) +
-    // Hind legs: the far one stepping forward, the near one planted.
-    path(limb(56, 76, 44, 84, 12, 8) + limb(44, 84, 34, 78, 8, 6.5), main) +
-    (detail ? path(claws(31, 76, -150), main) : "") +
-    path(limb(64, 76, 70, 86, 13, 9) + limb(70, 86, 64, 94, 9, 7) + limb(64, 95, 75, 95, 7, 5.5), main) +
-    (detail ? path(claws(77, 95, 0), main) : "") +
-    // Body on the diagonal: deep chest, narrow waist, round haunch.
-    path(
-      "M34 30C42 28 50 36 56 48C62 56 72 58 72 70C72 80 64 84 58 80C52 76 50 68 46 62C42 56 36 54 32 46C30 40 30 34 34 30Z",
-      main,
-    ) +
-    // Forelegs: the near one raised to the head, the far one at the chest.
-    path(limb(38, 40, 26, 32, 10, 7) + limb(26, 32, 16, 24, 7, 6), main) +
-    (detail ? path(claws(13, 21, -130), main) : "") +
-    path(limb(40, 50, 28, 48, 10, 7) + limb(28, 48, 18, 42, 7, 6), main) +
-    (detail ? path(claws(15, 40, -155), main) : "") +
-    // Mane: a mass behind the head, then two rows of curls, each edged in
-    // the ground colour so the curls read separately.
-    path("M27 11C40 6 52 17 52 30C52 42 43 48 31 44Z", main) +
-    mane([36, 25], 16, -130, 105, 12, 4.6) +
-    (detail ? mane([37, 27], 9.5, -70, 95, 8, 4.2) : "") +
-    // Head in profile, mouth open.
-    path(
-      "M31 10C25 7 18 9 15 14L10 16L8 20L12 21L10 25L15 26L19 25C21 30 27 32 32 30C36 26 36 14 31 10Z",
-      main,
-    ) +
-    path("M9 22Q5 24 7 27Q10 25 13 24Z", accent) +
-    circle(22, 15, 1.7, ground)
-  );
-}
-
 export const REFINED = {
-  "lion-rampant": (ink) => lionRampant(ink, true),
-  /** The same lion for the small crest: no claws and one row of curls,
-   *  detail that can't be seen at 24 px and would only add to the file. */
-  "lion-rampant-small": (ink) => lionRampant(ink, false),
-
   /** A lion's head in profile, broad brow and short muzzle, with a full mane
    *  of long locks sweeping back and curling down, cut off at the neck with a
    *  ragged edge (heraldry's "erased" head): Chelsea's lion, from the arms of
@@ -208,57 +102,6 @@ export const REFINED = {
     );
   },
 
-  /** A tiger prowling left, head low, tail lifted: Hull City's Tigers. The
-   *  silhouette alone reads as a big cat; the stripes are cut in the accent. */
-  tiger: ({ main, accent, ground }) =>
-    path(
-      // Tail, back, rump, hind legs, belly, forelegs, chest, head.
-      "M84 50C90 46 92 38 90 30C89 26 92 24 95 26C98 34 96 46 90 54C88 57 87 58 86 60" +
-        "L88 74L92 80L82 80L78 66L72 66L72 78L75 82L64 82L64 66L42 66L38 80L42 84L30 84L32 66" +
-        "C28 66 26 64 25 62L24 78L28 82L17 82L18 62C14 60 12 58 10 56L4 56C2 54 2 50 4 48" +
-        "L6 44C6 40 10 36 14 36L16 31L20 35L24 35L27 31L28 37C34 40 40 40 50 40C64 40 78 42 84 50Z",
-      main,
-    ) +
-    // Stripes over the back and haunch, and across the face.
-    path(
-      lock(36, 40, 80, 13, 5, 10) +
-        lock(46, 40, 85, 15, 5, 10) +
-        lock(56, 40, 90, 15, 5, 8) +
-        lock(66, 41, 95, 14, 5, 6) +
-        lock(76, 44, 110, 13, 5, 0) +
-        lock(83, 50, 130, 10, 4, 0) +
-        lock(22, 37, 95, 8, 3, 0) +
-        lock(28, 38, 100, 9, 3, 0),
-      accent,
-    ) +
-    circle(13, 42, 1.6, ground) +
-    path("M3 49L7 49L5 52Z", ground),
-
-  /** A fighting cock standing tall, chest out, sickle tail feathers arching,
-   *  with spurs on its legs: the spurred cockerels that tie Harry Hotspur's
-   *  name to the club's bird. Standing on its own, with no ball. */
-  cockerel: ({ main, accent, ground }) =>
-    // Tail: sickle feathers arching up and over to the right.
-    line("M60 48C64 26 80 14 92 20M62 52C70 34 86 28 94 38M62 56C74 46 88 46 90 58", main, 5.5) +
-    path(lock(60, 60, 20, 22, 9, 30) + lock(58, 64, 40, 18, 8, 30), main) +
-    // Body and breast.
-    path("M30 32C24 40 24 54 32 62C40 70 56 70 64 60C68 54 66 46 60 42C52 46 42 44 38 36Z", main) +
-    // Neck hackles and head.
-    path(mane(32, 26, 4, 60, 200, 7, 14, 6, -20), main) +
-    circle(30, 20, 8, main) +
-    // Comb and wattle in the accent, beak in the main colour.
-    path("M24 13C24 7 28 7 29 11C29 5 34 5 34 10C35 6 40 7 38 13Z", accent) +
-    path("M23 25C21 31 25 33 27 28Z", accent) +
-    path("M22 17L13 21L22 23Z", main) +
-    circle(28, 18, 1.8, ground) +
-    // Wing.
-    path(lock(36, 46, 10, 26, 12, 20), ground) +
-    path(lock(37, 46, 10, 23, 8, 20), main) +
-    // Legs, toes and the spur on the back of each leg.
-    path(limb(42, 66, 40, 86, 5, 3.5) + limb(52, 66, 54, 86, 5, 3.5), main) +
-    path(claws(40, 87, 175, 7) + claws(54, 87, 175, 7), main) +
-    path(lock(41, 78, 20, 6, 3, 0) + lock(53, 78, 20, 6, 3, 0), main),
-
   /** A phoenix rising from three tongues of flame, head turned to the left,
    *  wings raised high in broad pointed feathers. Coventry, rebuilt after the
    *  1940 Blitz. */
@@ -304,34 +147,6 @@ export const REFINED = {
     line("M39 41L39 84M61 41L61 84", ground, 0.8) +
     path("M44 84L44 74C44 68 56 68 56 74L56 84Z", ground) +
     path("M41 46L45 46L45 56C45 58 41 58 41 56ZM55 46L59 46L59 56C59 58 55 58 55 56Z", ground),
-
-  /** A cormorant-like sea bird holding a sprig, standing with one wing raised
-   *  in a solid sweep with three long flight feathers, long neck and hooked
-   *  beak: Liverpool's port and its bird legend, drawn new. */
-  "sea-bird": ({ main, accent, ground }) =>
-    // The raised wing.
-    path(
-      "M50 46C54 32 62 20 78 9C77 15 76 19 74 23C81 19 86 18 91 18C86 25 81 29 77 32C84 32 89 34 93 37C83 43 74 47 63 51Z",
-      main,
-    ) +
-    // Body and tail.
-    path(
-      "M36 46C38 40 46 38 52 42C60 48 64 58 64 66L82 90L72 91L60 80C52 82 44 78 40 72C36 64 34 54 36 46Z",
-      main,
-    ) +
-    // Neck, head and hooked beak.
-    path(
-      "M38 50C33 42 31 34 32 26C33 18 38 13 44 13C49 13 51 18 49 22C47 26 43 28 42 33C41 39 43 44 46 47Z",
-      main,
-    ) +
-    path("M34 18L17 21C14 22 14 25 17 25L33 24Z", main) +
-    path(lock(44, 13, -110, 8, 3, -20), main) +
-    circle(39, 18, 1.7, ground) +
-    // Legs and webbed feet.
-    line("M48 79L46 93M46 93L40 95M46 93L51 95M56 80L58 93M58 93L52 95M58 93L63 95", main, 2.6) +
-    // The sprig in the beak.
-    line("M16 25L8 33", accent, 2.2) +
-    path(lock(12, 29, -140, 7, 3, 0) + lock(10, 31, 130, 7, 3, 0) + lock(8, 33, -170, 6, 3, 0), accent),
 
   /** A trident with barbed heads and a collar where the prongs meet the
    *  shaft: the Red Devils' pitchfork, without the devil. */

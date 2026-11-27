@@ -82,25 +82,33 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
     ],
     band: { bg: "#a5000c", ink: WHITE, muted: "#fbdcde", accent: "#f0cf7a" },
     inspiration:
-      "Formed in 1886 by workers at the Royal Arsenal in Woolwich, the army's munitions works. A traditional shield led by the club's initials, as in the redesign's reference, with a wheeled field gun of the kind made at Woolwich beneath them.",
+      "Formed in 1886 by workers at the Royal Arsenal in Woolwich, the army's munitions works. A traditional shield led by the club's initials, as in the redesign's reference, with a wheeled field gun of the kind made at Woolwich beneath them, pointing right.",
     resemblance: {
       level: "high",
-      note: "A red shield with a gun is the official badge's idea, and this composition follows it more closely than the first round's roundel did. The lettering (ARS, not ARSENAL), the wheeled field gun facing left and the white-and-gold border are new, but supporters will read it as Arsenal's badge. The roundel and Dial Square designs stay as alternatives.",
+      note: "A red shield with a gun is the official badge's idea, and this composition follows it more closely than the first round's roundel did. The lettering (ARS, not ARSENAL), the wheeled field gun (an original drawing, now pointing right as the official cannon does) and the white-and-gold border are new, but supporters will read it as Arsenal's badge. The roundel and Dial Square designs stay as alternatives.",
     },
     looks: {
-      full: "A red heater shield with a thin gold edge and a broad white border inside it. Large white ARS initials fill the upper half; below them, a white wheeled field gun faces left.",
-      small: "The red shield with its white border and a large white field gun.",
+      full: "A red heater shield with a thin gold edge and a broad white border inside it. Large white ARS initials fill the upper half; below them, a large white wheeled field gun points to the right.",
+      small: "The red shield with its white border and a large white field gun pointing right.",
     },
     full: (k) => [
       k.shield("heater", { rim: ARS.gold, field: WHITE, rimWidth: 2.5 }),
-      k.inset("heater", 8, ARS.red),
-      k.text("ARS", { x: 60, baseline: 60, cap: 31, tracking: 0.03, maxWidth: 68, fill: WHITE }),
-      k.symbol("field-gun", { x: 61, y: 80, size: 40 }, { main: WHITE, accent: WHITE, ground: ARS.red }),
+      k.inset("heater", 6, ARS.red),
+      k.text("ARS", { x: 60, baseline: 55, cap: 29, tracking: 0.03, maxWidth: 68, fill: WHITE }),
+      k.symbol(
+        "field-gun",
+        { x: 58, y: 79, size: 52, flip: true },
+        { main: WHITE, accent: WHITE, ground: ARS.red },
+      ),
     ],
     small: (k) => [
       k.shield("heater", { rim: ARS.gold, field: WHITE, rimWidth: 3 }),
-      k.inset("heater", 10, ARS.red),
-      k.symbol("field-gun", { x: 61, y: 56, size: 78 }, { main: WHITE, accent: WHITE, ground: ARS.red }),
+      k.inset("heater", 8, ARS.red),
+      k.symbol(
+        "field-gun",
+        { x: 59, y: 56, size: 80, flip: true },
+        { main: WHITE, accent: WHITE, ground: ARS.red },
+      ),
     ],
     alternatives: [
       {
@@ -547,18 +555,18 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
       note: "A cockerel is the official badge's symbol (on a ball, facing right). This bird stands on its own, facing left, with sickle tail feathers and spurs, on a navy shield, but a cockerel on navy and white will read as Spurs'. The spur design stays as the alternative.",
     },
     looks: {
-      full: "A navy French shield. A white band across the top reads HOTSPUR in navy. Below, a white fighting cock stands facing left, chest out, with a red comb and wattle, arching sickle tail feathers and spurs on its legs.",
+      full: "A navy French shield. A white band across the top reads HOTSPUR in navy. Below, a tall white fighting cock stands facing left on long slender legs with spurs, chest full, a red comb and wattle, and five long sickle feathers arching up and falling behind.",
       small: "A navy French shield filled by the white cockerel with its red comb.",
     },
     full: (k) => [
       k.shield("french", { rim: TOT.navy, field: TOT.navy }),
       k.pattern({ kind: "chief", colour: WHITE, height: 30 }),
       k.text("Hotspur", { x: 60, baseline: 25.5, cap: 10, maxWidth: 78, fill: TOT.navy }),
-      k.symbol("cockerel", { x: 60, y: 72, size: 62 }, { main: WHITE, accent: "#d22630", ground: TOT.navy }),
+      k.symbol("cockerel", { x: 59, y: 70, size: 76 }, { main: WHITE, accent: "#d22630", ground: TOT.navy }),
     ],
     small: (k) => [
       k.shield("french", { rim: TOT.navy, field: TOT.navy, rimWidth: 7 }),
-      k.symbol("cockerel", { x: 59, y: 58, size: 88 }, { main: WHITE, accent: "#d22630", ground: TOT.navy }),
+      k.symbol("cockerel", { x: 58, y: 56, size: 96 }, { main: WHITE, accent: "#d22630", ground: TOT.navy }),
     ],
     alternatives: [
       {
@@ -604,7 +612,7 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
       note: "The official badge is a tiger's head, front on. This is the whole animal in profile, prowling, with the city's crowns: the same animal, a different picture. The crowns design stays as the alternative.",
     },
     looks: {
-      full: "An amber round-bottomed shield with a black edge. A black band across the top reads HULL CITY in amber. Below, a black tiger with amber stripes prowls to the left, head low and tail raised, above a row of three small black crowns.",
+      full: "An amber round-bottomed shield with a black edge. A black band across the top reads HULL CITY in amber. Below, a black tiger with amber stripes prowls to the left, shoulders high, head carried low and tail curving up, one forepaw lifted mid-stride, above a row of three small black crowns.",
       small: "The amber shield with the black tiger silhouette prowling across it.",
     },
     full: (k) => [
@@ -666,7 +674,7 @@ export const PREMIER_LEAGUE: readonly ClubIdentity[] = [
       note: "A lion rampant in claret and blue is the official badge's main idea. This lion is a new drawing on a heater shield with a named chief, but it will still read as Villa's lion.",
     },
     looks: {
-      full: "A claret heater shield with a sky-blue edge. A sky-blue band across the top reads VILLA in claret. Below, a large sky-blue lion rampant faces left on the diagonal, mouth open with a yellow tongue, a mane of curls, forepaws raised with claws out and a curling tail with a curled tuft.",
+      full: "A claret heater shield with a sky-blue edge. A sky-blue band across the top reads VILLA in claret. Below, a large sky-blue lion rampant faces left: a small head with the mouth open and a yellow tongue, set in a large rounded mane, both forepaws raised, one hind leg planted, and a tail rising in an S to a flame-shaped tuft.",
       small: "A claret heater shield filled by the sky-blue lion.",
     },
     full: (k) => [
