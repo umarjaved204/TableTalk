@@ -453,6 +453,7 @@ published; only the deploy was handed over to the newer run).
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `.github/workflows/site.yml`        | The reusable workflow: `build-site`, `deploy` and `redeploy`. `SITE_URL` is set here.                    |
 | `.github/workflows/deploy-site.yml` | Calls `site.yml` on a push to `main` touching the site, or by hand.                                      |
+| `.github/workflows/pr-checks.yml`   | Pull requests into `main` or `redesign`: `npm run verify` on the real data, then the browser suite.      |
 | `deploy/wrangler.jsonc`             | Every hosting setting, reviewed as code: static assets only, 404 page, `workers_dev`, the custom domain. |
 | `deploy/package.json` + lockfile    | Wrangler at one exact version, nothing else. Dependabot proposes updates.                                |
 | `deploy/check-live.sh`              | The go-live check: the last step of every deploy, and by hand against any address.                       |
