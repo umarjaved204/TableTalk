@@ -309,3 +309,32 @@ describe("the review gallery script", () => {
     expect(script).toContain("${SMALL_MAX} px");
   });
 });
+
+describe("league concepts", () => {
+  it("rates every league mark and offers a competition-inspired concept beside it", () => {
+    for (const league of LEAGUE_IDENTITIES) {
+      expect(league.resemblance.note.length, league.slug).toBeGreaterThan(30);
+      expect(
+        league.alternatives.some((c) => c.approach === "competition"),
+        league.slug,
+      ).toBe(true);
+      for (const c of league.alternatives) {
+        expect(c.resemblance.note.length, `${league.slug}: ${c.title}`).toBeGreaterThan(30);
+        expect(c.looks.length).toBeGreaterThan(30);
+        expect(c.inspiration.length).toBeGreaterThan(30);
+      }
+    }
+  });
+
+  it.each(
+    LEAGUE_IDENTITIES.flatMap((l) =>
+      l.alternatives.map(
+        (c, n) => [`${l.slug}: ${c.title}`, renderCrest(c.mark, `m-${l.slug}-a${n}`)] as const,
+      ),
+    ),
+  )("%s is a safe, self-contained SVG within the 2 KB mark budget", (_, text) => {
+    expect(text).not.toMatch(/<script|<style|style=|<foreignObject|<image|href=|url\((?!#)|\son\w+=/i);
+    for (const [, id] of text.matchAll(/id="([^"]+)"/g)) expect(id).toMatch(/^(c|m)-[a-z0-9-]+$/);
+    expect(Buffer.byteLength(text), "bytes").toBeLessThanOrEqual(2048);
+  });
+});

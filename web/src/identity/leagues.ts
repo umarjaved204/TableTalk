@@ -1,4 +1,5 @@
-// The five league identities: a band for league headers, and a mark.
+// The five league identities: a band for league headers, a mark, and the
+// alternative concepts to choose from (league-concepts.ts).
 //
 // These are TableTalk's own marks, not the competitions' logos. Each one
 // takes an idea from its country's football culture, and each has its own
@@ -6,7 +7,8 @@
 // 16 px by shape as well as colour. They share the crests' construction: a
 // white keyline round the outside, a ground colour, and one clear symbol.
 import type { Design } from "./crest.ts";
-import type { BandColours } from "./types.ts";
+import { COMPETITION_CONCEPTS, type LeagueConcept } from "./league-concepts.ts";
+import type { BandColours, Resemblance } from "./types.ts";
 
 export interface LeagueIdentity {
   leagueId: string;
@@ -20,7 +22,13 @@ export interface LeagueIdentity {
   inspiration: string;
   /** What the mark shows, in words (for the gallery, read as text). */
   looks: string;
+  /** How close the mark may look to the competition's own logo (the cultural
+   *  marks use national ideas, not the competition's, so all are low). */
+  resemblance: { level: Resemblance; note: string };
   mark: Design;
+  /** Other concepts to choose from, shown beside the mark in the gallery:
+   *  the competition-inspired concept (league-concepts.ts). */
+  alternatives: readonly LeagueConcept[];
 }
 
 const WHITE = "#fff";
@@ -211,7 +219,12 @@ export const LEAGUE_IDENTITIES: readonly LeagueIdentity[] = [
       "English football under the lights: the floodlight pylon, a lattice tower with its bank of lamps, that stands over the corners of English grounds. Deep plum, with a red line for England.",
     looks:
       "A deep plum rounded tile. A white floodlight pylon stands in the middle: two legs with cross-bracing rising to a white frame holding fifteen pale-yellow lamps, a faint wedge of light falling below, and a red line at its foot.",
+    resemblance: {
+      level: "low",
+      note: "A floodlight pylon belongs to English football in general, not to the competition's lion logo.",
+    },
     mark: (k) => premierLeague(k.clip),
+    alternatives: [COMPETITION_CONCEPTS["premier_league"]].filter((c): c is LeagueConcept => c !== undefined),
   },
   {
     leagueId: "bundesliga",
@@ -223,7 +236,12 @@ export const LEAGUE_IDENTITIES: readonly LeagueIdentity[] = [
       "The German oak, the tree of the country's songs and of its old coins, in gold on black, with red and gold below: the three colours in the flag's order.",
     looks:
       "A black diamond standing on its point. A large gold oak leaf with rounded lobes and black veins leans slightly left in the upper part; across the lower corner, a red band and then gold.",
+    resemblance: {
+      level: "low",
+      note: "The oak leaf and the flag's colours are national ideas, not the competition's player logo.",
+    },
     mark: (k) => bundesliga(k.clip),
+    alternatives: [COMPETITION_CONCEPTS["bundesliga"]].filter((c): c is LeagueConcept => c !== undefined),
   },
   {
     leagueId: "la_liga",
@@ -235,7 +253,12 @@ export const LEAGUE_IDENTITIES: readonly LeagueIdentity[] = [
       "Sol y sombra, sun and shade: the two sides of a Spanish ground's stands, priced by which one the afternoon sun falls on. Gold and deep red, the colours of Spain.",
     looks:
       "A disc split by a white diagonal line from top left to bottom right. The upper-right half is gold with a deep red sun and its rays; the lower-left half is deep red with three gold curved lines, the tiers of a stand.",
+    resemblance: {
+      level: "low",
+      note: "Sun and shade are a feature of Spanish grounds, not of the competition's logo.",
+    },
     mark: (k) => laLiga(k.clip),
+    alternatives: [COMPETITION_CONCEPTS["la_liga"]].filter((c): c is LeagueConcept => c !== undefined),
   },
   {
     leagueId: "serie_a",
@@ -247,7 +270,12 @@ export const LEAGUE_IDENTITIES: readonly LeagueIdentity[] = [
       "Italian football's honours, drawn new: the shield of the scudetto, worn by the champions, here as an azzurro shield with the tricolour running across it as a sash, and the gold star a club earns for ten titles.",
     looks:
       "A shield with a gold rim and an azzurro field. A green, white and red sash runs diagonally from the top left to the bottom right, and a gold five-pointed star sits in the upper-right corner.",
+    resemblance: {
+      level: "low",
+      note: "The shield takes the scudetto tradition, not the competition's letter A logo; the sash and star are drawn new.",
+    },
     mark: (k) => serieA(k.clip),
+    alternatives: [COMPETITION_CONCEPTS["serie_a"]].filter((c): c is LeagueConcept => c !== undefined),
   },
   {
     leagueId: "ligue_1",
@@ -259,7 +287,12 @@ export const LEAGUE_IDENTITIES: readonly LeagueIdentity[] = [
       "L'Hexagone, the French name for France's six-sided shape, which is also the panel of a football: a navy hexagon holding the blue, white and red.",
     looks:
       "A navy hexagon standing on a point. Inside, a smaller hexagon outlined in white holds three upright bands: blue, white and red.",
+    resemblance: {
+      level: "low",
+      note: "The hexagon and tricolour are national ideas, not the competition's L1 monogram.",
+    },
     mark: (k) => ligue1(k.clip),
+    alternatives: [COMPETITION_CONCEPTS["ligue_1"]].filter((c): c is LeagueConcept => c !== undefined),
   },
 ];
 
