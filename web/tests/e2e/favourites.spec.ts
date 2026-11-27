@@ -710,6 +710,23 @@ test.describe("no layout shift", () => {
     page,
   }) => {
     test.setTimeout(120_000);
+    // The fallback faces in src/styles/fonts.css are Arial with Barlow's and
+    // Source Sans's metrics (local("Arial Bold"), local("Arial")). Arial is on
+    // Windows and macOS, but not on the Linux machines GitHub Actions runs
+    // (.github/workflows/pr-checks.yml): there the fallback face doesn't
+    // exist, a different font stands in, and this comparison means nothing.
+    // So it runs where Arial is installed (locally, before every merge) and
+    // is skipped, with a note, where it isn't.
+    await page.goto("/premier-league/");
+    const hasArial = await page.evaluate(() => {
+      const ctx = document.createElement("canvas").getContext("2d")!;
+      const width = (font: string) => {
+        ctx.font = font;
+        return ctx.measureText("mmmmmmmmmmlliiWW").width;
+      };
+      return width("40px Arial, monospace") !== width("40px monospace");
+    });
+    test.skip(!hasArial, "Arial is not installed here, so the metric-matched fallback font can't be tested");
     // A late web font must not change how the header wraps, or the whole page would move.
     const heights = async (fallback: boolean) => {
       if (fallback) await page.route(/\.woff2$/, (route) => route.abort());
