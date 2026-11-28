@@ -113,10 +113,15 @@ export interface SuppliedCrest {
 
 const CREST_PROVENANCE =
   "Made by the site's owner with an AI image tool (ChatGPT), building on TableTalk's refined crest, and chosen on 28 Nov 2026 as the club's full crest. Not an official or licensed file.";
+const SERIE_A_PROVENANCE =
+  "Made by the site's owner with an AI image tool (ChatGPT), building on TableTalk's first Serie A drawing for the club, and chosen on 28 Nov 2026 as the club's full crest. Not an official or licensed file.";
+const SERIE_A_CHANGES =
+  "Faint haze and stray specks outside the crest cleared (alpha below 48 of 255, or not joined to the crest), cropped to the crest, centred on a transparent square without stretching, downscaled with premultiplied alpha so no dark fringe forms, and saved as a 240 px WebP at quality 75. Used above 24 px; the club's own small SVG crest is used at 24 px and below.";
 const CREST_CHANGES =
   "Faint edge haze cleared, cropped to the crest, centred on a transparent square without stretching and saved as a 240 px WebP. Used above 24 px; the club's own small SVG crest is used at 24 px and below.";
 
-/** The supplied full crests in use, by club slug. */
+/** The supplied full crests in use, by club slug: seven Bundesliga clubs,
+ *  then seven Serie A clubs (28 Nov 2026). */
 export const SUPPLIED_CRESTS: Readonly<Record<string, SuppliedCrest>> = {
   "bayer-leverkusen": {
     label: SUPPLIED_CREST_LABEL,
@@ -179,6 +184,69 @@ export const SUPPLIED_CRESTS: Readonly<Record<string, SuppliedCrest>> = {
     resemblance: {
       level: "high",
       note: `Practically the official emblem: a blue field with a white diamond, a black diamond and a white centre. Needs legal advice before public use. ${CAUTION}`,
+    },
+  },
+  atalanta: {
+    label: SUPPLIED_CREST_LABEL,
+    provenance: SERIE_A_PROVENANCE,
+    changes: SERIE_A_CHANGES,
+    resemblance: {
+      level: "high",
+      note: `Very close: an upright oval halved blue and black, ATALANTA over the top, 1907 below and a white ring round the huntress's profile with her hair streaming back is the official badge's arrangement and style. ${CAUTION}`,
+    },
+  },
+  frosinone: {
+    label: SUPPLIED_CREST_LABEL,
+    provenance: SERIE_A_PROVENANCE,
+    changes: SERIE_A_CHANGES,
+    resemblance: {
+      level: "high",
+      note: `Very close: FROSINONE on a yellow chief over a blue shield with a pale lion rampant and a rising yellow bend, in a yellow edge, is the official badge's arrangement and style. ${CAUTION}`,
+    },
+  },
+  genoa: {
+    label: SUPPLIED_CREST_LABEL,
+    provenance: SERIE_A_PROVENANCE,
+    changes: SERIE_A_CHANGES,
+    resemblance: {
+      level: "high",
+      note: `Very close: a gold griffin rampant on red and navy halves under a white chief with Saint George's red cross, in a gold edge, is the official badge's arrangement and style. ${CAUTION}`,
+    },
+  },
+  lecce: {
+    label: SUPPLIED_CREST_LABEL,
+    provenance: SERIE_A_PROVENANCE,
+    changes: SERIE_A_CHANGES,
+    resemblance: {
+      level: "high",
+      note: `Close: a gold oak with a wolf beside it on a tall navy shield, LECCE in gold with a yellow and red rule and 1908, follows the official badge; the howling wolf and the small striped shield at the point are the image's own. ${CAUTION}`,
+    },
+  },
+  roma: {
+    label: SUPPLIED_CREST_LABEL,
+    provenance: SERIE_A_PROVENANCE,
+    changes: SERIE_A_CHANGES,
+    resemblance: {
+      level: "high",
+      note: `Very close: ROMA in gold serif capitals over a rule and the she-wolf with Romulus and Remus in gold on deep red, in a gold-edged shield, is the official badge's arrangement and style. ${CAUTION}`,
+    },
+  },
+  torino: {
+    label: SUPPLIED_CREST_LABEL,
+    provenance: SERIE_A_PROVENANCE,
+    changes: SERIE_A_CHANGES,
+    resemblance: {
+      level: "high",
+      note: `Close: a white bull rampant on granata under a white chief lettered TORINO, in a gold edge, follows the official badge; 1906 and FC beside the bull are the image's own. ${CAUTION}`,
+    },
+  },
+  lazio: {
+    label: SUPPLIED_CREST_LABEL,
+    provenance: SERIE_A_PROVENANCE,
+    changes: SERIE_A_CHANGES,
+    resemblance: {
+      level: "high",
+      note: `Very close: a gold eagle with spread wings perched on a small sky-blue shield lettered LAZIO on a white band is the official badge's arrangement and style. ${CAUTION}`,
     },
   },
 };

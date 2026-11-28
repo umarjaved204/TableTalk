@@ -14,6 +14,7 @@ import { BUNDESLIGA_SYMBOLS } from "./symbols-bundesliga.ts";
 import { DETAIL_SYMBOLS } from "./symbols-detail.ts";
 import { REFINED } from "./symbols-refined.ts";
 import { LALIGA_SYMBOLS } from "./symbols-laliga.ts";
+import { SERIE_A_SYMBOLS } from "./symbols-serie-a.ts";
 import { SILHOUETTES } from "./symbols-silhouettes.ts";
 
 export interface Ink {
@@ -300,6 +301,7 @@ export const SYMBOLS = {
   ...LALIGA_SYMBOLS,
   ...BUNDESLIGA_SYMBOLS,
   ...DETAIL_SYMBOLS,
+  ...SERIE_A_SYMBOLS,
 };
 
 export type SymbolName = keyof typeof SYMBOLS;

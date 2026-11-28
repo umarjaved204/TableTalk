@@ -190,6 +190,56 @@ function fixtures(id, count = 6) {
 /** Groups of clubs whose crests could be confused, and what tells them apart. */
 const CLASHES = [
   {
+    title: "City crosses with stripes",
+    slugs: ["ac-milan", "bologna", "genoa", "parma"],
+    note: "Four clubs carry their city's red or black cross beside their colours, as their traditional badges do. Milan: a broad oval, a black band with ACM, red and black stripes beside the red cross. Bologna: a tall grey-edged oval, a navy cap with BFC, red and navy stripes beside the red cross. Genoa: a gold-edged heater, the cross in a white chief over red and navy halves with a gold griffin. Parma: a blue-edged heater, a yellow chief with PARMA over a black cross beside yellow and blue stripes.",
+  },
+  {
+    title: "Two Milan clubs",
+    slugs: ["ac-milan", "inter-milan"],
+    note: "Same city. Milan: a broad white oval with red and black stripes, the red cross and ACM on a black band. Inter: a black-ringed blue roundel with a white IM monogram and no stripes or cross.",
+  },
+  {
+    title: "Granata, red and gold",
+    slugs: ["roma", "torino"],
+    note: "Both deep red with gold, a name in a chief and a civic animal. Roma: a square-shouldered shield with an ogee point, ROMA and the she-wolf with the twins standing left. Torino: a pointed heater, TORINO and a bull rampant on its hind legs. Different animal and pose; the outlines differ at the point.",
+  },
+  {
+    title: "Two Rome clubs",
+    slugs: ["roma", "lazio"],
+    note: "Same city. Roma: red and gold shield with the she-wolf. Lazio: a white eagle standing over a small sky-blue shield, no enclosing outline.",
+  },
+  {
+    title: "Two Turin clubs",
+    slugs: ["juventus", "torino"],
+    note: "Same city. Juventus: a black two-stroke J with no shield. Torino: a granata heater with a gold bull and TORINO.",
+  },
+  {
+    title: "Black and white",
+    slugs: ["juventus", "udinese", "atalanta"],
+    note: "Juventus: a standalone black J. Udinese: a black roundel with a gold laurel and a small white shield with a black chevron. Atalanta: an oval halved blue and black with the white profile of the huntress.",
+  },
+  {
+    title: "Blue roundels",
+    slugs: ["inter-milan", "napoli", "lazio"],
+    note: "Inter: royal blue inside a wide black ring with IM. Napoli: a lighter blue roundel with a thin white ring and a large N. Lazio is not a roundel: a sky-blue shield under an eagle.",
+  },
+  {
+    title: "Red and navy",
+    slugs: ["bologna", "cagliari", "genoa"],
+    note: "All three wear red and blue. Bologna: tall grey-edged oval with BFC, stripes and the cross. Cagliari: a shield with raised corners, edged red on the left and navy on the right, with the four Moors round a red cross on white. Genoa: gold-edged heater with the griffin.",
+  },
+  {
+    title: "Yellow and blue",
+    slugs: ["frosinone", "parma", "lecce"],
+    note: "Frosinone: a yellow-edged blue heater with a pale lion and a yellow bend. Parma: a blue-edged heater with a yellow chief, a black cross on white and yellow and blue stripes. Lecce: a long navy shield with gold lettering, a yellow and red stripe and the gold oak and wolf.",
+  },
+  {
+    title: "Black and green",
+    slugs: ["sassuolo", "venezia"],
+    note: "Sassuolo: a notched badge of green and black stripes with a white town corner, a name band and a ball. Venezia: a standalone black V with an orange and a green block, no stripes.",
+  },
+  {
     title: "Three diamonds",
     slugs: ["werder-bremen", "hamburger-sv", "borussia-monchengladbach"],
     note: "All three clubs have worn a diamond for generations, so all three keep it. Werder: square-on green diamond with rounded corners and a white W. HSV: a blue landscape flag with a white diamond and a solid black diamond inside, no letter. Gladbach: tall narrow rhombus, black edge, a green band and a black B.",
@@ -472,7 +522,10 @@ function comparisonSection() {
       full: renderCrest(club.full, `p-${club.slug}`),
       small: renderCrest(club.small, `p-${club.slug}-s`),
     };
-    if (same(was.full, now.full) && same(was.small, now.small)) unchanged.push(club.name);
+    // A supplied full crest replaces the drawing above 24 px, so the club
+    // has changed even where its own SVG files have not.
+    const supplied = Boolean(suppliedCrest(club.slug));
+    if (!supplied && same(was.full, now.full) && same(was.small, now.small)) unchanged.push(club.name);
     else changed.push({ club, was });
   }
   const rows = changed
@@ -483,12 +536,18 @@ function comparisonSection() {
         was.small.replaceAll('"p-', '"q-').replaceAll("#p-", "#q-"),
       );
       const cell = (cls) =>
-        `<div class="theme ${cls} cmp"><div><p class="tname">Previous</p>${use(pf, 96)}${use(ps, 24)}${use(ps, 16)}</div><span class="arrow" aria-hidden="true">→</span><div><p class="tname">Refined</p>${use(crestKey(club, "full"), 96)}${use(crestKey(club, "small"), 24)}${use(crestKey(club, "small"), 16)}</div></div>`;
+        `<div class="theme ${cls} cmp"><div><p class="tname">Previous</p>${use(pf, 96)}${use(ps, 24)}${use(ps, 16)}</div><span class="arrow" aria-hidden="true">→</span><div><p class="tname">Now</p>${use(crestKey(club, "full"), 96)}${use(crestKey(club, "small"), 24)}${use(crestKey(club, "small"), 16)}</div></div>`;
       const level =
         was.resemblance === club.resemblance.level
           ? `Resemblance: ${club.resemblance.level} (unchanged).`
           : `Resemblance: ${was.resemblance}, now <b>${club.resemblance.level}</b>.`;
-      return `<div class="clash"><h3>${esc(club.name)}</h3><div class="pair">${cell("t-light")}${cell("t-dark")}</div><p class="looks"><b>Now:</b> ${esc(club.looks.full)} ${level}</p></div>`;
+      // A supplied full crest is described by its own record, not by the
+      // drawing it replaces above 24 px.
+      const supplied = suppliedCrest(club.slug) ? SUPPLIED_CRESTS[club.slug] : undefined;
+      const now = supplied
+        ? `<b>Now:</b> full crest: ${esc(supplied.label)}. Small crest (TableTalk SVG): ${esc(club.looks.small)} Resemblance of the full crest: ${supplied.resemblance.level}. ${esc(supplied.resemblance.note)}`
+        : `<b>Now:</b> ${esc(club.looks.full)} ${level}`;
+      return `<div class="clash"><h3>${esc(club.name)}</h3><div class="pair">${cell("t-light")}${cell("t-dark")}</div><p class="looks">${now}</p></div>`;
     })
     .join("");
   const changedMarks = LEAGUE_IDENTITIES.filter(
@@ -506,7 +565,7 @@ function comparisonSection() {
     })
     .join("");
   return `<section><h2>Previous and refined</h2>
-<p>${changed.length} crests changed since the last review; ${unchanged.length} kept as they were: ${esc(unchanged.join(", "))}. Each row shows the previous full crest (96 px) and small crest (24 and 16 px), then the refined one, on the light and the dark theme.</p>
+<p>${changed.length} crests changed since the last review; ${unchanged.length} kept as they were: ${esc(unchanged.join(", "))}. Each row shows the previous full crest (96 px) and small crest (24 and 16 px), then the crest now in use (a supplied image where the club has one), on the light and the dark theme.</p>
 ${rows}
 ${
   changedMarks.length > 0

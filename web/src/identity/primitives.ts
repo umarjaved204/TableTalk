@@ -49,7 +49,14 @@ export type ShapeName =
   | "block"
   | "plate"
   | "medallion"
-  | "flag";
+  | "flag"
+  | "horned"
+  | "lancet"
+  | "notched"
+  | "escutcheon"
+  | "broad-oval"
+  | "compact"
+  | "milan-oval";
 
 const r1 = (v: number) => String(Math.round(v * 10) / 10);
 const pts = (list: [number, number][]) => list.map(([x, y]) => `${r1(x)} ${r1(y)}`).join("L");
@@ -300,6 +307,92 @@ export const SHAPES: Readonly<Record<ShapeName, (i: number) => string>> = {
       `C${r1(C + hw)} 84 ${r1(C + 14)} 104 60 ${r1(tip)}C${r1(C - 14)} 104 ${r1(C - hw)} 84 ${r1(C - hw)} 58` +
       `C${r1(C - hw)} 34 ${r1(C - hw * 0.9)} ${r1(top)} 60 ${r1(top)}Z`
     );
+  },
+  // A shield whose top edge dips between two raised corners, with straight
+  // sides curving to a point: Cagliari's outline.
+  horned(i) {
+    const l = 9 + i;
+    const r = BOX - l;
+    const corner = 4 + i * 1.3;
+    const dip = 13 + i;
+    const tip = 116 - i * 1.5;
+    return (
+      `M${r1(l)} ${r1(corner)}Q60 ${r1(dip + 2)} ${r1(r)} ${r1(corner)}L${r1(r)} 58` +
+      `C${r1(r)} 86 ${r1(C + 24)} 104 60 ${r1(tip)}C${r1(C - 24)} 104 ${r1(l)} 86 ${r1(l)} 58Z`
+    );
+  },
+  // A tall shield with a flat top whose sides taper in long, gentle curves
+  // to a low point: Lecce's outline.
+  lancet(i) {
+    const l = 12 + i;
+    const r = BOX - l;
+    const top = 5 + i;
+    const tip = 117 - i * 1.7;
+    return (
+      `M${r1(l)} ${r1(top)}L${r1(r)} ${r1(top)}C${r1(r + 1)} 52 ${r1(C + 22 - i * 0.5)} 92 60 ${r1(tip)}` +
+      `C${r1(C - 22 + i * 0.5)} 92 ${r1(l - 1)} 52 ${r1(l)} ${r1(top)}Z`
+    );
+  },
+  // A badge with stepped top corners, a notch in each side and a rounded
+  // point: Sassuolo's outline.
+  notched(i) {
+    const half: [number, number][] = [
+      [60, 8 + i],
+      [26 + i, 8 + i],
+      [26 + i, 16 + i],
+      [10 + i, 16 + i],
+      [10 + i, 46],
+      [5 + i * 1.2, 52],
+      [10 + i, 58],
+      [10 + i, 76],
+    ];
+    const left = half.map(([x, y]) => `${r1(x)} ${r1(y)}`).join("L");
+    const right = [...half]
+      .reverse()
+      .map(([x, y]) => `${r1(BOX - x)} ${r1(y)}`)
+      .join("L");
+    const tip = 116 - i * 1.5;
+    return (
+      `M${left}C${r1(10 + i)} 96 ${r1(36 + i * 0.4)} 108 60 ${r1(tip)}` +
+      `C${r1(84 - i * 0.4)} 108 ${r1(BOX - 10 - i)} 96 ${right}Z`
+    );
+  },
+  // A small heater set low in the box, under a figure standing on it
+  // (Lazio's eagle).
+  escutcheon(i) {
+    const l = 33 + i;
+    const r = BOX - l;
+    const top = 60 + i;
+    const tip = 117 - i * 1.4;
+    return (
+      `M${r1(l)} ${r1(top)}L${r1(r)} ${r1(top)}L${r1(r)} 86` +
+      `C${r1(r)} 100 ${r1(C + 14)} 110 60 ${r1(tip)}C${r1(C - 14)} 110 ${r1(l)} 100 ${r1(l)} 86Z`
+    );
+  },
+  // An oval only a little taller than wide: Milan's outline.
+  "broad-oval"(i) {
+    const rx = 51 - i;
+    const ry = 57 - i;
+    return `M${r1(C - rx)} 60A${r1(rx)} ${r1(ry)} 0 1 1 ${r1(C + rx)} 60A${r1(rx)} ${r1(ry)} 0 1 1 ${r1(C - rx)} 60Z`;
+  },
+  // A smaller heater, set low and inside the box's edges, so a cross can
+  // stand out behind it on three sides: Como's outline.
+  compact(i) {
+    const l = 27 + i;
+    const r = BOX - l;
+    const top = 20 + i;
+    const tip = 116 - i * 1.4;
+    return (
+      `M${r1(l)} ${r1(top)}L${r1(r)} ${r1(top)}L${r1(r)} 66` +
+      `C${r1(r)} 92 ${r1(C + 22)} 106 60 ${r1(tip)}C${r1(C - 22)} 106 ${r1(l)} 92 ${r1(l)} 66Z`
+    );
+  },
+  // An oval a little taller than wide, between "oval" and "broad-oval":
+  // Milan's outline after the first review.
+  "milan-oval"(i) {
+    const rx = 48.5 - i;
+    const ry = 57 - i;
+    return `M${r1(C - rx)} 60A${r1(rx)} ${r1(ry)} 0 1 1 ${r1(C + rx)} 60A${r1(rx)} ${r1(ry)} 0 1 1 ${r1(C - rx)} 60Z`;
   },
   // A rounded rectangle, a little taller than wide.
   tablet(i) {

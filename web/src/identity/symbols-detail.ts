@@ -32,7 +32,7 @@ const circle = (cx: number, cy: number, r: number, fill: string) =>
  */
 type Spine = readonly [number, number, number];
 
-function limb(spine: readonly [Spine, Spine, ...Spine[]]): string {
+export function limb(spine: readonly [Spine, Spine, ...Spine[]]): string {
   const left: OutlinePoint[] = [];
   const right: OutlinePoint[] = [];
   spine.forEach(([x, y, w], k) => {
@@ -51,7 +51,7 @@ function limb(spine: readonly [Spine, Spine, ...Spine[]]): string {
 }
 
 /** Toes at the end of a paw: small round pads fanned across the tip. */
-function toes(x: number, y: number, deg: number, r: number, n = 3): string {
+export function toes(x: number, y: number, deg: number, r: number, n = 3): string {
   let d = "";
   for (let k = 0; k < n; k++) {
     const a = ((deg + (k - (n - 1) / 2) * 32) * Math.PI) / 180;

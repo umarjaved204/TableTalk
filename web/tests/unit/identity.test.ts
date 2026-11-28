@@ -38,7 +38,7 @@ import { LetteringError, arcText, lineText, mapPath } from "../../src/identity/l
 import type { BandColours } from "../../src/identity/types.ts";
 
 /** Leagues whose crests are drawn so far; the rest follow league by league. */
-const COVERED = ["premier_league", "la_liga", "bundesliga"];
+const COVERED = ["premier_league", "la_liga", "bundesliga", "serie_a"];
 
 const SEASON = JSON.parse(readFileSync(resolve("tests/fixtures/clubs-2026-27.json"), "utf8")) as {
   leagues: Record<string, string[]>;
@@ -140,7 +140,7 @@ describe("club registry", () => {
 
   it("finds a club by slug, and nothing for a club with no entry", () => {
     expect(clubIdentity("arsenal")?.name).toBe("Arsenal");
-    expect(clubIdentity("ac-milan")).toBeUndefined();
+    expect(clubIdentity("angers")).toBeUndefined();
   });
 });
 
@@ -195,12 +195,12 @@ describe("generated files", () => {
   it("fingerprint every crest of every finally approved league, full and small", () => {
     // Add a league here, and its crests to the fixture, once its artwork is
     // finally approved. Leagues still in review are left out on purpose.
-    const APPROVED_LEAGUES = ["premier_league", "la_liga", "bundesliga"];
+    const APPROVED_LEAGUES = ["premier_league", "la_liga", "bundesliga", "serie_a"];
     const approved = JSON.parse(readFileSync(resolve("tests/fixtures/approved-crests.json"), "utf8")) as {
       files: Record<string, string>;
     };
     const clubs = CLUBS.filter((c) => APPROVED_LEAGUES.includes(c.leagueId));
-    expect(clubs).toHaveLength(58);
+    expect(clubs).toHaveLength(78);
     for (const club of clubs)
       for (const name of [`${club.slug}.svg`, `${club.slug}-small.svg`])
         expect(approved.files[name], name).toMatch(/^[0-9a-f]{64}$/);
