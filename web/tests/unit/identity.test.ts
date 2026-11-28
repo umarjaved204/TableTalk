@@ -8,6 +8,7 @@
 //   - every SVG is safe to serve and inside its size budget;
 //   - every band's text passes WCAG contrast, like the theme colours;
 //   - a design that may look close to an official badge has an alternative.
+import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -23,7 +24,7 @@ import { LetteringError, arcText, lineText, mapPath } from "../../src/identity/l
 import type { BandColours } from "../../src/identity/types.ts";
 
 /** Leagues whose crests are drawn so far; the rest follow league by league. */
-const COVERED = ["premier_league", "la_liga"];
+const COVERED = ["premier_league", "la_liga", "bundesliga"];
 
 const SEASON = JSON.parse(readFileSync(resolve("tests/fixtures/clubs-2026-27.json"), "utf8")) as {
   leagues: Record<string, string[]>;
@@ -125,7 +126,7 @@ describe("club registry", () => {
 
   it("finds a club by slug, and nothing for a club with no entry", () => {
     expect(clubIdentity("arsenal")?.name).toBe("Arsenal");
-    expect(clubIdentity("hamburger-sv")).toBeUndefined();
+    expect(clubIdentity("ac-milan")).toBeUndefined();
   });
 });
 
@@ -150,6 +151,24 @@ describe("generated files", () => {
 
   it("are exactly what the designs draw (run node scripts/make-crests.mjs after a change)", () => {
     for (const [path, text] of files) expect(readFileSync(resolve(path), "utf8"), path).toBe(text);
+  });
+
+  it("leave every approved crest exactly as approved", () => {
+    // A shared change (lettering, shapes, symbols) must not alter an
+    // approved crest. A deliberate, re-approved revision updates the fixture.
+    const approved = JSON.parse(readFileSync(resolve("tests/fixtures/approved-crests.json"), "utf8")) as {
+      files: Record<string, string>;
+    };
+    for (const [name, hash] of Object.entries(approved.files)) {
+      const text = files.get(`src/identity/crests/${name}`);
+      expect(text, name).toBeDefined();
+      expect(
+        createHash("sha256")
+          .update(text ?? "")
+          .digest("hex"),
+        name,
+      ).toBe(hash);
+    }
   });
 
   it("include nothing the registry doesn't make", () => {
@@ -178,11 +197,27 @@ describe("generated files", () => {
     },
   );
 
+  // A crest whose identity is its lettering (BVB, S04, the W, the 05) needs no
+  // symbol: its composition says so. A crest whose identity is a pattern of
+  // its own is listed here, with the reason. Every other crest needs one.
+  const LETTERING = /monogram|letter|numerals|lettering/;
+  const PATTERN_IS_THE_EMBLEM: Record<string, string> = {
+    "hamburger-sv": "the black and white quartered diamond, the Raute, is the club's emblem",
+  };
+  const clubOf = (path: string) =>
+    CLUBS.find((c) => path.endsWith(`/${c.slug}.svg`) || path.endsWith(`/${c.slug}-small.svg`));
+
   it.each(svgs.filter(([p]) => p.includes("/crests/")).map(([p, t]) => [p, t]))(
-    "%s has the white keyline and at least one symbol",
-    (_, text) => {
+    "%s has the white keyline and an identifying symbol, lettering or emblem",
+    (path, text) => {
       expect(text).toContain('stroke="#fff" stroke-width="5"');
-      // A small crest keeps an identifying symbol, not just a coloured shield.
+      // A small crest keeps an identifying element, not just a coloured shield.
+      const club = clubOf(path);
+      if (club && (LETTERING.test(club.composition ?? "") || PATTERN_IS_THE_EMBLEM[club.slug])) {
+        // Lettering crests must actually carry more than the shield's own paths.
+        expect(text.match(/<path /g)?.length ?? 0, path).toBeGreaterThan(3);
+        return;
+      }
       expect(text).toMatch(/<g transform="translate\(/);
     },
   );

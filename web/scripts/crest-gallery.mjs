@@ -177,6 +177,31 @@ function fixtures(id, count = 6) {
 /** Groups of clubs whose crests could be confused, and what tells them apart. */
 const CLASHES = [
   {
+    title: "Three diamonds",
+    slugs: ["werder-bremen", "hamburger-sv", "borussia-monchengladbach"],
+    note: "All three clubs have worn a diamond for generations, so all three keep it. Werder: square-on green diamond with rounded corners and a white W. HSV: sharp square-on diamond, blue edge, black and white quarters, no letter. Gladbach: tall narrow rhombus, black edge, a green band and a black B.",
+  },
+  {
+    title: "Red roundels",
+    slugs: ["bayern-munich", "mainz-05", "union-berlin"],
+    note: "Bayern: a red ring of lettering round blue and white lozenges. Mainz: solid red with a large white 05. Union: a red ring opening like a C, edged yellow, round a black bear on white.",
+  },
+  {
+    title: "Blue and white",
+    slugs: ["schalke-04", "paderborn-07", "tsg-hoffenheim"],
+    note: "Schalke: a solid royal blue roundel with white S04. Paderborn: a roundel white above and blue below, a black bar between, SC and 07. Hoffenheim: not a roundel but a peaked blue shield crossed by a white band.",
+  },
+  {
+    title: "Black, white and a ring",
+    slugs: ["eintracht-frankfurt", "sv-elversberg", "bayer-leverkusen", "sc-freiburg"],
+    note: "Frankfurt: a black eagle inside a red ring. Elversberg: black SVE on white inside a black ring with a gold edge. Leverkusen: red lions and yellow banners round a 04 disc. Freiburg: an upright oval divided black and white, with a raptor's head and SCF.",
+  },
+  {
+    title: "Red and white shields",
+    slugs: ["1-fc-koln", "vfb-stuttgart", "fc-augsburg", "rb-leipzig"],
+    note: "Köln: a white heater with a red chief, red cathedral and white goat. Stuttgart: a heater with red VfB on white over gold and black antlers. Augsburg: round-bottomed, red and white halves, a green pine cone. Leipzig: round-bottomed with a navy edge, RBL on white over gold, a red lion and navy pales.",
+  },
+  {
     title: "Red and white stripes",
     slugs: ["atletico-madrid", "athletic-bilbao"],
     note: "The two rojiblanco clubs (Atlético was founded by Basque students as a branch of Athletic). Atlético: a pointed heater with a navy upper half and the seven stars of the Great Bear. Athletic: a round-bottomed shield with a white upper half and a red heraldic lion walking.",
