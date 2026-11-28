@@ -36,12 +36,14 @@ OUT = WEB / "src" / "identity" / "glyphs.json"
 WEIGHTS = {"600": "barlow-condensed-latin-600-normal.woff", "700": "barlow-condensed-latin-700-normal.woff"}
 
 # Capitals, digits, and the marks a crest might carry. Accented capitals are
-# here for club names such as "ATLÉTICO" and "KÖLN".
+# here for club names such as "ATLÉTICO" and "KÖLN", and a lowercase f for
+# the VfB of VfB Stuttgart.
 CHARS = (
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     "0123456789"
     " &.-'·"
     "ÁÀÂÄÃÅÇÉÈÊËÍÌÎÏÑÓÒÔÖÕØÚÙÛÜ"
+    "f"
 )
 
 
