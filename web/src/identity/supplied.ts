@@ -85,3 +85,96 @@ export const SUPPLIED_MARKS: Readonly<Record<string, SuppliedArtwork>> = {
     darkVariant: true,
   },
 };
+
+// --- Club crests --------------------------------------------------------
+
+/** How every supplied crest is described wherever it is shown or listed. */
+export const SUPPLIED_CREST_LABEL =
+  "Custom club-inspired artwork — user supplied, AI-generated design reference";
+
+/** Most a supplied crest file may weigh. TableTalk's own crests keep their
+ *  10 KB (full) and 3 KB (small) SVG budgets; detailed raster artwork can't
+ *  meet them, so it has its own. The files are 240 px (the largest crest,
+ *  120 px, on a 2x screen) at WebP quality 75: 7.0 to 17.1 KB on
+ *  28 Nov 2026, with no visible difference from quality 90 at 120 px. */
+export const SUPPLIED_CREST_BUDGET = 20 * 1024;
+
+export interface SuppliedCrest {
+  label: typeof SUPPLIED_CREST_LABEL;
+  provenance: string;
+  changes: string;
+  /** How close the image looks to the club's official badge. */
+  resemblance: { level: Resemblance; note: string };
+}
+
+const CREST_PROVENANCE =
+  "Made by the site's owner with an AI image tool (ChatGPT), building on TableTalk's refined crest, and chosen on 28 Nov 2026 as the club's full crest. Not an official or licensed file.";
+const CREST_CHANGES =
+  "Faint edge haze cleared, cropped to the crest, centred on a transparent square without stretching and saved as a 240 px WebP. Used above 24 px; the club's own small SVG crest is used at 24 px and below.";
+
+/** The supplied full crests in use, by club slug. */
+export const SUPPLIED_CRESTS: Readonly<Record<string, SuppliedCrest>> = {
+  "bayer-leverkusen": {
+    label: SUPPLIED_CREST_LABEL,
+    provenance: CREST_PROVENANCE,
+    changes: CREST_CHANGES,
+    resemblance: {
+      level: "high",
+      note: `Very close: two red lions holding a central medallion between a 1904 banner and a LEVERKUSEN ribbon is the official badge's arrangement and style. The medallion carries 04, not the company's cross. ${CAUTION}`,
+    },
+  },
+  "1-fc-koln": {
+    label: SUPPLIED_CREST_LABEL,
+    provenance: CREST_PROVENANCE,
+    changes: CREST_CHANGES,
+    resemblance: {
+      level: "high",
+      note: `Very close: a white goat on top of a red roundel lettered 1.FC KÖLN on a slanting band, with the cathedral, is the official badge's arrangement and style. ${CAUTION}`,
+    },
+  },
+  "union-berlin": {
+    label: SUPPLIED_CREST_LABEL,
+    provenance: CREST_PROVENANCE,
+    changes: CREST_CHANGES,
+    resemblance: {
+      level: "high",
+      note: `Very close: red and yellow 1.FC UNION lettering with Berlin's bear in a medallion is the official emblem's arrangement and style. ${CAUTION}`,
+    },
+  },
+  "rb-leipzig": {
+    label: SUPPLIED_CREST_LABEL,
+    provenance: CREST_PROVENANCE,
+    changes: CREST_CHANGES,
+    resemblance: {
+      level: "high",
+      note: `Very close, and a trademark question: two red bulls charging at a central ball is the core of the Red Bull company's registered logo, which the official badge uses, and RBL with LEIPZIG follows the badge too. Needs legal advice before public use. ${CAUTION}`,
+    },
+  },
+  "eintracht-frankfurt": {
+    label: SUPPLIED_CREST_LABEL,
+    provenance: CREST_PROVENANCE,
+    changes: CREST_CHANGES,
+    resemblance: {
+      level: "high",
+      note: `Close: a crowned red eagle with an E shield in a red and white roundel lettered EINTRACHT FRANKFURT follows the club's traditional eagle badges. ${CAUTION}`,
+    },
+  },
+  "vfb-stuttgart": {
+    label: SUPPLIED_CREST_LABEL,
+    provenance: CREST_PROVENANCE,
+    changes: CREST_CHANGES,
+    resemblance: {
+      level: "high",
+      note: `Very close: Gothic VfB over STUTTGART and a gold shield of Württemberg antlers between 18 and 93 is the official badge's arrangement and style. ${CAUTION}`,
+    },
+  },
+  "hamburger-sv": {
+    label: SUPPLIED_CREST_LABEL,
+    provenance: CREST_PROVENANCE,
+    changes: CREST_CHANGES,
+    resemblance: {
+      level: "high",
+      note: `Practically the official emblem: a blue field with a white diamond, a black diamond and a white centre. Needs legal advice before public use. ${CAUTION}`,
+    },
+  },
+};

@@ -11,6 +11,7 @@
 //           (where a wheel crosses a barrel, say), so parts never merge.
 
 import { BUNDESLIGA_SYMBOLS } from "./symbols-bundesliga.ts";
+import { DETAIL_SYMBOLS } from "./symbols-detail.ts";
 import { REFINED } from "./symbols-refined.ts";
 import { LALIGA_SYMBOLS } from "./symbols-laliga.ts";
 import { SILHOUETTES } from "./symbols-silhouettes.ts";
@@ -298,6 +299,7 @@ export const SYMBOLS = {
   ...SILHOUETTES,
   ...LALIGA_SYMBOLS,
   ...BUNDESLIGA_SYMBOLS,
+  ...DETAIL_SYMBOLS,
 };
 
 export type SymbolName = keyof typeof SYMBOLS;

@@ -8,6 +8,7 @@
 // in it, with its own arrangement (`composition`). No Red Bull marks appear
 // on RB Leipzig's crest.
 import { arcText, lineText, type ArcOptions, type LineOptions } from "../lettering.ts";
+import { vfb } from "../blackletter.ts";
 import { SHAPES } from "../primitives.ts";
 import type { ClubIdentity } from "../types.ts";
 
@@ -261,34 +262,64 @@ export const BUNDESLIGA: readonly ClubIdentity[] = [
     ],
     band: { bg: RBL.navy, ink: WHITE, muted: "#d9e0ee", accent: RBL.gold },
     inspiration:
-      "A football club's badge in the club's white, red and navy: a red heraldic lion, Leipzig's own heraldic animal, over strong RBL lettering, with the city's name on a red base and a thin gold line. No bulls, no ball and no sun: nothing from the sponsor's marks.",
+      "The owner's direction for Leipzig: a white shield with a navy edge, two red bulls charging at a football from either side, strong navy RBL lettering and a red base reading LEIPZIG.",
     resemblance: {
-      level: "medium",
-      note: "The white field with red and navy and the RBL letters follow the club's own palette and name, so supporters will connect it with the club, but none of the official badge's charging bulls, ball, sun or composition is used: the lion is Leipzig's heraldic animal, drawn new. The municipal arms design is the lower-resemblance alternative.",
+      level: "high",
+      note: "Very close, and a trademark question as much as an artistic one. Two red bulls charging at a central ball is the core of the Red Bull company's registered logo, which the official club badge uses. Here the bulls are drawn new, the ball is a football with red arcs and the lettering is TableTalk's own, but those differences don't change the idea, which is the protected part. Using this design publicly needs legal advice first. The heraldic lion and the municipal arms are the lower-resemblance alternatives.",
     },
-    composition: "heraldic lion over lettering on a white shield",
+    composition: "charging bulls and ball over lettering on a shield",
+    reference:
+      "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
-      full: "A white round-bottomed shield with a navy edge. A red lion rampant stands at the top; below it, large navy RBL; a thin gold line, then a red base reading LEIPZIG in white.",
-      small: "The white navy-edged shield with large navy RBL over a red base.",
+      full: "A white pointed shield with a navy edge. Two red bulls, edged in white, leap in from either side with heads lowered and horns forward towards a navy and white football between red arcs. Below, large navy RBL in italic capitals, a thin gold line and a red base reading LEIPZIG in white italic capitals.",
+      small:
+        "The white navy-edged shield with large navy italic RBL over a red base. The bulls are left out at this size.",
     },
     full: (k) => [
-      k.shield("english", { rim: RBL.navy, field: WHITE }),
-      k.symbol(
-        "lion-heraldic",
-        { x: 60, y: 34, size: 44 },
-        { main: RBL.red, accent: RBL.navy, ground: WHITE },
-      ),
-      text("RBL", { x: 60, baseline: 81, cap: 22, fill: RBL.navy, tracking: 0.1 }),
-      k.pattern({ kind: "base", colour: RBL.red, from: 89 }),
-      k.rule(88, RBL.gold, 2.5),
-      text("LEIPZIG", { x: 60, baseline: 102, cap: 7, fill: WHITE, tracking: 0.16 }),
+      k.shield("heater", { rim: RBL.navy, field: WHITE }),
+      `<path d="M45 21Q60 13 75 21M45 49Q60 57 75 49" fill="none" stroke="${RBL.red}" stroke-width="2" stroke-linecap="round"/>`,
+      k.symbol("football", { x: 60, y: 35, size: 22 }, { main: RBL.navy, accent: RBL.navy, ground: WHITE }),
+      `<g stroke="${WHITE}" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${k.symbol("bull-charging", { x: 26, y: 37, size: 55 }, { main: RBL.red, accent: RBL.navy, ground: WHITE })}${k.symbol("bull-charging", { x: 94, y: 37, size: 55, flip: true }, { main: RBL.red, accent: RBL.navy, ground: WHITE })}</g>`,
+      italic(text("RBL", { x: 60, baseline: 80, cap: 24, fill: RBL.navy, tracking: 0.02 }), 60, 68),
+      k.rule(85, RBL.gold, 2.5),
+      k.pattern({ kind: "base", colour: RBL.red, from: 88 }),
+      italic(text("LEIPZIG", { x: 60, baseline: 100.5, cap: 8.5, fill: WHITE, tracking: 0.08 }), 60, 96),
     ],
     small: (k) => [
-      k.shield("english", { rim: RBL.navy, field: WHITE, rimWidth: 7 }),
+      k.shield("heater", { rim: RBL.navy, field: WHITE, rimWidth: 7 }),
       k.pattern({ kind: "base", colour: RBL.red, from: 76 }),
-      text("RBL", { x: 60, baseline: 64, cap: 30, fill: RBL.navy, tracking: 0.04, maxWidth: 86 }),
+      italic(
+        text("RBL", { x: 60, baseline: 64, cap: 30, fill: RBL.navy, tracking: 0.02, maxWidth: 88 }),
+        60,
+        49,
+      ),
     ],
     alternatives: [
+      {
+        title: "Heraldic lion",
+        note: "The refinement-round design, before the owner-supplied references: a red heraldic lion over navy RBL on a white shield. No bulls, so much further from the official badge and the sponsor's marks: the safer choice.",
+        looks: {
+          full: "A white round-bottomed shield with a navy edge. A red lion rampant stands at the top; below it, large navy RBL; a thin gold line, then a red base reading LEIPZIG in white.",
+          small: "The white navy-edged shield with large navy RBL over a red base.",
+        },
+        full: (k) => [
+          k.shield("english", { rim: RBL.navy, field: WHITE }),
+          k.symbol(
+            "lion-heraldic",
+            { x: 60, y: 34, size: 44 },
+            { main: RBL.red, accent: RBL.navy, ground: WHITE },
+          ),
+          text("RBL", { x: 60, baseline: 81, cap: 22, fill: RBL.navy, tracking: 0.1 }),
+          k.pattern({ kind: "base", colour: RBL.red, from: 89 }),
+          k.rule(88, RBL.gold, 2.5),
+          text("LEIPZIG", { x: 60, baseline: 102, cap: 7, fill: WHITE, tracking: 0.16 }),
+        ],
+        small: (k) => [
+          k.shield("english", { rim: RBL.navy, field: WHITE, rimWidth: 7 }),
+          k.pattern({ kind: "base", colour: RBL.red, from: 76 }),
+          text("RBL", { x: 60, baseline: 64, cap: 30, fill: RBL.navy, tracking: 0.04, maxWidth: 86 }),
+        ],
+      },
       {
         title: "Municipal arms",
         note: "The first Bundesliga design: Leipzig's city arms, the lion rampant and two blue pales on gold, under a white chief with RBL. Closer to a civic coat of arms than a club badge, so kept as the alternative.",
@@ -393,27 +424,47 @@ export const BUNDESLIGA: readonly ClubIdentity[] = [
     ],
     band: { bg: "#083d75", ink: WHITE, muted: "#d6e3f3", accent: "#9cc4f2" },
     inspiration:
-      "HSV's Raute: a black and white diamond on a blue field, the colours of the club and of Hamburg's harbour flags. The diamond sits on a blue block, as on the club's traditional emblem, with its own black and white arrangement.",
+      "HSV's Raute: a white and black diamond on a blue field in the proportions of a flag, as on the club's traditional emblem and Hamburg's harbour flags. Clean geometry, strong contrast, nothing else.",
     resemblance: {
       level: "high",
-      note: "A blue rectangular field with a central black and white diamond is the official emblem's structure. Here the diamond is divided along its diagonals into two black and two white triangles, black upper left and lower right, rather than four smaller diamonds, and a white edge runs round it with no nested outlines. The blue-edged diamond and the Hamburg gate are the alternatives.",
+      note: "Very close. A blue landscape field with a white diamond holding a black diamond is the official emblem's whole design, and the owner's reference follows it closely. The differences are small: the black diamond here is solid, with no white diamond at its centre, the field has a thin white border and the proportions are drawn new. Because the official emblem is so simple, no faithful version can be far from it. The diamond on a blue block, the blue-edged diamond and the Hamburg gate are the lower-resemblance alternatives.",
     },
-    composition: "diamond on a blue block",
+    composition: "diamond on a blue flag",
+    reference:
+      "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
-      full: "A blue square with slightly rounded corners. A large diamond fills the middle, edged in white and divided along its diagonals: the upper-left and lower-right triangles black, the other two white.",
-      small: "The blue square with a large black and white diamond touching its edges.",
+      full: "A blue landscape rectangle, about 3:2, with a thin white border. A large white diamond stands in the middle with a solid black diamond inside it.",
+      small: "The blue rectangle with its white diamond and solid black centre.",
     },
     full: (k) => [
-      k.shield("block", { rim: "#063a70", field: HSV.blue, rimWidth: 3 }),
-      `<path d="M60 15L105 60L60 105L15 60Z" fill="${WHITE}"/>`,
-      `<path d="M20 60L60 20L60 60ZM100 60L60 100L60 60Z" fill="${BLACK}"/>`,
+      k.shield("flag", { rim: WHITE, field: "#0b3f9c", rimWidth: 3 }),
+      `<path d="M60 26L94 60L60 94L26 60Z" fill="${WHITE}"/>`,
+      `<path d="M60 40L80 60L60 80L40 60Z" fill="${BLACK}"/>`,
     ],
     small: (k) => [
-      k.shield("block", { rim: "#063a70", field: HSV.blue, rimWidth: 5 }),
-      `<path d="M60 13L107 60L60 107L13 60Z" fill="${WHITE}"/>`,
-      `<path d="M18 60L60 18L60 60ZM102 60L60 102L60 60Z" fill="${BLACK}"/>`,
+      k.shield("flag", { rim: WHITE, field: "#0b3f9c", rimWidth: 3 }),
+      `<path d="M60 25L95 60L60 95L25 60Z" fill="${WHITE}"/>`,
+      `<path d="M60 38L82 60L60 82L38 60Z" fill="${BLACK}"/>`,
     ],
     alternatives: [
+      {
+        title: "Diamond on a blue block",
+        note: "The refinement-round design, before the owner-supplied references: a square blue block with the diamond split along its diagonals into black and white triangles. Further from the official emblem than the main design.",
+        looks: {
+          full: "A blue square with slightly rounded corners. A large diamond fills the middle, edged in white and divided along its diagonals: the upper-left and lower-right triangles black, the other two white.",
+          small: "The blue square with a large black and white diamond touching its edges.",
+        },
+        full: (k) => [
+          k.shield("block", { rim: "#063a70", field: HSV.blue, rimWidth: 3 }),
+          `<path d="M60 15L105 60L60 105L15 60Z" fill="${WHITE}"/>`,
+          `<path d="M20 60L60 20L60 60ZM100 60L60 100L60 60Z" fill="${BLACK}"/>`,
+        ],
+        small: (k) => [
+          k.shield("block", { rim: "#063a70", field: HSV.blue, rimWidth: 5 }),
+          `<path d="M60 13L107 60L60 107L13 60Z" fill="${WHITE}"/>`,
+          `<path d="M18 60L60 18L60 60ZM102 60L60 102L60 60Z" fill="${BLACK}"/>`,
+        ],
+      },
       {
         title: "Blue-edged diamond",
         note: "The first Bundesliga design: the diamond as the whole outline, blue-edged, with its left and right quarters black. Kept as an alternative.",
@@ -464,28 +515,55 @@ export const BUNDESLIGA: readonly ClubIdentity[] = [
     ],
     band: { bg: "#b30015", ink: WHITE, muted: "#ffdfe2", accent: WHITE },
     inspiration:
-      "Hennes, the billy goat the club has kept as its mascot since 1950, standing on top of a red and white roundel, with Cologne's twin-spired cathedral inside it and the club's name round the ring.",
+      "Hennes, the billy goat the club has kept as its mascot since 1950, leaping onto a red roundel, his forelegs over its rim: 1.FC and KÖLN across the roundel on a slanting white band, and Cologne Cathedral's twin spires at its foot.",
     resemblance: {
       level: "high",
-      note: "The goat and the cathedral in red and white are the official badge's ingredients. Here they are arranged differently: the goat stands on top of a roundel rather than inside a shield, the cathedral is small and secondary inside the ring, and the name runs round the bottom of the ring. The cathedral shield and the three crowns designs are the alternatives.",
+      note: "Close. A white goat on top of a red and white roundel lettered 1. FC KÖLN, with the cathedral, is the official badge's arrangement, and the owner's reference follows it. Here the goat is drawn new in a leaping pose with its forelegs over the rim, the name runs on a slanting white band and the cathedral is a small black silhouette. The goat on a lettered roundel, the cathedral shield and the three crowns designs are the alternatives.",
     },
-    composition: "mascot standing on a lettered roundel",
+    composition: "mascot leaping onto a lettered roundel",
+    reference:
+      "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
-      full: "A red goat with curved horns and a beard stands on top of a roundel. The roundel has a red edge and a red ring lettered 1. FC KÖLN in white round the bottom; inside, on white, a small red cathedral front with two spires.",
-      small: "A red roundel with a large white goat standing in profile.",
+      full: "A white billy goat outlined in black, with long ridged horns and a beard, leaps onto the top of a red roundel, forelegs reaching over its rim and hind legs trailing down the right. The roundel has a black edge and a white ring; across it slants a white band reading KÖLN in black, with 1.FC in white above it and a small black twin-spired cathedral below.",
+      small: "A red roundel with a large white goat outlined in black.",
     },
     full: (k) => [
-      k.shield("crowned-roundel", { rim: KOE.red, field: WHITE }),
-      `<circle cx="60" cy="71" r="37" fill="none" stroke="${KOE.red}" stroke-width="9"/>`,
-      `<path d="${slim(arcText("1. FC KÖLN", { cx: 60, cy: 71, r: 37, cap: 7.5, side: "bottom", maxSweep: 150 }).d)}" fill="${WHITE}"/>`,
-      k.symbol("cathedral", { x: 60, y: 73, size: 52 }, { main: KOE.red, accent: KOE.red, ground: WHITE }),
-      `<g stroke="${WHITE}" stroke-width="5" stroke-linejoin="round" paint-order="stroke">${k.symbol("goat", { x: 58, y: 22, size: 44 }, { main: KOE.red, accent: KOE.red, ground: WHITE })}</g>`,
+      k.shield("crowned-roundel", { rim: BLACK, field: KOE.red, rimWidth: 2.5 }),
+      `<circle cx="60" cy="71" r="40.5" fill="none" stroke="${WHITE}" stroke-width="2.5"/>`,
+      cut("M-10.6 83.8L126.4 54.6L130.6 74.2L-6.4 103.4Z", WHITE, k.clip),
+      turnedText("KÖLN", 60, 79, 15, -12, BLACK, 62),
+      turnedText("1.FC", 56, 59, 14, -12, WHITE, 44),
+      k.symbol("cathedral", { x: 60, y: 102, size: 22 }, { main: BLACK, accent: BLACK, ground: KOE.red }),
+      `<g stroke="${BLACK}" stroke-width="2.6" stroke-linejoin="round" paint-order="stroke">${k.symbol("goat-leaping", { x: 64, y: 30, size: 60 }, { main: WHITE, accent: BLACK, ground: WHITE })}</g>`,
     ],
     small: (k) => [
-      k.shield("roundel", { rim: "#8f0010", field: KOE.red, rimWidth: 6 }),
-      k.symbol("goat", { x: 61, y: 61, size: 84 }, { main: WHITE, accent: WHITE, ground: KOE.red }),
+      k.shield("roundel", { rim: BLACK, field: KOE.red, rimWidth: 4 }),
+      `<g stroke="${BLACK}" stroke-width="3.4" stroke-linejoin="round" paint-order="stroke">${k.symbol("goat-leaping", { x: 57, y: 60, size: 90 }, { main: WHITE, accent: BLACK, ground: WHITE })}</g>`,
     ],
     alternatives: [
+      {
+        title: "Goat on a lettered roundel",
+        note: "The refinement-round design, before the owner-supplied references: a red goat standing on a red-ringed roundel with the cathedral inside and the name round the ring.",
+        looks: {
+          full: "A red goat with curved horns and a beard stands on top of a roundel. The roundel has a red edge and a red ring lettered 1. FC KÖLN in white round the bottom; inside, on white, a small red cathedral front with two spires.",
+          small: "A red roundel with a large white goat standing in profile.",
+        },
+        full: (k) => [
+          k.shield("crowned-roundel", { rim: KOE.red, field: WHITE }),
+          `<circle cx="60" cy="71" r="37" fill="none" stroke="${KOE.red}" stroke-width="9"/>`,
+          `<path d="${slim(arcText("1. FC KÖLN", { cx: 60, cy: 71, r: 37, cap: 7.5, side: "bottom", maxSweep: 150 }).d)}" fill="${WHITE}"/>`,
+          k.symbol(
+            "cathedral",
+            { x: 60, y: 73, size: 52 },
+            { main: KOE.red, accent: KOE.red, ground: WHITE },
+          ),
+          `<g stroke="${WHITE}" stroke-width="5" stroke-linejoin="round" paint-order="stroke">${k.symbol("goat", { x: 58, y: 22, size: 44 }, { main: KOE.red, accent: KOE.red, ground: WHITE })}</g>`,
+        ],
+        small: (k) => [
+          k.shield("roundel", { rim: "#8f0010", field: KOE.red, rimWidth: 6 }),
+          k.symbol("goat", { x: 61, y: 61, size: 84 }, { main: WHITE, accent: WHITE, ground: KOE.red }),
+        ],
+      },
       {
         title: "Cathedral shield",
         note: "The first Bundesliga design: the cathedral full height on a white shield with the white goat in front and the name on a red chief.",
@@ -560,20 +638,26 @@ export const BUNDESLIGA: readonly ClubIdentity[] = [
     ],
     band: { bg: "#151515", ink: WHITE, muted: "#dcdcdc", accent: "#ff5a5a" },
     inspiration:
-      "The eagle, Frankfurt's heraldic bird and the club's nickname, Die Adler: a red eagle displayed on white in a red-edged roundel, with black beak and talons.",
+      "The eagle, Frankfurt's heraldic bird and the club's nickname, Die Adler: a crowned red eagle displayed with an E on its breast shield, in a red and white roundel lettered EINTRACHT FRANKFURT.",
     resemblance: {
       level: "high",
-      note: "An eagle with spread wings on a round white field is the official badge's idea. Here the eagle is red, displayed heraldically with rounded primaries and a three-feather tail, its head turned left, in a plain red-edged roundel. The black eagle roundel and the city eagle shield are the alternatives.",
+      note: "Close. A red eagle in a red and white roundel with the club's name round it is the official badge's idea, and the owner's reference follows it. Here the eagle is drawn new with separate feathers and scalloped wing coverts, a small crown and an E on a breast shield, and the lettering is TableTalk's own. The first red eagle, the black eagle roundel and the city eagle shield are the alternatives.",
     },
-    composition: "heraldic bird in a ringed roundel",
+    composition: "crowned eagle in a lettered roundel",
+    reference:
+      "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
-      full: "A white roundel with a red edge and a thin red ring inside it. A red eagle fills the middle, wings raised with six rounded feathers each, head turned left with a black beak, a fanned three-feather tail and black talons.",
-      small: "The white roundel with a heavy red edge and a large red eagle.",
+      full: "A white roundel with a red edge and a thin red ring, EINTRACHT over the top and FRANKFURT under the bottom in black. A red eagle fills the middle, wings spread with seven long feathers each under scalloped coverts, head turned left, a small crown above it, a white shield with a red E on its breast, a fanned tail and spread talons.",
+      small:
+        "The white roundel with a heavy red edge and a large, simplified red eagle without crown or shield.",
     },
     full: (k) => [
-      k.shield("roundel", { rim: SGE.red, field: WHITE }),
-      k.ring(48.5, 2, SGE.red),
-      k.symbol("eagle-heraldic", { x: 60, y: 60, size: 84 }, { main: SGE.red, accent: BLACK, ground: WHITE }),
+      k.shield("roundel", { rim: SGE.red, field: WHITE, rimWidth: 4.5 }),
+      k.ring(49.8, 1.6, SGE.red),
+      arc("EINTRACHT", { r: 42, cap: 9.5, side: "top", fill: BLACK, maxSweep: 140 }),
+      arc("FRANKFURT", { r: 42, cap: 9.5, side: "bottom", fill: BLACK, maxSweep: 140 }),
+      k.symbol("eagle-crowned", { x: 60, y: 60, size: 60 }, { main: SGE.red, accent: WHITE, ground: WHITE }),
+      text("E", { x: 60, baseline: 66.3, cap: 6, fill: SGE.red, tracking: 0 }),
     ],
     small: (k) => [
       k.shield("roundel", { rim: SGE.red, field: WHITE, rimWidth: 7 }),
@@ -584,6 +668,31 @@ export const BUNDESLIGA: readonly ClubIdentity[] = [
       ),
     ],
     alternatives: [
+      {
+        title: "Red eagle, first refinement",
+        note: "The refinement-round design, before the owner-supplied references: a red eagle with rounded feathers on a plain red-edged roundel, without crown, shield or lettering.",
+        looks: {
+          full: "A white roundel with a red edge and a thin red ring inside it. A red eagle fills the middle, wings raised with six rounded feathers each, head turned left with a black beak, a fanned three-feather tail and black talons.",
+          small: "The white roundel with a heavy red edge and a large red eagle.",
+        },
+        full: (k) => [
+          k.shield("roundel", { rim: SGE.red, field: WHITE }),
+          k.ring(48.5, 2, SGE.red),
+          k.symbol(
+            "eagle-heraldic",
+            { x: 60, y: 60, size: 84 },
+            { main: SGE.red, accent: BLACK, ground: WHITE },
+          ),
+        ],
+        small: (k) => [
+          k.shield("roundel", { rim: SGE.red, field: WHITE, rimWidth: 7 }),
+          k.symbol(
+            "eagle-heraldic",
+            { x: 60, y: 60, size: 92 },
+            { main: SGE.red, accent: SGE.red, ground: WHITE },
+          ),
+        ],
+      },
       {
         title: "Black eagle roundel",
         note: "The first Bundesliga design: a black eagle in a red and black ring, nearer the club's black eagle.",
@@ -635,49 +744,79 @@ export const BUNDESLIGA: readonly ClubIdentity[] = [
     ],
     band: { bg: "#b5150f", ink: WHITE, muted: "#ffe2dd", accent: "#ffd54a" },
     inspiration:
-      "VfB in red over the three black stag's antlers on gold from the arms of Württemberg, the old kingdom whose capital was Stuttgart.",
+      "VfB in Gothic-inspired red letters over STUTTGART, with the Württemberg arms (three black stag's antlers on gold) on a small shield between the founding year, 18 and 93, all on a white shield edged in red.",
     resemblance: {
       level: "high",
-      note: "The VfB letters over the Württemberg antlers is the official badge's arrangement. Here the letters are set in a slanted condensed italic on white above a red bar, and the antlers are drawn new as arched beams with four forward-curving tines and a knobbed burr. The antler roundel is the lower-resemblance alternative.",
+      note: "Close. Gothic VfB over STUTTGART and a small gold shield of Württemberg antlers, with 1893 split either side, is the official badge's arrangement, and the owner's reference follows it. Here the Gothic letters are drawn new by hand, the antlers are TableTalk's own and the other lettering is condensed sans-serif. The first refinement and the antler roundel are the alternatives.",
     },
-    composition: "letters over regional arms",
+    composition: "Gothic letters over regional arms",
+    reference:
+      "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
-      full: "A pointed shield with a red edge. The top is white with large slanted red VfB; a red bar crosses the middle; the lower part is gold with three black heraldic antlers stacked one above the other, each an arched beam with four curving tines, narrowing towards the point.",
-      small: "The red-edged shield: slanted red VfB on white over a gold base with one large black antler.",
+      full: "A white pointed shield with a red edge and a thin red line inside it. Large red Gothic-style VfB across the top, STUTTGART in small spaced black capitals under it, and a small gold shield outlined in black with three black hooked antlers stacked on it, between a red 18 on the left and 93 on the right.",
+      small:
+        "The white red-edged shield with large red Gothic VfB over a small gold shield with one black antler.",
     },
     full: (k) => [
       k.shield("heater", { rim: VFB.red, field: WHITE }),
-      k.pattern({ kind: "base", colour: VFB.gold, from: 58 }),
-      k.band(55, 7, VFB.red),
-      italic(
-        text("VfB", { keepCase: true, x: 60, baseline: 47, cap: 28, fill: VFB.red, tracking: 0.02 }),
-        60,
-        33,
-      ),
-      k.symbol("antler", { x: 58, y: 70, size: 48 }, { main: BLACK, accent: BLACK, ground: VFB.gold }),
-      k.symbol("antler", { x: 58, y: 85, size: 40 }, { main: BLACK, accent: BLACK, ground: VFB.gold }),
-      k.symbol("antler", { x: 58, y: 98.5, size: 28 }, { main: BLACK, accent: BLACK, ground: VFB.gold }),
+      `<path d="${SHAPES.heater(7)}" fill="none" stroke="${VFB.red}" stroke-width="1.6"/>`,
+      `<path d="${vfb(60, 44, 28)}" fill="${VFB.red}" fill-rule="evenodd"/>`,
+      text("STUTTGART", { x: 60, baseline: 55, cap: 6, fill: BLACK, tracking: 0.28 }),
+      `<path d="M41 60L79 60L79 78C79 92 70 100 60 105C50 100 41 92 41 78Z" fill="${VFB.gold}" stroke="${BLACK}" stroke-width="1.4"/>`,
+      k.symbol("antler", { x: 59, y: 70, size: 33 }, { main: BLACK, accent: BLACK, ground: VFB.gold }),
+      k.symbol("antler", { x: 59, y: 81, size: 30 }, { main: BLACK, accent: BLACK, ground: VFB.gold }),
+      k.symbol("antler", { x: 59, y: 91.5, size: 23 }, { main: BLACK, accent: BLACK, ground: VFB.gold }),
+      text("18", { x: 30, baseline: 79, cap: 9.5, fill: VFB.red, tracking: 0.02 }),
+      text("93", { x: 90, baseline: 79, cap: 9.5, fill: VFB.red, tracking: 0.02 }),
     ],
     small: (k) => [
       k.shield("heater", { rim: VFB.red, field: WHITE, rimWidth: 7 }),
-      k.pattern({ kind: "base", colour: VFB.gold, from: 58 }),
-      k.band(54, 7, VFB.red),
-      italic(
-        text("VfB", {
-          keepCase: true,
-          x: 60,
-          baseline: 48,
-          cap: 30,
-          fill: VFB.red,
-          tracking: 0.02,
-          maxWidth: 80,
-        }),
-        60,
-        33,
-      ),
-      k.symbol("antler", { x: 58, y: 80, size: 62 }, { main: BLACK, accent: BLACK, ground: VFB.gold }),
+      `<path d="${vfb(60, 49, 31)}" fill="${VFB.red}" fill-rule="evenodd"/>`,
+      `<path d="M39 57L81 57L81 74C81 88 71 96 60 101C49 96 39 88 39 74Z" fill="${VFB.gold}" stroke="${BLACK}" stroke-width="2"/>`,
+      k.symbol("antler", { x: 59, y: 73, size: 40 }, { main: BLACK, accent: BLACK, ground: VFB.gold }),
     ],
     alternatives: [
+      {
+        title: "Italic VfB, first refinement",
+        note: "The refinement-round design, before the owner-supplied references: slanted condensed VfB over a red bar, with three antlers on the gold lower half of the shield.",
+        looks: {
+          full: "A pointed shield with a red edge. The top is white with large slanted red VfB; a red bar crosses the middle; the lower part is gold with three black heraldic antlers stacked one above the other, each an arched beam with four curving tines, narrowing towards the point.",
+          small:
+            "The red-edged shield: slanted red VfB on white over a gold base with one large black antler.",
+        },
+        full: (k) => [
+          k.shield("heater", { rim: VFB.red, field: WHITE }),
+          k.pattern({ kind: "base", colour: VFB.gold, from: 58 }),
+          k.band(55, 7, VFB.red),
+          italic(
+            text("VfB", { keepCase: true, x: 60, baseline: 47, cap: 28, fill: VFB.red, tracking: 0.02 }),
+            60,
+            33,
+          ),
+          k.symbol("antler", { x: 58, y: 70, size: 48 }, { main: BLACK, accent: BLACK, ground: VFB.gold }),
+          k.symbol("antler", { x: 58, y: 85, size: 40 }, { main: BLACK, accent: BLACK, ground: VFB.gold }),
+          k.symbol("antler", { x: 58, y: 98.5, size: 28 }, { main: BLACK, accent: BLACK, ground: VFB.gold }),
+        ],
+        small: (k) => [
+          k.shield("heater", { rim: VFB.red, field: WHITE, rimWidth: 7 }),
+          k.pattern({ kind: "base", colour: VFB.gold, from: 58 }),
+          k.band(54, 7, VFB.red),
+          italic(
+            text("VfB", {
+              keepCase: true,
+              x: 60,
+              baseline: 48,
+              cap: 30,
+              fill: VFB.red,
+              tracking: 0.02,
+              maxWidth: 80,
+            }),
+            60,
+            33,
+          ),
+          k.symbol("antler", { x: 58, y: 80, size: 62 }, { main: BLACK, accent: BLACK, ground: VFB.gold }),
+        ],
+      },
       {
         title: "Antler roundel",
         note: "The three Württemberg antlers on gold in a red ring lettered VFB STUTTGART: the region's arms as the whole badge.",
@@ -830,25 +969,27 @@ export const BUNDESLIGA: readonly ClubIdentity[] = [
     ],
     band: { bg: "#151515", ink: WHITE, muted: "#dcdcdc", accent: "#ff5c5c" },
     inspiration:
-      "Two red heraldic lions rampant holding a medallion between them, the founding year on a yellow ribbon above and the town's name on one below: the club's supporters-and-banners arrangement, standing free with no enclosing roundel, and 04 at the centre in place of the company cross.",
+      "Two red heraldic lions rampant, outlined in black, holding a white medallion between them with a large 04, the founding year on a yellow banner above and LEVERKUSEN on a yellow ribbon below: the club's supporters-and-banners arrangement, with 04 in place of the company cross.",
     resemblance: {
       level: "high",
-      note: "Red lions either side of a central disc, with yellow banners above and below, is the official badge's arrangement. Here the lions are drawn new as heraldic lions with maned heads and raised forepaws, the medallion carries a red 04 rather than the company's cross (a trademark we leave out), and the lions stand on the lower banner. The white roundel version and the Werkself lion shield are the alternatives.",
+      note: "Close. Red lions either side of a central medallion with yellow banners above and below is the official badge's arrangement, and the owner's reference follows it. Here the lions are drawn new, part by part, with flame-like locks of mane, the medallion carries 04 rather than the company's cross (a trademark we leave out) and the lettering is TableTalk's own. The first refinement, the white roundel supporters and the Werkself lion shield are the alternatives.",
     },
     composition: "supporters and banners round a disc of numerals",
+    reference:
+      "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
-      full: "Two red lions rampant, outlined in white, face each other with their forepaws on a white medallion ringed in black that carries a red 04 outlined in black. A yellow ribbon above reads 1904, and a wide yellow ribbon below, on which the lions stand, reads LEVERKUSEN, both in black. No enclosing roundel.",
+      full: "Two red lions rampant, outlined in black, face each other with manes of flame-like locks and open mouths, their raised forepaws holding a white medallion ringed in black from behind. The medallion carries a large black 04 outlined in red. A yellow banner above reads 1904, and a wide yellow ribbon below reads LEVERKUSEN, both in black.",
       small:
         "A white roundel with a black ring round a large red 04, over a yellow band. The lions are left out at this size.",
     },
     full: (k) => [
+      `<g stroke="${BLACK}" stroke-width="2.6" stroke-linejoin="round" paint-order="stroke">${k.symbol("lion-supporter", { x: 25, y: 53, size: 58, flip: true }, { main: B04.red, accent: BLACK, ground: WHITE })}${k.symbol("lion-supporter", { x: 95, y: 53, size: 58 }, { main: B04.red, accent: BLACK, ground: WHITE })}</g>`,
       k.shield("medallion", { rim: BLACK, field: WHITE, rimWidth: 3.5 }),
-      outlined("04", { x: 60, baseline: 64.5, cap: 19, tracking: 0.04 }, B04.red, BLACK, 2.2),
-      banner(84, 18, 8, B04.yellow, BLACK),
-      text("LEVERKUSEN", { x: 60, baseline: 100.5, cap: 9.5, fill: BLACK, tracking: 0.04, maxWidth: 74 }),
-      `<g stroke="${WHITE}" stroke-width="4" stroke-linejoin="round" paint-order="stroke">${k.symbol("lion-heraldic", { x: 25, y: 57, size: 48, flip: true }, { main: B04.red, accent: BLACK, ground: WHITE })}${k.symbol("lion-heraldic", { x: 95, y: 57, size: 48 }, { main: B04.red, accent: BLACK, ground: WHITE })}</g>`,
-      `<path d="M38 10Q60 4 82 10L84 24Q60 18 36 24Z" fill="${B04.yellow}" stroke="${BLACK}" stroke-width="1.4" stroke-linejoin="round"/>`,
-      text("1904", { x: 60, baseline: 19.5, cap: 8, fill: BLACK, tracking: 0.08 }),
+      outlined("04", { x: 60, baseline: 65, cap: 20, tracking: 0.02 }, BLACK, B04.red, 2.4),
+      `<path d="M38 10Q60 4 82 10L84 25Q60 19 36 25Z" fill="${B04.yellow}" stroke="${BLACK}" stroke-width="1.6" stroke-linejoin="round"/>`,
+      text("1904", { x: 60, baseline: 20, cap: 8.5, fill: BLACK, tracking: 0.06 }),
+      banner(83, 20, 9, B04.yellow, BLACK),
+      text("LEVERKUSEN", { x: 60, baseline: 101.5, cap: 10.5, fill: BLACK, tracking: 0.03, maxWidth: 80 }),
     ],
     small: (k) => [
       k.shield("roundel", { rim: BLACK, field: WHITE, rimWidth: 6 }),
@@ -858,6 +999,31 @@ export const BUNDESLIGA: readonly ClubIdentity[] = [
       text("04", { x: 60, baseline: 66, cap: 28, fill: B04.red, tracking: 0.02 }),
     ],
     alternatives: [
+      {
+        title: "Medallion supporters, first refinement",
+        note: "The refinement-round design, before the owner-supplied references: the same free-standing arrangement with simpler, smaller lions and a red 04.",
+        looks: {
+          full: "Two red lions rampant, outlined in white, face each other with their forepaws on a white medallion ringed in black that carries a red 04 outlined in black. A yellow ribbon above reads 1904, and a wide yellow ribbon below, on which the lions stand, reads LEVERKUSEN, both in black. No enclosing roundel.",
+          small:
+            "A white roundel with a black ring round a large red 04, over a yellow band. The lions are left out at this size.",
+        },
+        full: (k) => [
+          k.shield("medallion", { rim: BLACK, field: WHITE, rimWidth: 3.5 }),
+          outlined("04", { x: 60, baseline: 64.5, cap: 19, tracking: 0.04 }, B04.red, BLACK, 2.2),
+          banner(84, 18, 8, B04.yellow, BLACK),
+          text("LEVERKUSEN", { x: 60, baseline: 100.5, cap: 9.5, fill: BLACK, tracking: 0.04, maxWidth: 74 }),
+          `<g stroke="${WHITE}" stroke-width="4" stroke-linejoin="round" paint-order="stroke">${k.symbol("lion-heraldic", { x: 25, y: 57, size: 48, flip: true }, { main: B04.red, accent: BLACK, ground: WHITE })}${k.symbol("lion-heraldic", { x: 95, y: 57, size: 48 }, { main: B04.red, accent: BLACK, ground: WHITE })}</g>`,
+          `<path d="M38 10Q60 4 82 10L84 24Q60 18 36 24Z" fill="${B04.yellow}" stroke="${BLACK}" stroke-width="1.4" stroke-linejoin="round"/>`,
+          text("1904", { x: 60, baseline: 19.5, cap: 8, fill: BLACK, tracking: 0.08 }),
+        ],
+        small: (k) => [
+          k.shield("roundel", { rim: BLACK, field: WHITE, rimWidth: 6 }),
+          k.band(84, 30, B04.yellow),
+          k.disc(60, 52, 32, BLACK),
+          k.disc(60, 52, 26, WHITE),
+          text("04", { x: 60, baseline: 66, cap: 28, fill: B04.red, tracking: 0.02 }),
+        ],
+      },
       {
         title: "White roundel supporters",
         note: "The first Bundesliga design: the same arrangement with simpler lions, all inside a white roundel.",
@@ -1135,45 +1301,100 @@ export const BUNDESLIGA: readonly ClubIdentity[] = [
     ],
     band: { bg: "#b00018", ink: WHITE, muted: "#ffe9ad", accent: FCU.yellow },
     inspiration:
-      "Union's emblem is lettering, not a shield: a horizontal, slanted red plate with UNION in bold yellow italic capitals, 1.FC above it, and Berlin's bear in a small yellow-edged disc perched on the plate's corner.",
+      "Union's emblem is lettering, not a shield: bold italic UNION in yellow on a slanted red plate, a separate 1.FC above it, and Berlin's bear walking upright in a round medallion over the plate's upper right corner.",
     resemblance: {
       level: "high",
-      note: "Red and yellow lettering read horizontally with Berlin's bear is the official emblem's character. Here the name is set on a slanted red plate in yellow italic capitals, 1.FC stands above it as separate lettering, and the bear sits in its own disc on the plate's corner rather than inside the C. The open ring and the Eisern bear shield are the alternatives.",
+      note: "Close. Yellow-edged red italic lettering read across, with Berlin's bear in a ringed medallion, is the official emblem's arrangement, and the owner's reference follows it. Here the name sits on a slanted plate rather than as free letters, the letters are condensed capitals and the bear is drawn new. The open ring and the Eisern bear shield are the lower-resemblance alternatives.",
     },
-    composition: "horizontal lettering-led emblem with a bear disc",
+    composition: "horizontal lettering-led emblem with a bear medallion",
+    reference:
+      "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
-      full: "A wide red plate, slanted like italic type and edged in yellow, fills the lower half with UNION in large yellow italic capitals. Above it on the left, 1.FC in red capitals outlined in yellow; on the right, a small disc ringed yellow and red holds a black Berlin bear on white, overlapping the plate's top corner.",
-      small: "A slanted red plate with large yellow UNION, under a yellow-ringed disc with a black bear.",
+      full: "A wide red plate slanted like italic type, edged in yellow, with UNION in large yellow italic capitals. Above it on the left, 1.FC in red italic capitals outlined in yellow; on the right, a round medallion ringed yellow and red, overlapping the plate's corner, holds a black Berlin bear walking upright with a red tongue and red claws.",
+      small:
+        "The slanted red plate with large yellow UNION under a yellow-ringed medallion with a black bear.",
     },
     full: (k) => [
       k.shield("plate", { rim: FCU.yellow, field: FCU.red, rimWidth: 3 }),
       italic(
-        text("UNION", { x: 60, baseline: 94, cap: 27, fill: FCU.yellow, tracking: 0.04, maxWidth: 92 }),
-        60,
-        80,
+        text("UNION", { x: 58, baseline: 97, cap: 31, fill: FCU.yellow, tracking: 0.02, maxWidth: 100 }),
+        58,
+        81,
       ),
       italic(
-        outlined("1.FC", { x: 38, baseline: 50, cap: 22, tracking: 0.04 }, FCU.red, FCU.yellow, 4),
+        outlined("1.FC", { x: 35, baseline: 52, cap: 27, tracking: 0.02 }, FCU.red, FCU.yellow, 4.5),
+        35,
         38,
-        39,
       ),
-      k.disc(92, 40, 23, FCU.yellow),
-      k.disc(92, 40, 20.5, FCU.red),
-      k.disc(92, 40, 16, WHITE),
-      k.symbol("berlin-bear", { x: 91.5, y: 40, size: 27 }, { main: BLACK, accent: FCU.red, ground: WHITE }),
+      k.disc(93, 37, 25, FCU.yellow),
+      k.disc(93, 37, 22, FCU.red),
+      k.disc(93, 37, 18.5, WHITE),
+      k.symbol(
+        "bear-heraldic",
+        { x: 93, y: 37, size: 32, flip: true },
+        { main: BLACK, accent: FCU.red, ground: WHITE },
+      ),
     ],
     small: (k) => [
       k.shield("plate", { rim: FCU.yellow, field: FCU.red, rimWidth: 4 }),
       italic(
-        text("UNION", { x: 60, baseline: 96, cap: 30, fill: FCU.yellow, tracking: 0.02, maxWidth: 98 }),
+        text("UNION", { x: 60, baseline: 98, cap: 33, fill: FCU.yellow, tracking: 0.02, maxWidth: 104 }),
         60,
-        81,
+        82,
       ),
-      k.disc(60, 32, 27, FCU.yellow),
-      k.disc(60, 32, 23, WHITE),
-      k.symbol("berlin-bear", { x: 59, y: 32, size: 38 }, { main: BLACK, accent: FCU.red, ground: WHITE }),
+      k.disc(60, 31, 28, FCU.yellow),
+      k.disc(60, 31, 24, WHITE),
+      k.symbol(
+        "berlin-bear",
+        { x: 61, y: 31, size: 40, flip: true },
+        { main: BLACK, accent: FCU.red, ground: WHITE },
+      ),
     ],
     alternatives: [
+      {
+        title: "Slanted plate, first refinement",
+        note: "The refinement-round design, before the owner-supplied references: the same horizontal plate with smaller 1.FC lettering and a simpler bear.",
+        looks: {
+          full: "A wide red plate, slanted like italic type and edged in yellow, fills the lower half with UNION in large yellow italic capitals. Above it on the left, 1.FC in red capitals outlined in yellow; on the right, a small disc ringed yellow and red holds a black Berlin bear on white, overlapping the plate's top corner.",
+          small: "A slanted red plate with large yellow UNION, under a yellow-ringed disc with a black bear.",
+        },
+        full: (k) => [
+          k.shield("plate", { rim: FCU.yellow, field: FCU.red, rimWidth: 3 }),
+          italic(
+            text("UNION", { x: 60, baseline: 94, cap: 27, fill: FCU.yellow, tracking: 0.04, maxWidth: 92 }),
+            60,
+            80,
+          ),
+          italic(
+            outlined("1.FC", { x: 38, baseline: 50, cap: 22, tracking: 0.04 }, FCU.red, FCU.yellow, 4),
+            38,
+            39,
+          ),
+          k.disc(92, 40, 23, FCU.yellow),
+          k.disc(92, 40, 20.5, FCU.red),
+          k.disc(92, 40, 16, WHITE),
+          k.symbol(
+            "berlin-bear",
+            { x: 91.5, y: 40, size: 27 },
+            { main: BLACK, accent: FCU.red, ground: WHITE },
+          ),
+        ],
+        small: (k) => [
+          k.shield("plate", { rim: FCU.yellow, field: FCU.red, rimWidth: 4 }),
+          italic(
+            text("UNION", { x: 60, baseline: 96, cap: 30, fill: FCU.yellow, tracking: 0.02, maxWidth: 98 }),
+            60,
+            81,
+          ),
+          k.disc(60, 32, 27, FCU.yellow),
+          k.disc(60, 32, 23, WHITE),
+          k.symbol(
+            "berlin-bear",
+            { x: 59, y: 32, size: 38 },
+            { main: BLACK, accent: FCU.red, ground: WHITE },
+          ),
+        ],
+      },
       {
         title: "Open ring",
         note: "The first Bundesliga design: a red roundel opening like a C round the bear, with 1.FC and UNION round the ring.",

@@ -7,6 +7,11 @@
 // under the same name (<slug>.svg, or .png/.webp at 240 x 240 or larger) and
 // nothing else changes: components, pages and layouts stay as they are.
 //
+// Supplied crests: artwork the site's owner chose as a club's full crest
+// (src/identity/supplied/crests/<slug>, described in supplied.ts) takes the
+// place of TableTalk's full crest. At 24 px and below the club's own small
+// SVG crest is still used, unless a supplied <slug>-small file exists.
+//
 // League marks come from one of three places, first match wins:
 //   1. src/identity/licensed/marks/  genuinely official or licensed files
 //                                    (none today; see the README there)
@@ -26,11 +31,14 @@
 import { fallbackDesign, renderCrest } from "./crest.ts";
 import type { CrestVariant } from "./sizes.ts";
 
-const URLS = import.meta.glob<string>("./{crests,marks,licensed/marks,supplied/marks}/*.{svg,png,webp}", {
-  query: "?url",
-  import: "default",
-  eager: true,
-});
+const URLS = import.meta.glob<string>(
+  "./{crests,marks,licensed/marks,supplied/marks,supplied/crests}/*.{svg,png,webp}",
+  {
+    query: "?url",
+    import: "default",
+    eager: true,
+  },
+);
 const RAW = import.meta.glob<string>("./crests/*.svg", { query: "?raw", import: "default", eager: true });
 
 export { SMALL_MAX, variantFor, type CrestVariant } from "./sizes.ts";
@@ -43,7 +51,7 @@ export type CrestSource =
 
 const EXTENSIONS = ["svg", "png", "webp"] as const;
 
-type Folder = "crests" | "marks" | "licensed/marks" | "supplied/marks";
+type Folder = "crests" | "marks" | "licensed/marks" | "supplied/marks" | "supplied/crests";
 
 function fileUrl(folder: Folder, base: string): string | undefined {
   for (const ext of EXTENSIONS) {
@@ -68,8 +76,13 @@ function warnMissing(slug: string, name: string): void {
  *  (grey shield, its initials) and a build warning; the build carries on. */
 export function crestSource(slug: string, name: string, variant: CrestVariant): CrestSource {
   const base = variant === "small" ? `${slug}-small` : slug;
-  // A club with only a full crest (an official file, say) uses it at every size.
-  const src = fileUrl("crests", base) ?? fileUrl("crests", slug);
+  // Supplied artwork first, then TableTalk's own file for this size; a club
+  // with only a full crest (an official file, say) uses it at every size.
+  const src =
+    fileUrl("supplied/crests", base) ??
+    fileUrl("crests", base) ??
+    fileUrl("supplied/crests", slug) ??
+    fileUrl("crests", slug);
   if (src) return { kind: "file", src };
   warnMissing(slug, name);
   return { kind: "fallback", svg: renderCrest(fallbackDesign(name, variant), `c-fallback-${slug}`) };
@@ -77,8 +90,10 @@ export function crestSource(slug: string, name: string, variant: CrestVariant): 
 
 /** The crest's SVG markup, for writing straight into a page (the team-page
  *  hero: no extra request before it paints). Undefined if the club's crest
- *  isn't an SVG of ours (a raster official file): use crestSource instead. */
+ *  isn't an SVG of ours (a supplied or official image file): use crestSource instead. */
 export function crestInline(slug: string, name: string): string | undefined {
+  // A supplied full crest is an image file: never write TableTalk's SVG instead.
+  if (fileUrl("supplied/crests", slug)) return undefined;
   const raw = RAW[`./crests/${slug}.svg`];
   if (raw) return raw.trim();
   const source = crestSource(slug, name, "full");

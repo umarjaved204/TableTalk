@@ -48,7 +48,8 @@ export type ShapeName =
   | "peaked"
   | "block"
   | "plate"
-  | "medallion";
+  | "medallion"
+  | "flag";
 
 const r1 = (v: number) => String(Math.round(v * 10) / 10);
 const pts = (list: [number, number][]) => list.map(([x, y]) => `${r1(x)} ${r1(y)}`).join("L");
@@ -204,6 +205,17 @@ export const SHAPES: Readonly<Record<ShapeName, (i: number) => string>> = {
     );
   },
 
+  // A landscape rectangle, about 3:2, with barely rounded corners: a flag,
+  // for Hamburg's blue field in its traditional proportions.
+  flag(i) {
+    const [l, r, t, b] = [4 + i, BOX - 4 - i, 21 + i, BOX - 21 - i];
+    const q = Math.max(1, 2.5 - i * 0.3);
+    return (
+      `M${r1(l + q)} ${r1(t)}L${r1(r - q)} ${r1(t)}Q${r1(r)} ${r1(t)} ${r1(r)} ${r1(t + q)}` +
+      `L${r1(r)} ${r1(b - q)}Q${r1(r)} ${r1(b)} ${r1(r - q)} ${r1(b)}L${r1(l + q)} ${r1(b)}` +
+      `Q${r1(l)} ${r1(b)} ${r1(l)} ${r1(b - q)}L${r1(l)} ${r1(t + q)}Q${r1(l)} ${r1(t)} ${r1(l + q)} ${r1(t)}Z`
+    );
+  },
   // A square block with slightly rounded corners: Hamburg's blue field.
   block(i) {
     const a = 8 + i;

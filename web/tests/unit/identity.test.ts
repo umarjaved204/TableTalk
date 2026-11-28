@@ -14,12 +14,26 @@ import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LEAGUES } from "../../src/data/leagues.ts";
 import { SLUG_PATTERN, teamSlug } from "../../src/data/teams.ts";
-import { crestSource, leagueMark, leagueMarkUrl, svgElement, variantFor } from "../../src/identity/assets.ts";
+import {
+  crestInline,
+  crestSource,
+  leagueMark,
+  leagueMarkUrl,
+  svgElement,
+  variantFor,
+} from "../../src/identity/assets.ts";
 import { DARK_THEMES, identityFiles } from "../../src/identity/build.ts";
 import { CLUBS, clubIdentity, slugMatchesName } from "../../src/identity/clubs/index.ts";
 import { fallbackDesign, initials, renderCrest } from "../../src/identity/crest.ts";
 import { LEAGUE_IDENTITIES } from "../../src/identity/leagues.ts";
-import { SUPPLIED_LABEL, SUPPLIED_MARKS, SUPPLIED_RASTER_BUDGET } from "../../src/identity/supplied.ts";
+import {
+  SUPPLIED_CREST_BUDGET,
+  SUPPLIED_CREST_LABEL,
+  SUPPLIED_CRESTS,
+  SUPPLIED_LABEL,
+  SUPPLIED_MARKS,
+  SUPPLIED_RASTER_BUDGET,
+} from "../../src/identity/supplied.ts";
 import { LetteringError, arcText, lineText, mapPath } from "../../src/identity/lettering.ts";
 import type { BandColours } from "../../src/identity/types.ts";
 
@@ -160,11 +174,15 @@ describe("generated files", () => {
       files: Record<string, string>;
     };
     for (const [name, hash] of Object.entries(approved.files)) {
-      const text = files.get(`src/identity/crests/${name}`);
-      expect(text, name).toBeDefined();
+      // Supplied artwork is fingerprinted as the file's bytes; TableTalk's
+      // own crests as the text the designs draw.
+      const content = name.startsWith("supplied/")
+        ? readFileSync(resolve("src/identity", name))
+        : files.get(`src/identity/crests/${name}`);
+      expect(content, name).toBeDefined();
       expect(
         createHash("sha256")
-          .update(text ?? "")
+          .update(content ?? "")
           .digest("hex"),
         name,
       ).toBe(hash);
@@ -357,6 +375,48 @@ describe("the review gallery script", () => {
   it("takes the small-crest threshold from the shared size rule", () => {
     expect(script).toContain('from "../src/identity/sizes.ts"');
     expect(script).toContain("${SMALL_MAX} px");
+  });
+});
+
+describe("supplied club crests", () => {
+  const dir = "src/identity/supplied/crests";
+  const names = readdirSync(resolve(dir)).filter((n) => n !== "README.md");
+  const approved = JSON.parse(readFileSync(resolve("tests/fixtures/approved-crests.json"), "utf8")) as {
+    files: Record<string, string>;
+  };
+
+  it("are listed in supplied.ts, labelled as such and never as official", () => {
+    expect(names.map((n) => n.replace(/\.\w+$/, "")).sort()).toEqual(Object.keys(SUPPLIED_CRESTS).sort());
+    for (const [slug, crest] of Object.entries(SUPPLIED_CRESTS)) {
+      expect(clubIdentity(slug), slug).toBeDefined();
+      expect(crest.label, slug).toBe(SUPPLIED_CREST_LABEL);
+      expect(crest.provenance, slug).toContain("Not an official or licensed file");
+      expect(crest.resemblance.note, slug).toContain("not automatically legally cleared");
+    }
+  });
+
+  it.each(names.map((n) => [n]))(
+    "%s is a 240 px or larger square WebP within its budget, and fingerprinted",
+    (name) => {
+      const bytes = readFileSync(resolve(dir, name));
+      expect(bytes.length, "bytes").toBeLessThanOrEqual(SUPPLIED_CREST_BUDGET);
+      expect(bytes.subarray(8, 16).toString("latin1")).toBe("WEBPVP8X");
+      const width = bytes.readUIntLE(24, 3) + 1;
+      expect(bytes.readUIntLE(27, 3) + 1).toBe(width);
+      expect(width).toBeGreaterThanOrEqual(240);
+      expect(approved.files[`supplied/crests/${name}`], name).toMatch(/^[0-9a-f]{64}$/);
+    },
+  );
+
+  it("take the place of the full crest only; the small crest stays TableTalk's own", () => {
+    for (const slug of Object.keys(SUPPLIED_CRESTS)) {
+      const club = clubIdentity(slug);
+      const full = crestSource(slug, club?.name ?? slug, "full");
+      const small = crestSource(slug, club?.name ?? slug, "small");
+      expect(full.kind === "file" && full.src, slug).toMatch(/supplied\/crests|^data:image\/webp/);
+      expect(small.kind === "file" && small.src, slug).not.toMatch(/supplied/);
+      expect(crestInline(slug, club?.name ?? slug), slug).toBeUndefined();
+    }
   });
 });
 

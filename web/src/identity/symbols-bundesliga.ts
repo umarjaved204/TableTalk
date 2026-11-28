@@ -225,11 +225,12 @@ function cathedral(main: string, ground: string): string {
 /** A Württemberg stag's antler, lying across as in the arms: a beam that
  *  tapers from a knobbed burr on the left to a point curving up on the
  *  right, with four tines rising from its upper edge, each tapering to a
- *  point and leaning forward. Filled shapes, not strokes. */
+ *  point and hooking forward at the tip, like a heraldic antler. Filled
+ *  shapes, not strokes. */
 function antler(main: string): string {
   const tine = (x: number, y: number, h: number, w: number, lean: number) =>
-    `M${r1(x - w / 2)} ${r1(y + 2)}Q${r1(x - w / 2 + lean * 0.2)} ${r1(y - h * 0.6)} ${r1(x + lean)} ${r1(y - h)}` +
-    `Q${r1(x + w / 2 + lean * 0.1)} ${r1(y - h * 0.45)} ${r1(x + w / 2)} ${r1(y + 2)}Z`;
+    `M${r1(x - w / 2)} ${r1(y + 2)}C${r1(x - w / 2 - 1)} ${r1(y - h * 0.7)} ${r1(x + lean * 0.3)} ${r1(y - h * 1.05)} ${r1(x + lean)} ${r1(y - h * 0.82)}` +
+    `C${r1(x + w / 2 + lean * 0.05)} ${r1(y - h * 0.62)} ${r1(x + w / 2)} ${r1(y - h * 0.3)} ${r1(x + w / 2)} ${r1(y + 2)}Z`;
   return (
     path(
       "M8 58Q48 68 88 40Q94 35 97 27Q101 40 92 47Q50 79 8 70Z" +

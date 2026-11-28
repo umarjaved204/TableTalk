@@ -36,7 +36,7 @@ import { LEAGUES } from "../src/data/leagues.ts";
 import { teamSlug } from "../src/data/teams.ts";
 import { identityFiles } from "../src/identity/build.ts";
 import { CLUBS } from "../src/identity/clubs/index.ts";
-import { SUPPLIED_LABEL } from "../src/identity/supplied.ts";
+import { SUPPLIED_CRESTS, SUPPLIED_LABEL } from "../src/identity/supplied.ts";
 import { fallbackDesign, renderCrest } from "../src/identity/crest.ts";
 import { LEAGUE_IDENTITIES, leagueMarkDesign } from "../src/identity/leagues.ts";
 import { SMALL_MAX, variantFor } from "../src/identity/sizes.ts";
@@ -95,14 +95,27 @@ function define(key, svgDocument) {
 const use = (key, size, label) =>
   `<svg class="cr" width="${size}" height="${size}" ${label ? `role="img" aria-label="${esc(label)}"` : `aria-hidden="true"`}><use href="#s-${key}"/></svg>`;
 
-const crestKey = (club, variant) =>
+/** A club's supplied full crest (an image file) as a data: address, if it has one. */
+const suppliedCrest = (slug) => dataUrl(`src/identity/supplied/crests/${slug}`);
+/** TableTalk's own drawing of a club's crest. */
+const ownKey = (club, variant) =>
   define(
-    `${club.slug}-${variant}`,
+    `${club.slug}-own-${variant}`,
     renderCrest(
       variant === "small" ? club.small : club.full,
       `c-${club.slug}${variant === "small" ? "-s" : ""}`,
     ),
   );
+/** The crest the site shows: a supplied full crest where there is one
+ *  (assets.ts uses the same rule), otherwise TableTalk's own. */
+const crestKey = (club, variant) => {
+  const supplied = variant === "full" ? suppliedCrest(club.slug) : undefined;
+  if (!supplied) return ownKey(club, variant);
+  return define(
+    `${club.slug}-supplied`,
+    `<svg viewBox="0 0 120 120"><image href="${supplied}" width="120" height="120"/></svg>`,
+  );
+};
 const altKey = (club, n, variant) =>
   define(
     `${club.slug}-alt${n}-${variant}`,
@@ -179,12 +192,12 @@ const CLASHES = [
   {
     title: "Three diamonds",
     slugs: ["werder-bremen", "hamburger-sv", "borussia-monchengladbach"],
-    note: "All three clubs have worn a diamond for generations, so all three keep it. Werder: square-on green diamond with rounded corners and a white W. HSV: a blue square block holding a white-edged diamond split into black and white triangles, no letter. Gladbach: tall narrow rhombus, black edge, a green band and a black B.",
+    note: "All three clubs have worn a diamond for generations, so all three keep it. Werder: square-on green diamond with rounded corners and a white W. HSV: a blue landscape flag with a white diamond and a solid black diamond inside, no letter. Gladbach: tall narrow rhombus, black edge, a green band and a black B.",
   },
   {
     title: "Red roundels",
     slugs: ["bayern-munich", "mainz-05", "union-berlin"],
-    note: "Bayern: a red ring of lettering round blue and white lozenges. Mainz: solid red with a large white 05. Union is no longer a roundel: a slanted red plate with yellow UNION, 1.FC above and the bear in a small disc.",
+    note: "Bayern: a red ring of lettering round blue and white lozenges. Mainz: solid red with a large white 05. Union is no longer a roundel: a slanted red plate with yellow italic UNION, 1.FC above and the bear in a ringed medallion.",
   },
   {
     title: "Blue and white",
@@ -194,12 +207,12 @@ const CLASHES = [
   {
     title: "Black, white and a ring",
     slugs: ["eintracht-frankfurt", "sv-elversberg", "bayer-leverkusen", "sc-freiburg"],
-    note: "Frankfurt: a red eagle on a white roundel with a red edge. Elversberg: black SVE on white inside a black ring with a gold edge. Leverkusen: two red heraldic lions and yellow banners round a small 04 medallion, with no enclosing roundel. Freiburg: an upright oval divided black and white, with a raptor's head and SCF.",
+    note: "Frankfurt: a crowned red eagle with an E shield in a red and white roundel lettered EINTRACHT FRANKFURT. Elversberg: black SVE on white inside a black ring with a gold edge. Leverkusen: two black-outlined red lions holding a white 04 medallion between yellow banners, with no enclosing roundel. Freiburg: an upright oval divided black and white, with a raptor's head and SCF.",
   },
   {
     title: "Red and white shields",
     slugs: ["1-fc-koln", "vfb-stuttgart", "fc-augsburg", "rb-leipzig"],
-    note: "Köln: a red goat standing on a red-ringed roundel with a small cathedral inside. Stuttgart: a heater with slanted red VfB on white over gold and three black heraldic antlers. Augsburg: round-bottomed, red and white halves, a green pine cone. Leipzig: a white round-bottomed shield with a navy edge, a red lion over navy RBL and a red base.",
+    note: "Köln: a white goat leaping onto a red roundel with KÖLN on a slanting white band and a black cathedral. Stuttgart: a white heater with Gothic red VfB, STUTTGART, and a small gold shield of antlers between 18 and 93. Augsburg: round-bottomed, red and white halves, a green pine cone. Leipzig: a white pointed shield with a navy edge, two red bulls charging at a football, navy RBL and a red base.",
   },
   {
     title: "Red and white stripes",
@@ -320,6 +333,11 @@ function clubCard(club) {
     .join("");
   const b = club.band;
   const band = `<div class="band" style="background:${b.bg};color:${b.ink};border-color:${b.accent}">${use(crestKey(club, "full"), 48)}<div><p class="bname">${esc(club.name)}</p><p style="color:${b.muted}">Hero band: ${esc(club.nickname)}, founded ${club.founded}</p></div></div>`;
+  const supplied = SUPPLIED_CRESTS[club.slug];
+  const suppliedBlock = supplied
+    ? `<p class="res res-${supplied.resemblance.level}"><b>Full crest in use: ${esc(supplied.label)}.</b> ${esc(supplied.provenance)} ${esc(supplied.changes)}<br><b>Resemblance: ${supplied.resemblance.level}.</b> ${esc(supplied.resemblance.note)}</p>
+<div class="alt"><h4>TableTalk's own drawing (kept as an alternative)</h4><p>The design below the supplied crest: still drawn and checked, and the small crest the site uses at 24 px and below.</p>${variantsBlock(ownKey(club, "full"), ownKey(club, "small"), `${club.name}, TableTalk drawing`)}<p class="looks"><b>Full:</b> ${esc(club.looks.full)}<br><b>Small:</b> ${esc(club.looks.small)}</p><p class="res res-${club.resemblance.level}"><b>Resemblance of this drawing: ${club.resemblance.level}.</b> ${esc(club.resemblance.note)}</p></div>`
+    : "";
   const alts = (club.alternatives ?? [])
     .map(
       (alt, n) =>
@@ -329,9 +347,13 @@ function clubCard(club) {
   return `<article class="club" id="club-${club.slug}">
 <header><h3>${esc(club.name)}</h3><p class="meta">${esc(club.nickname)} · founded ${club.founded} · <code>${club.short}</code> · <code>${club.slug}</code></p></header>
 ${variantsBlock(crestKey(club, "full"), crestKey(club, "small"), club.name)}
-<p class="looks"><b>Full crest:</b> ${esc(club.looks.full)}<br><b>Small crest:</b> ${esc(club.looks.small)}</p>
+${
+  supplied
+    ? suppliedBlock
+    : `<p class="looks"><b>Full crest:</b> ${esc(club.looks.full)}<br><b>Small crest:</b> ${esc(club.looks.small)}</p>
+<p class="res res-${club.resemblance.level}"><b>Resemblance to the official badge: ${LEVEL_TEXT[club.resemblance.level]}</b><br>${esc(club.resemblance.note)}</p>`
+}
 <p><b>Inspiration:</b> ${esc(club.inspiration)}</p>
-<p class="res res-${club.resemblance.level}"><b>Resemblance to the official badge: ${LEVEL_TEXT[club.resemblance.level]}</b><br>${esc(club.resemblance.note)}</p>
 <ul class="colours">${swatches}</ul>
 ${band}
 ${alts}
@@ -546,9 +568,14 @@ function sizesTable() {
   const rows = SHOWN.slice()
     .sort((a, b) => a.name.localeCompare(b.name, "en"))
     .map((c) => {
-      const [f, fz] = size(`src/identity/crests/${c.slug}.svg`);
+      // A supplied full crest is a WebP image, already compressed: its size
+      // is shown twice, as served.
+      const webp = `src/identity/supplied/crests/${c.slug}.webp`;
+      const [f, fz] = existsSync(webp)
+        ? [readFileSync(webp).length, readFileSync(webp).length]
+        : size(`src/identity/crests/${c.slug}.svg`);
       const [s, sz] = size(`src/identity/crests/${c.slug}-small.svg`);
-      return `<tr><td>${esc(c.name)}</td><td class="num">${kb(f)}</td><td class="num">${kb(fz)}</td><td class="num">${kb(s)}</td><td class="num">${kb(sz)}</td></tr>`;
+      return `<tr><td>${esc(c.name)}${existsSync(webp) ? " (full: supplied WebP)" : ""}</td><td class="num">${kb(f)}</td><td class="num">${kb(fz)}</td><td class="num">${kb(s)}</td><td class="num">${kb(sz)}</td></tr>`;
     })
     .join("");
   const marks = LEAGUE_IDENTITIES.map((l) => {
