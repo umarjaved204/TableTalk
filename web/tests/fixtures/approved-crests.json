@@ -1,5 +1,5 @@
 {
-  "about": "SHA-256 of every approved crest file: TableTalk crests full and small, as the text the designs draw (Premier League approved 27 Nov 2026, La Liga and Bundesliga 28 Nov 2026: 58 clubs, 116 files), and supplied crest images as their bytes (seven Bundesliga clubs, chosen by the owner on 28 Nov 2026). tests/unit/identity.test.ts fails if anything alters one. Add each league once its artwork is finally approved; update an entry only when a crest is deliberately revised and re-approved.",
+  "about": "SHA-256 of every approved crest file: TableTalk crests full and small, as the text the designs draw (Premier League approved 27 Nov 2026, La Liga and Bundesliga 28 Nov 2026: 58 clubs, 116 files), and supplied crest images as their bytes (seven Bundesliga clubs and seven Serie A clubs, chosen by the owner on 28 Nov 2026; the Serie A SVG crests join after final approval). tests/unit/identity.test.ts fails if anything alters one. Add each league once its artwork is finally approved; update an entry only when a crest is deliberately revised and re-approved.",
   "files": {
     "arsenal.svg": "d2d6cb67148e90644d7a22e3bd9ba6aed2c3163ba234743a57b3ff287cb4dc7b",
     "arsenal-small.svg": "184a0df0301f5e2f7e63267eddd18be6dca13ddc97a3da5cd82ab269464b4106",
@@ -123,6 +123,13 @@
     "supplied/crests/hamburger-sv.webp": "da81e2baefa5b280ae6b8a2523b291e4ea847f32eb9cfbee9f0c48adb5b3399d",
     "supplied/crests/rb-leipzig.webp": "72de473cdfd7f914753da7adb4cdca47969b6eb22985254035347ab938b7090e",
     "supplied/crests/union-berlin.webp": "4553cece56bd9730e690ed607c7afbde5f4a3778330f12e270f2e3375bb409fd",
-    "supplied/crests/vfb-stuttgart.webp": "fb188653b8c39f70c38acd5bfe8a19fdf3e5614af6376629ac545002359411ca"
+    "supplied/crests/vfb-stuttgart.webp": "fb188653b8c39f70c38acd5bfe8a19fdf3e5614af6376629ac545002359411ca",
+    "supplied/crests/atalanta.webp": "671133ccabe6e5da86f43726eb876c09dec698ff2d3c92b69ff887bc8e58f0a0",
+    "supplied/crests/frosinone.webp": "bf5dd2348198db5655ce92b0e88136b0af2baa779b103e1ef25ec2a3c4c0f38f",
+    "supplied/crests/genoa.webp": "ea748bbf296578091d904309c92856ba20da5572d35dac5c33222f1d4a979c1a",
+    "supplied/crests/lecce.webp": "11558809a1cb84aa2ac2dfc6fa996d80bf681fd6a9471f8222cf8573d291edbe",
+    "supplied/crests/roma.webp": "4b7222e8b0cb1449270720dda531003b235ed0e744da7841fa7667e0ef7c0c2b",
+    "supplied/crests/torino.webp": "69fcd9f3b897a154ed18b61d5d75c6b6bb4983bca737761d6d06a206e0c3b05c",
+    "supplied/crests/lazio.webp": "583aa8c3d787d3a0baf4c60353caad4644faa675b4288a671ef33c48a1824af8"
   }
 }

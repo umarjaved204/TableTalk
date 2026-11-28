@@ -259,6 +259,8 @@ export const SERIE_A: readonly ClubIdentity[] = [
       note: "A white profile of the huntress with streaming hair in a ring, on an oval halved blue and black with ATALANTA and 1907, is the official badge's arrangement. The drawing is TableTalk's own. The huntress's bow on a halved shield is the lower-resemblance alternative.",
     },
     composition: "profile in a ring on a halved oval",
+    reference:
+      "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
       full: "An upright oval, blue on the left and black on the right, with ATALANTA curving over the top and 1907 under the bottom in white. In the middle, a white ring round the white head of a woman in profile facing left, her hair streaming back in long waves.",
       small: "The blue and black oval with a white ring round the white profile head and its streaming hair.",
@@ -634,6 +636,8 @@ export const SERIE_A: readonly ClubIdentity[] = [
       note: "A pale lion rampant on blue, crossed by a rising yellow bend, under a yellow chief with the name, in a yellow-edged shield, is the official badge's arrangement. The lion is TableTalk's drawing. The roundel with a yellow lion is the lower-resemblance alternative.",
     },
     composition: "civic lion on a shield crossed by a bend",
+    reference:
+      "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
       full: "A pointed shield with a yellow edge and a blue field: FROSINONE in blue on a yellow chief, a yellow bend with a sky-blue stripe rising from lower left to upper right, and a pale blue lion rampant facing left over it.",
       small: "The yellow-edged blue shield with a plain yellow chief, the bend and the pale lion.",
@@ -709,6 +713,8 @@ export const SERIE_A: readonly ClubIdentity[] = [
       note: "A gold griffin rampant on red and navy halves, under a white chief with a red cross, in a gold-edged shield, is the official badge's arrangement. The griffin is TableTalk's drawing. The cross shield without the griffin is the lower-resemblance alternative.",
     },
     composition: "heraldic beast under a chief",
+    reference:
+      "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
       full: "A pointed shield with a gold edge: a white chief with Saint George's red cross, and below it red on the left and navy on the right with a gold griffin rampant facing left, wing raised behind it.",
       small:
@@ -926,10 +932,12 @@ export const SERIE_A: readonly ClubIdentity[] = [
       note: "A large eagle with raised wings over a small sky-blue and white shield with the name is the official badge's arrangement. The eagle is TableTalk's drawing. The eagle in a roundel is the lower-resemblance alternative.",
     },
     composition: "eagle over a small shield",
+    reference:
+      "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
       full: "A white eagle with navy contours, head to the left and wings raised wide, standing over a small pointed shield: sky blue with a navy edge and a white band carrying LAZIO in navy. A white outline round the eagle keeps it clear on dark themes.",
       small:
-        "A navy eagle with raised wings, outlined in white, over the small sky-blue shield with its white band.",
+        "A gold eagle with raised wings, outlined in navy, over the small sky-blue shield with its white band, matching the supplied full crest's colours.",
     },
     full: (k) => [
       k.shield("escutcheon", { rim: LAZ.navy, field: LAZ.sky, rimWidth: 3 }),
@@ -946,7 +954,7 @@ export const SERIE_A: readonly ClubIdentity[] = [
     small: (k) => [
       k.shield("escutcheon", { rim: LAZ.navy, field: LAZ.sky, rimWidth: 5 }),
       k.band(80, 14, WHITE),
-      `<g stroke="#fff" stroke-width="7" stroke-linejoin="round" paint-order="stroke">${k.symbol("eagle-raised-lite", { x: 60, y: 40, size: 80 }, { main: LAZ.navy, accent: LAZ.navy, ground: LAZ.navy })}</g>`,
+      `<g stroke="${LAZ.navy}" stroke-width="6" stroke-linejoin="round" paint-order="stroke">${k.symbol("eagle-raised-lite", { x: 60, y: 40, size: 80 }, { main: LAZ.gold, accent: LAZ.gold, ground: LAZ.gold })}</g>`,
     ],
     alternatives: [
       {
@@ -998,6 +1006,8 @@ export const SERIE_A: readonly ClubIdentity[] = [
       note: "A gold oak with a wolf beneath it on navy, under U.S. LECCE and a yellow and red stripe with 1908, in a tall gold-edged shield, is the official badge's arrangement; the oak and wolf are the city's arms. The drawing is TableTalk's own. The striped shield with USL is the lower-resemblance alternative.",
     },
     composition: "civic arms under a lettered head",
+    reference:
+      "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
       full: "A tall shield tapering to a low point, navy with a thin gold edge: U.S. and LECCE in gold, a yellow and red stripe broken by 1908, and a gold holm oak with a wolf walking left beneath it.",
       small: "The tall navy shield with the yellow and red stripe and the gold oak and wolf.",
@@ -1243,6 +1253,8 @@ export const SERIE_A: readonly ClubIdentity[] = [
       note: "The she-wolf with the twins in gold on red, under the name, in a gold-edged shield, is the official badge's idea. The drawing and the layout (a plain lettered chief over the figure) are TableTalk's own. The ASR roundel is the lower-resemblance alternative.",
     },
     composition: "civic legend under a lettered chief",
+    reference:
+      "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
       full: "A square-shouldered shield with a gold edge and a deep red field: ROMA in gold across the top over a thin gold line, and the gold she-wolf standing left with the twins beneath her.",
       small: "The gold-edged red shield with the gold she-wolf and twins.",
@@ -1370,9 +1382,12 @@ export const SERIE_A: readonly ClubIdentity[] = [
       note: "A gold bull rampant on granata under TORINO in a gold-edged shield is the official badge's idea. The bull is TableTalk's drawing. The TFC roundel is the lower-resemblance alternative.",
     },
     composition: "civic beast under a lettered chief",
+    reference:
+      "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
       full: "A pointed shield with a gold edge and a granata field: TORINO in gold across the top over a thin gold line, and a gold bull rampant facing left, horns up, tail curling.",
-      small: "The gold-edged granata shield with the gold rampant bull.",
+      small:
+        "The gold-edged granata shield under a plain white chief, with a white rampant bull, matching the supplied full crest's colours.",
     },
     full: (k) => [
       k.shield("heater", { rim: TOR.gold, field: TOR.red, rimWidth: 4 }),
@@ -1386,11 +1401,9 @@ export const SERIE_A: readonly ClubIdentity[] = [
     ],
     small: (k) => [
       k.shield("heater", { rim: TOR.gold, field: TOR.red, rimWidth: 7 }),
-      k.symbol(
-        "bull-rampant",
-        { x: 60, y: 60, size: 80 },
-        { main: TOR.gold, accent: TOR.gold, ground: TOR.red },
-      ),
+      k.pattern({ kind: "chief", colour: WHITE, height: 30 }),
+      k.rule(30, TOR.gold, 4),
+      k.symbol("bull-rampant", { x: 60, y: 70, size: 70 }, { main: WHITE, accent: WHITE, ground: TOR.red }),
     ],
     alternatives: [
       {

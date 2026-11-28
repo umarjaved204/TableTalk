@@ -522,7 +522,10 @@ function comparisonSection() {
       full: renderCrest(club.full, `p-${club.slug}`),
       small: renderCrest(club.small, `p-${club.slug}-s`),
     };
-    if (same(was.full, now.full) && same(was.small, now.small)) unchanged.push(club.name);
+    // A supplied full crest replaces the drawing above 24 px, so the club
+    // has changed even where its own SVG files have not.
+    const supplied = Boolean(suppliedCrest(club.slug));
+    if (!supplied && same(was.full, now.full) && same(was.small, now.small)) unchanged.push(club.name);
     else changed.push({ club, was });
   }
   const rows = changed
@@ -533,12 +536,18 @@ function comparisonSection() {
         was.small.replaceAll('"p-', '"q-').replaceAll("#p-", "#q-"),
       );
       const cell = (cls) =>
-        `<div class="theme ${cls} cmp"><div><p class="tname">Previous</p>${use(pf, 96)}${use(ps, 24)}${use(ps, 16)}</div><span class="arrow" aria-hidden="true">→</span><div><p class="tname">Refined</p>${use(crestKey(club, "full"), 96)}${use(crestKey(club, "small"), 24)}${use(crestKey(club, "small"), 16)}</div></div>`;
+        `<div class="theme ${cls} cmp"><div><p class="tname">Previous</p>${use(pf, 96)}${use(ps, 24)}${use(ps, 16)}</div><span class="arrow" aria-hidden="true">→</span><div><p class="tname">Now</p>${use(crestKey(club, "full"), 96)}${use(crestKey(club, "small"), 24)}${use(crestKey(club, "small"), 16)}</div></div>`;
       const level =
         was.resemblance === club.resemblance.level
           ? `Resemblance: ${club.resemblance.level} (unchanged).`
           : `Resemblance: ${was.resemblance}, now <b>${club.resemblance.level}</b>.`;
-      return `<div class="clash"><h3>${esc(club.name)}</h3><div class="pair">${cell("t-light")}${cell("t-dark")}</div><p class="looks"><b>Now:</b> ${esc(club.looks.full)} ${level}</p></div>`;
+      // A supplied full crest is described by its own record, not by the
+      // drawing it replaces above 24 px.
+      const supplied = suppliedCrest(club.slug) ? SUPPLIED_CRESTS[club.slug] : undefined;
+      const now = supplied
+        ? `<b>Now:</b> full crest: ${esc(supplied.label)}. Small crest (TableTalk SVG): ${esc(club.looks.small)} Resemblance of the full crest: ${supplied.resemblance.level}. ${esc(supplied.resemblance.note)}`
+        : `<b>Now:</b> ${esc(club.looks.full)} ${level}`;
+      return `<div class="clash"><h3>${esc(club.name)}</h3><div class="pair">${cell("t-light")}${cell("t-dark")}</div><p class="looks">${now}</p></div>`;
     })
     .join("");
   const changedMarks = LEAGUE_IDENTITIES.filter(
@@ -556,7 +565,7 @@ function comparisonSection() {
     })
     .join("");
   return `<section><h2>Previous and refined</h2>
-<p>${changed.length} crests changed since the last review; ${unchanged.length} kept as they were: ${esc(unchanged.join(", "))}. Each row shows the previous full crest (96 px) and small crest (24 and 16 px), then the refined one, on the light and the dark theme.</p>
+<p>${changed.length} crests changed since the last review; ${unchanged.length} kept as they were: ${esc(unchanged.join(", "))}. Each row shows the previous full crest (96 px) and small crest (24 and 16 px), then the crest now in use (a supplied image where the club has one), on the light and the dark theme.</p>
 ${rows}
 ${
   changedMarks.length > 0
