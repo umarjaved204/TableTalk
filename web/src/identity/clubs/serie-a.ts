@@ -84,7 +84,7 @@ const FIO = { viola: "#5b2a86", red: "#e2231a" };
 const FRO = { blue: "#0d4ea6", yellow: "#f7d117", pale: "#cdd9ee", sky: "#3fa4e0" };
 const GEN = { red: "#b31b1b", navy: "#0b1f3a", gold: "#f5c518" };
 const INT = { blue: "#0a2ea0" };
-const LAZ = { sky: "#87c4ea", navy: "#0b2f52", gold: "#d9a92e" };
+const LAZ = { sky: "#87c4ea", navy: "#0b2f52", gold: "#d9a92e", amber: "#a8790f" };
 const LEC = { navy: "#14224a", gold: "#c9a95c", red: "#d81f26", yellow: "#f6c900" };
 const MON = { red: "#e4002b" };
 const NAP = { blue: "#0f74c0" };
@@ -935,7 +935,7 @@ export const SERIE_A: readonly ClubIdentity[] = [
     reference:
       "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
-      full: "A white eagle with navy contours, head to the left and wings raised wide, standing over a small pointed shield: sky blue with a navy edge and a white band carrying LAZIO in navy. A white outline round the eagle keeps it clear on dark themes.",
+      full: "A gold eagle with navy contours and a deeper amber beak and talons, head to the left and wings raised wide, in the colours of the supplied full crest, standing over a small pointed shield: sky blue with a navy edge and a white band carrying LAZIO in navy. A white outline round the eagle keeps it clear on dark themes.",
       small:
         "A gold eagle with raised wings, outlined in navy, over the small sky-blue shield with its white band, matching the supplied full crest's colours.",
     },
@@ -947,7 +947,7 @@ export const SERIE_A: readonly ClubIdentity[] = [
         k,
         "eagle-raised",
         { x: 60, y: 38, size: 72 },
-        { main: WHITE, accent: LAZ.gold, ground: LAZ.navy },
+        { main: LAZ.gold, accent: LAZ.amber, ground: LAZ.navy },
         LAZ.navy,
       ),
     ],
@@ -957,6 +957,32 @@ export const SERIE_A: readonly ClubIdentity[] = [
       `<g stroke="${LAZ.navy}" stroke-width="6" stroke-linejoin="round" paint-order="stroke">${k.symbol("eagle-raised-lite", { x: 60, y: 40, size: 80 }, { main: LAZ.gold, accent: LAZ.gold, ground: LAZ.gold })}</g>`,
     ],
     alternatives: [
+      {
+        title: "Original colours (white eagle)",
+        note: "The first drawing's colouring, kept for reference: the same eagle and shield with the eagle in white, before the owner chose the golden eagle of the supplied artwork.",
+        looks: {
+          full: "A white eagle with navy contours, head to the left and wings raised wide, standing over a small pointed shield: sky blue with a navy edge and a white band carrying LAZIO in navy.",
+          small:
+            "A navy eagle with raised wings, outlined in white, over the small sky-blue shield with its white band.",
+        },
+        full: (k) => [
+          k.shield("escutcheon", { rim: LAZ.navy, field: LAZ.sky, rimWidth: 3 }),
+          k.band(78, 14, WHITE),
+          text("LAZIO", { x: 60, baseline: 89, cap: 9, fill: LAZ.navy, maxWidth: 44, tracking: 0.1 }),
+          contoured(
+            k,
+            "eagle-raised",
+            { x: 60, y: 38, size: 72 },
+            { main: WHITE, accent: LAZ.gold, ground: LAZ.navy },
+            LAZ.navy,
+          ),
+        ],
+        small: (k) => [
+          k.shield("escutcheon", { rim: LAZ.navy, field: LAZ.sky, rimWidth: 5 }),
+          k.band(80, 14, WHITE),
+          `<g stroke="#fff" stroke-width="7" stroke-linejoin="round" paint-order="stroke">${k.symbol("eagle-raised-lite", { x: 60, y: 40, size: 80 }, { main: LAZ.navy, accent: LAZ.navy, ground: LAZ.navy })}</g>`,
+        ],
+      },
       {
         title: "Eagle in a roundel",
         note: "The eagle on a sky-blue roundel with a white ring lettered S.S. LAZIO and 1900, without the small shield: the emblem and colours in a different composition.",
@@ -1385,7 +1411,7 @@ export const SERIE_A: readonly ClubIdentity[] = [
     reference:
       "Custom club-inspired artwork — user supplied, AI-generated design reference (28 Nov 2026). The image itself is the full crest in use (supplied/crests, described in supplied.ts); this TableTalk drawing is kept as its alternative and is the small crest. Not official, not licensed.",
     looks: {
-      full: "A pointed shield with a gold edge and a granata field: TORINO in gold across the top over a thin gold line, and a gold bull rampant facing left, horns up, tail curling.",
+      full: "A pointed shield with a gold edge and a granata field: TORINO in gold across the top over a thin gold line, and a white bull rampant facing left, horns up, tail curling, in the colours of the supplied full crest.",
       small:
         "The gold-edged granata shield under a plain white chief, with a white rampant bull, matching the supplied full crest's colours.",
     },
@@ -1393,11 +1419,7 @@ export const SERIE_A: readonly ClubIdentity[] = [
       k.shield("heater", { rim: TOR.gold, field: TOR.red, rimWidth: 4 }),
       text("TORINO", { x: 60, baseline: 26, cap: 12, fill: TOR.gold, tracking: 0.18 }),
       k.rule(32, TOR.gold, 2),
-      k.symbol(
-        "bull-rampant",
-        { x: 60, y: 70, size: 62 },
-        { main: TOR.gold, accent: TOR.gold, ground: TOR.red },
-      ),
+      k.symbol("bull-rampant", { x: 60, y: 70, size: 62 }, { main: WHITE, accent: WHITE, ground: TOR.red }),
     ],
     small: (k) => [
       k.shield("heater", { rim: TOR.gold, field: TOR.red, rimWidth: 7 }),
@@ -1406,6 +1428,32 @@ export const SERIE_A: readonly ClubIdentity[] = [
       k.symbol("bull-rampant", { x: 60, y: 70, size: 70 }, { main: WHITE, accent: WHITE, ground: TOR.red }),
     ],
     alternatives: [
+      {
+        title: "Original colours (gold bull)",
+        note: "The first drawing's colouring, kept for reference: the same bull and shield with the bull in gold, before the owner chose the white bull of the supplied artwork.",
+        looks: {
+          full: "A pointed shield with a gold edge and a granata field: TORINO in gold across the top over a thin gold line, and a gold bull rampant facing left, horns up, tail curling.",
+          small: "The gold-edged granata shield with the gold rampant bull.",
+        },
+        full: (k) => [
+          k.shield("heater", { rim: TOR.gold, field: TOR.red, rimWidth: 4 }),
+          text("TORINO", { x: 60, baseline: 26, cap: 12, fill: TOR.gold, tracking: 0.18 }),
+          k.rule(32, TOR.gold, 2),
+          k.symbol(
+            "bull-rampant",
+            { x: 60, y: 70, size: 62 },
+            { main: TOR.gold, accent: TOR.gold, ground: TOR.red },
+          ),
+        ],
+        small: (k) => [
+          k.shield("heater", { rim: TOR.gold, field: TOR.red, rimWidth: 7 }),
+          k.symbol(
+            "bull-rampant",
+            { x: 60, y: 60, size: 80 },
+            { main: TOR.gold, accent: TOR.gold, ground: TOR.red },
+          ),
+        ],
+      },
       {
         title: "TFC roundel",
         note: "The club's initials in gold on a granata roundel ringed with TORINO and 1906: the colours and name without the bull.",
