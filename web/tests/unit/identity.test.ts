@@ -38,7 +38,7 @@ import { LetteringError, arcText, lineText, mapPath } from "../../src/identity/l
 import type { BandColours } from "../../src/identity/types.ts";
 
 /** Leagues whose crests are drawn so far; the rest follow league by league. */
-const COVERED = ["premier_league", "la_liga", "bundesliga"];
+const COVERED = ["premier_league", "la_liga", "bundesliga", "serie_a"];
 
 const SEASON = JSON.parse(readFileSync(resolve("tests/fixtures/clubs-2026-27.json"), "utf8")) as {
   leagues: Record<string, string[]>;
@@ -140,7 +140,7 @@ describe("club registry", () => {
 
   it("finds a club by slug, and nothing for a club with no entry", () => {
     expect(clubIdentity("arsenal")?.name).toBe("Arsenal");
-    expect(clubIdentity("ac-milan")).toBeUndefined();
+    expect(clubIdentity("angers")).toBeUndefined();
   });
 });
 

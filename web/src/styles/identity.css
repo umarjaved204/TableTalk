@@ -466,6 +466,166 @@
   --band-edge: color-mix(in srgb, #fff 45%, transparent);
 }
 
+[data-club="ac-milan"] {
+  --club-1: #9e0f17;
+  --club-2: #ffb3b3;
+  --club-ink: #fff;
+  --club-muted: #ffe2e2;
+  --band-edge: color-mix(in srgb, #ffb3b3 45%, transparent);
+}
+
+[data-club="atalanta"] {
+  --club-1: #0d4a86;
+  --club-2: #9cc9f0;
+  --club-ink: #fff;
+  --club-muted: #dceafa;
+  --band-edge: color-mix(in srgb, #9cc9f0 45%, transparent);
+}
+
+[data-club="bologna"] {
+  --club-1: #1a2b45;
+  --club-2: #ec7d87;
+  --club-ink: #fff;
+  --club-muted: #e3e9f0;
+  --band-edge: color-mix(in srgb, #ec7d87 45%, transparent);
+}
+
+[data-club="cagliari"] {
+  --club-1: #0f2347;
+  --club-2: #ff7d84;
+  --club-ink: #fff;
+  --club-muted: #e2e8f4;
+  --band-edge: color-mix(in srgb, #ff7d84 45%, transparent);
+}
+
+[data-club="como"] {
+  --club-1: #123a6b;
+  --club-2: #9fc3ec;
+  --club-ink: #fff;
+  --club-muted: #e1ebf7;
+  --band-edge: color-mix(in srgb, #9fc3ec 45%, transparent);
+}
+
+[data-club="fiorentina"] {
+  --club-1: #4b1f74;
+  --club-2: #ff9a94;
+  --club-ink: #fff;
+  --club-muted: #efe3f9;
+  --band-edge: color-mix(in srgb, #ff9a94 45%, transparent);
+}
+
+[data-club="frosinone"] {
+  --club-1: #0b3f86;
+  --club-2: #f7d117;
+  --club-ink: #fff;
+  --club-muted: #e2ecfa;
+  --band-edge: color-mix(in srgb, #f7d117 45%, transparent);
+}
+
+[data-club="genoa"] {
+  --club-1: #0b1f3a;
+  --club-2: #f5c518;
+  --club-ink: #fff;
+  --club-muted: #e3e8f0;
+  --band-edge: color-mix(in srgb, #f5c518 45%, transparent);
+}
+
+[data-club="inter-milan"] {
+  --club-1: #0a2580;
+  --club-2: #8fb0ff;
+  --club-ink: #fff;
+  --club-muted: #e0e7ff;
+  --band-edge: color-mix(in srgb, #8fb0ff 45%, transparent);
+}
+
+[data-club="juventus"] {
+  --club-1: #141414;
+  --club-2: #b9b9b9;
+  --club-ink: #fff;
+  --club-muted: #e6e6e6;
+  --band-edge: color-mix(in srgb, #b9b9b9 45%, transparent);
+}
+
+[data-club="lazio"] {
+  --club-1: #0b2f52;
+  --club-2: #87c4ea;
+  --club-ink: #fff;
+  --club-muted: #dff0fb;
+  --band-edge: color-mix(in srgb, #87c4ea 45%, transparent);
+}
+
+[data-club="lecce"] {
+  --club-1: #14224a;
+  --club-2: #f6c900;
+  --club-ink: #fff;
+  --club-muted: #f1e8cc;
+  --band-edge: color-mix(in srgb, #f6c900 45%, transparent);
+}
+
+[data-club="monza"] {
+  --club-1: #b0001f;
+  --club-2: #ffc2cd;
+  --club-ink: #fff;
+  --club-muted: #ffe5ea;
+  --band-edge: color-mix(in srgb, #ffc2cd 45%, transparent);
+}
+
+[data-club="napoli"] {
+  --club-1: #0b5a96;
+  --club-2: #9fd6f5;
+  --club-ink: #fff;
+  --club-muted: #e1f2fc;
+  --band-edge: color-mix(in srgb, #9fd6f5 45%, transparent);
+}
+
+[data-club="parma"] {
+  --club-1: #1c3f94;
+  --club-2: #ffd200;
+  --club-ink: #fff;
+  --club-muted: #e2e8f7;
+  --band-edge: color-mix(in srgb, #ffd200 45%, transparent);
+}
+
+[data-club="roma"] {
+  --club-1: #7a1a28;
+  --club-2: #f0bc42;
+  --club-ink: #fff;
+  --club-muted: #fbe6c4;
+  --band-edge: color-mix(in srgb, #f0bc42 45%, transparent);
+}
+
+[data-club="sassuolo"] {
+  --club-1: #0c5b31;
+  --club-2: #7fe0a8;
+  --club-ink: #fff;
+  --club-muted: #def5e7;
+  --band-edge: color-mix(in srgb, #7fe0a8 45%, transparent);
+}
+
+[data-club="torino"] {
+  --club-1: #6b1724;
+  --club-2: #e0b04a;
+  --club-ink: #fff;
+  --club-muted: #f6e3e6;
+  --band-edge: color-mix(in srgb, #e0b04a 45%, transparent);
+}
+
+[data-club="udinese"] {
+  --club-1: #161616;
+  --club-2: #bfa25a;
+  --club-ink: #fff;
+  --club-muted: #e8e8e8;
+  --band-edge: color-mix(in srgb, #bfa25a 45%, transparent);
+}
+
+[data-club="venezia"] {
+  --club-1: #151515;
+  --club-2: #f58a4b;
+  --club-ink: #fff;
+  --club-muted: #e8e8e8;
+  --band-edge: color-mix(in srgb, #f58a4b 45%, transparent);
+}
+
 [data-league="premier-league"] {
   --club-1: #2b1442;
   --club-2: #ff6b81;

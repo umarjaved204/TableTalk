@@ -19,7 +19,7 @@ const BLACK = "#111";
  *  units, far below a pixel at any size a crest is shown) written as
  *  straight lines: the same letters in a much smaller file. The Premier
  *  League and La Liga crests, approved before this, keep the full curves. */
-function slim(d: string): string {
+export function slim(d: string): string {
   let out = "";
   // The last point actually written: a dropped point is never more than
   // 0.4 units from it, so the error never builds up.
