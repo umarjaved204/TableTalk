@@ -179,12 +179,12 @@ const CLASHES = [
   {
     title: "Three diamonds",
     slugs: ["werder-bremen", "hamburger-sv", "borussia-monchengladbach"],
-    note: "All three clubs have worn a diamond for generations, so all three keep it. Werder: square-on green diamond with rounded corners and a white W. HSV: sharp square-on diamond, blue edge, black and white quarters, no letter. Gladbach: tall narrow rhombus, black edge, a green band and a black B.",
+    note: "All three clubs have worn a diamond for generations, so all three keep it. Werder: square-on green diamond with rounded corners and a white W. HSV: a blue square block holding a white-edged diamond split into black and white triangles, no letter. Gladbach: tall narrow rhombus, black edge, a green band and a black B.",
   },
   {
     title: "Red roundels",
     slugs: ["bayern-munich", "mainz-05", "union-berlin"],
-    note: "Bayern: a red ring of lettering round blue and white lozenges. Mainz: solid red with a large white 05. Union: a red ring opening like a C, edged yellow, round a black bear on white.",
+    note: "Bayern: a red ring of lettering round blue and white lozenges. Mainz: solid red with a large white 05. Union is no longer a roundel: a slanted red plate with yellow UNION, 1.FC above and the bear in a small disc.",
   },
   {
     title: "Blue and white",
@@ -194,12 +194,12 @@ const CLASHES = [
   {
     title: "Black, white and a ring",
     slugs: ["eintracht-frankfurt", "sv-elversberg", "bayer-leverkusen", "sc-freiburg"],
-    note: "Frankfurt: a black eagle inside a red ring. Elversberg: black SVE on white inside a black ring with a gold edge. Leverkusen: red lions and yellow banners round a 04 disc. Freiburg: an upright oval divided black and white, with a raptor's head and SCF.",
+    note: "Frankfurt: a red eagle on a white roundel with a red edge. Elversberg: black SVE on white inside a black ring with a gold edge. Leverkusen: two red heraldic lions and yellow banners round a small 04 medallion, with no enclosing roundel. Freiburg: an upright oval divided black and white, with a raptor's head and SCF.",
   },
   {
     title: "Red and white shields",
     slugs: ["1-fc-koln", "vfb-stuttgart", "fc-augsburg", "rb-leipzig"],
-    note: "Köln: a white heater with a red chief, red cathedral and white goat. Stuttgart: a heater with red VfB on white over gold and black antlers. Augsburg: round-bottomed, red and white halves, a green pine cone. Leipzig: round-bottomed with a navy edge, RBL on white over gold, a red lion and navy pales.",
+    note: "Köln: a red goat standing on a red-ringed roundel with a small cathedral inside. Stuttgart: a heater with slanted red VfB on white over gold and three black heraldic antlers. Augsburg: round-bottomed, red and white halves, a green pine cone. Leipzig: a white round-bottomed shield with a navy edge, a red lion over navy RBL and a red base.",
   },
   {
     title: "Red and white stripes",

@@ -74,35 +74,45 @@ const RAPTOR: OutlinePoint[] = [
   [12, 44],
 ];
 
-/** A goat standing left, head up, short tail raised: Cologne's mascot. */
+/** A billy goat standing left, Cologne's mascot: a long head with a beard,
+ *  a deep chest, a level back, a short tail flicked up, and slender legs
+ *  with the hind leg's hock angled back. The far legs are drawn separately. */
 const GOAT: OutlinePoint[] = [
-  [10, 37, 1],
-  [15, 28],
-  [24, 23],
-  [32, 30],
-  [38, 36],
-  [52, 37],
-  [72, 36],
-  [84, 37],
-  [90, 30, 1],
-  [90, 40],
-  [87, 52],
-  [85, 72],
-  [87, 88, 1],
-  [80, 88, 1],
-  [77, 66],
-  [72, 60],
-  [50, 61],
-  [43, 64],
-  [41, 88, 1],
-  [34, 88, 1],
-  [33, 64],
-  [28, 52],
-  [24, 47],
-  [22, 57, 1],
-  [18, 46],
-  [12, 43],
+  [8, 30, 1],
+  [11, 23],
+  [17, 17],
+  [24, 15],
+  [29, 19],
+  [34, 27],
+  [42, 33],
+  [58, 34],
+  [74, 32],
+  [82, 33],
+  [86, 26, 1],
+  [88, 33],
+  [89, 42],
+  [86, 52],
+  [84, 62],
+  [85, 80],
+  [87, 86, 1],
+  [80, 86, 1],
+  [79, 66],
+  [76, 56],
+  [66, 55],
+  [48, 55],
+  [42, 58],
+  [41, 80],
+  [42, 86, 1],
+  [35, 86, 1],
+  [34, 64],
+  [31, 52],
+  [27, 44],
+  [23, 39],
+  [21, 48, 1],
+  [17, 38],
+  [12, 34],
 ];
+const GOAT_FAR_LEGS = "M47 55L52 56L51 84L52 86L46 86L47 82ZM70 55L75 57L74 84L75 86L69 86L70 82Z";
 
 /** A bear on its hind legs, facing left, forepaws raised: Berlin's bear. */
 const BEAR: OutlinePoint[] = [
@@ -167,31 +177,35 @@ const FOAL: OutlinePoint[] = [
   [32, 20],
 ];
 
-/** A hare running left, ears laid back. */
+/** A hare bounding left: a rounded head with two long ears raised up and
+ *  back, an arched back, a round scut, a big folded hind leg and a short
+ *  foreleg reaching forward. Compact, so it reads as a hare when small. */
 const HARE: OutlinePoint[] = [
-  [6, 44, 1],
-  [12, 36],
-  [22, 32],
-  [34, 16],
-  [50, 6, 1],
-  [42, 20],
-  [36, 30],
+  [6, 50, 1],
+  [9, 42],
+  [17, 36],
+  [22, 26],
+  [28, 6, 1],
+  [31, 26],
+  [36, 12, 1],
+  [36, 32],
   [50, 30],
   [68, 32],
-  [82, 38],
-  [92, 46],
-  [94, 54, 1],
-  [87, 57],
-  [84, 66],
-  [96, 76, 1],
-  [80, 75],
-  [70, 64],
-  [56, 62],
+  [82, 40],
+  [88, 46],
+  [96, 44, 1],
+  [94, 54],
+  [88, 58],
+  [90, 70],
+  [98, 76, 1],
+  [76, 76, 1],
+  [68, 66],
+  [54, 64],
   [44, 66],
-  [24, 74, 1],
-  [32, 62],
-  [26, 52],
-  [14, 48],
+  [26, 72, 1],
+  [30, 64],
+  [26, 58],
+  [16, 56],
 ];
 
 /** A tall cathedral front with twin spires: two towers, each a stack of
@@ -208,12 +222,23 @@ function cathedral(main: string, ground: string): string {
   );
 }
 
-/** A Württemberg stag's antler, lying across: a curved beam with four tines. */
+/** A Württemberg stag's antler, lying across as in the arms: a beam that
+ *  tapers from a knobbed burr on the left to a point curving up on the
+ *  right, with four tines rising from its upper edge, each tapering to a
+ *  point and leaning forward. Filled shapes, not strokes. */
 function antler(main: string): string {
-  return line(
-    "M4 66C30 62 62 62 96 52M20 64C19 56 22 50 28 45M42 63C41 54 45 48 52 43M64 61C64 52 68 46 76 41M85 56C86 50 89 46 95 42",
-    main,
-    8,
+  const tine = (x: number, y: number, h: number, w: number, lean: number) =>
+    `M${r1(x - w / 2)} ${r1(y + 2)}Q${r1(x - w / 2 + lean * 0.2)} ${r1(y - h * 0.6)} ${r1(x + lean)} ${r1(y - h)}` +
+    `Q${r1(x + w / 2 + lean * 0.1)} ${r1(y - h * 0.45)} ${r1(x + w / 2)} ${r1(y + 2)}Z`;
+  return (
+    path(
+      "M8 58Q48 68 88 40Q94 35 97 27Q101 40 92 47Q50 79 8 70Z" +
+        tine(24, 61, 22, 8, 10) +
+        tine(42, 61, 26, 7.5, 12) +
+        tine(60, 56, 25, 7, 12) +
+        tine(76, 48, 19, 6, 9),
+      main,
+    ) + `<ellipse cx="8" cy="64" rx="6" ry="9" fill="${main}"/>`
   );
 }
 
@@ -287,6 +312,93 @@ function fir(main: string): string {
   );
 }
 
+/** A heraldic lion rampant facing left: a maned head with an open mouth,
+ *  locks of mane down the neck, both forepaws raised with the claws spread,
+ *  one hind leg planted and the other stepping forward. */
+const LION_HERALDIC: OutlinePoint[] = [
+  [13, 22, 1],
+  [16, 15],
+  [22, 10],
+  [25, 3, 1],
+  [31, 6],
+  [41, 4],
+  [50, 9],
+  [54, 17],
+  [52, 24],
+  [57, 30],
+  [53, 37],
+  [55, 45],
+  [58, 54],
+  [63, 60],
+  [66, 70],
+  [64, 80],
+  [69, 90],
+  [78, 95, 1],
+  [60, 95, 1],
+  [58, 86],
+  [54, 77],
+  [50, 73],
+  [45, 77],
+  [36, 84],
+  [27, 84, 1],
+  [29, 78],
+  [40, 70],
+  [44, 60],
+  [38, 50],
+  [27, 54],
+  [13, 59, 1],
+  [12, 54, 1],
+  [25, 47],
+  [32, 41],
+  [24, 38],
+  [9, 39, 1],
+  [8, 34, 1],
+  [24, 31],
+  [24, 23],
+  [17, 24, 1],
+  [15, 23],
+];
+
+/** One wing of a heraldic eagle (viewer's right): a smooth upper edge
+ *  rising from the shoulder, then six primaries with rounded tips and sharp
+ *  notches between them, stepping back to the body. */
+const EAGLE_WING: OutlinePoint[] = [
+  [57, 36],
+  [62, 26],
+  [71, 17],
+  [83, 11],
+  [95, 9],
+  [90, 18, 1],
+  [98, 22],
+  [90, 29, 1],
+  [97, 35],
+  [88, 40, 1],
+  [93, 47],
+  [83, 49, 1],
+  [85, 57],
+  [74, 55, 1],
+  [73, 62],
+  [58, 54],
+];
+const EAGLE_TAIL: OutlinePoint[] = [
+  [43, 63],
+  [37, 82],
+  [45, 80, 1],
+  [50, 91],
+  [55, 80, 1],
+  [63, 82],
+  [57, 63],
+];
+const EAGLE_HEAD: OutlinePoint[] = [
+  [57, 42],
+  [58, 28],
+  [54, 20],
+  [46, 16],
+  [38, 19],
+  [42, 28],
+  [44, 38],
+];
+
 export const BUNDESLIGA_SYMBOLS = {
   /** A displayed eagle, head turned left: wings raised with long primaries,
    *  a fanned tail and talons out (Frankfurt's eagle). */
@@ -310,9 +422,11 @@ export const BUNDESLIGA_SYMBOLS = {
   cathedral: ({ main, ground }) => cathedral(main, ground),
   /** A goat with swept horns and a beard, standing left. */
   goat: ({ main, accent, ground }) =>
+    path(GOAT_FAR_LEGS, main) +
     path(outline(GOAT), main) +
-    line("M25 24C25 12 34 6 42 12C36 10 31 15 31 24", accent, 4) +
-    circle(20, 29, 1.6, ground),
+    line("M23 16C23 6 33 0 42 6C35 5 30 10 30 18", accent, 4) +
+    path("M29 20L39 22L31 26Z", main) +
+    circle(17, 22, 1.7, ground),
   /** One antler, lying across. */
   antler: ({ main }) => antler(main),
   /** A pine cone on a column capital. */
@@ -334,15 +448,43 @@ export const BUNDESLIGA_SYMBOLS = {
     circle(13, 58, 1.8, ground) +
     line("M30 60C26 56 24 54 22 50", ground, 1.6),
   /** A hare running left. */
-  hare: ({ main, ground }) => path(outline(HARE), main) + circle(20, 39, 1.8, ground),
-  /** Three hares chasing round a circle, as in Paderborn Cathedral's window. */
+  hare: ({ main, ground }) => path(outline(HARE), main) + circle(14, 44, 1.8, ground),
+  /** Three hares chasing each other round, after Paderborn Cathedral's
+   *  window. All three stay upright (turned upside down, a hare reads as a
+   *  bird when small): the top one runs left, the lower left one runs right,
+   *  the lower right one runs left, round a triangle. */
   "three-hares": ({ main, ground }) =>
-    [0, 120, 240]
+    (
+      [
+        [50, 26, false],
+        [27, 70, true],
+        [73, 70, false],
+      ] as const
+    )
       .map(
-        (deg) =>
-          `<g transform="rotate(${deg} 50 50) translate(50 27) scale(0.58) translate(-50 -50)">${path(outline(HARE), main)}${circle(20, 39, 2.6, ground)}</g>`,
+        ([x, y, flip]) =>
+          `<g transform="translate(${x} ${y}) scale(${flip ? "-0.5 0.5" : "0.5"}) translate(-50 -50)">${path(outline(HARE), main)}${circle(14, 44, 3, ground)}</g>`,
       )
       .join(""),
+  /** A heraldic lion rampant, facing left, tongue out, tail curled up. */
+  "lion-heraldic": ({ main, accent, ground }) =>
+    path(outline(LION_HERALDIC), main) +
+    line("M62 62C78 66 86 54 82 42C80 34 84 28 90 26", main, 4) +
+    path("M84 26C84 16 94 12 99 18C94 19 93 24 95 30C91 26 87 25 84 26Z", main) +
+    path("M16 23L9 25L14 27Z", accent) +
+    circle(21, 14, 1.6, ground),
+  /** A heraldic eagle displayed, head turned left: rounded primaries,
+   *  a three-feather tail, hooked beak and talons in the accent colour. */
+  "eagle-heraldic": ({ main, accent, ground }) =>
+    path(
+      `${outline(EAGLE_WING)}${outline(mirror(EAGLE_WING))}${outline(EAGLE_TAIL)}${outline(EAGLE_HEAD)}`,
+      main,
+    ) +
+    `<ellipse cx="50" cy="50" rx="11" ry="16" fill="${main}"/>` +
+    path("M40 19L29 24L33 29L41 27Z", accent) +
+    circle(46, 23, 2, ground) +
+    line("M44 61L37 71M56 61L63 71", main, 5.5) +
+    line("M37 71L30 70M37 71L32 77M37 71L38 78M63 71L70 70M63 71L68 77M63 71L62 78", accent, 2.4),
   /** A fir tree. */
   fir: ({ main }) => fir(main),
 } satisfies Record<string, Draw>;

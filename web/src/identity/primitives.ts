@@ -45,7 +45,10 @@ export type ShapeName =
   | "egg"
   | "rhombus"
   | "soft-diamond"
-  | "peaked";
+  | "peaked"
+  | "block"
+  | "plate"
+  | "medallion";
 
 const r1 = (v: number) => String(Math.round(v * 10) / 10);
 const pts = (list: [number, number][]) => list.map(([x, y]) => `${r1(x)} ${r1(y)}`).join("L");
@@ -201,6 +204,32 @@ export const SHAPES: Readonly<Record<ShapeName, (i: number) => string>> = {
     );
   },
 
+  // A square block with slightly rounded corners: Hamburg's blue field.
+  block(i) {
+    const a = 8 + i;
+    const b = BOX - a;
+    const r = Math.max(1.5, 4 - i * 0.5);
+    return (
+      `M${r1(a + r)} ${r1(a)}L${r1(b - r)} ${r1(a)}Q${r1(b)} ${r1(a)} ${r1(b)} ${r1(a + r)}` +
+      `L${r1(b)} ${r1(b - r)}Q${r1(b)} ${r1(b)} ${r1(b - r)} ${r1(b)}L${r1(a + r)} ${r1(b)}` +
+      `Q${r1(a)} ${r1(b)} ${r1(a)} ${r1(b - r)}L${r1(a)} ${r1(a + r)}Q${r1(a)} ${r1(a)} ${r1(a + r)} ${r1(a)}Z`
+    );
+  },
+  // A slanted horizontal plate across the lower half of the box, for a
+  // lettering-led emblem (Union Berlin) rather than a shield or roundel.
+  plate(i) {
+    const top = 58 + i;
+    const bottom = 102 - i;
+    const slant = 10;
+    return `M${r1(4 + slant + i)} ${r1(top)}L${r1(116 - i)} ${r1(top)}L${r1(116 - slant - i)} ${r1(bottom)}L${r1(4 + i)} ${r1(bottom)}Z`;
+  },
+  // A small medallion in the middle of the box, for a badge whose supporters
+  // and banners stand outside it (Leverkusen).
+  medallion(i) {
+    const r = 26 - i;
+    const cy = 56;
+    return `M${r1(C - r)} ${cy}A${r1(r)} ${r1(r)} 0 1 1 ${r1(C + r)} ${cy}A${r1(r)} ${r1(r)} 0 1 1 ${r1(C - r)} ${cy}Z`;
+  },
   // A tall rhombus filling the box's height: Gladbach's traditional outline.
   rhombus(i) {
     const e = i * 1.25;
