@@ -15,3 +15,7 @@ dist-rollover/
 lighthouse/
 # The crest review gallery (node scripts/crest-gallery.mjs): local only.
 crest-gallery/
+# Supplied artwork (src/identity/supplied.ts): private until a legal basis
+# for publishing it exists. Used locally when present; never committed.
+src/identity/supplied/crests/*.webp
+src/identity/supplied/marks/*.webp

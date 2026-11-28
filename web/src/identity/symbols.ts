@@ -10,6 +10,8 @@
 //   ground  the colour behind the symbol, used to cut gaps between parts
 //           (where a wheel crosses a barrel, say), so parts never merge.
 
+import { BUNDESLIGA_SYMBOLS } from "./symbols-bundesliga.ts";
+import { DETAIL_SYMBOLS } from "./symbols-detail.ts";
 import { REFINED } from "./symbols-refined.ts";
 import { LALIGA_SYMBOLS } from "./symbols-laliga.ts";
 import { SILHOUETTES } from "./symbols-silhouettes.ts";
@@ -291,7 +293,14 @@ const FIRST_ROUND = {
 
 /** Every symbol: the first round of drawings, with later rounds
  *  (symbols-refined.ts, then symbols-silhouettes.ts) replacing those they redraw. */
-export const SYMBOLS = { ...FIRST_ROUND, ...REFINED, ...SILHOUETTES, ...LALIGA_SYMBOLS };
+export const SYMBOLS = {
+  ...FIRST_ROUND,
+  ...REFINED,
+  ...SILHOUETTES,
+  ...LALIGA_SYMBOLS,
+  ...BUNDESLIGA_SYMBOLS,
+  ...DETAIL_SYMBOLS,
+};
 
 export type SymbolName = keyof typeof SYMBOLS;
 

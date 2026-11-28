@@ -7,6 +7,24 @@
 // under the same name (<slug>.svg, or .png/.webp at 240 x 240 or larger) and
 // nothing else changes: components, pages and layouts stay as they are.
 //
+// Supplied crests: artwork the site's owner chose as a club's full crest
+// (src/identity/supplied/crests/<slug>, described in supplied.ts) takes the
+// place of TableTalk's full crest. At 24 px and below the club's own small
+// SVG crest is still used, unless a supplied <slug>-small file exists.
+// Supplied files are private (git-ignored): a public checkout has none and
+// falls back to TableTalk's own crests and marks with no other change.
+//
+// League marks come from one of three places, first match wins:
+//   1. src/identity/licensed/marks/  genuinely official or licensed files
+//                                    (none today; see the README there)
+//   2. src/identity/supplied/marks/  artwork supplied by the site's owner
+//                                    (supplied.ts: what it is, resemblance)
+//   3. src/identity/marks/           TableTalk's own marks (make-crests.mjs,
+//                                    which clears that folder of anything it
+//                                    doesn't make, hence the separate folders)
+// Each is <league-slug>.svg/.png/.webp, with an optional <league-slug>-dark
+// file shown on dark themes instead (identity.css switches them).
+//
 // Files are imported through Vite, so they are copied to /_astro/ with a
 // content hash in the name and cached for a year (public/_headers). Vite
 // would normally write small files into the page as data: addresses instead;
@@ -15,11 +33,14 @@
 import { fallbackDesign, renderCrest } from "./crest.ts";
 import type { CrestVariant } from "./sizes.ts";
 
-const URLS = import.meta.glob<string>("./{crests,marks}/*.{svg,png,webp}", {
-  query: "?url",
-  import: "default",
-  eager: true,
-});
+const URLS = import.meta.glob<string>(
+  "./{crests,marks,licensed/marks,supplied/marks,supplied/crests}/*.{svg,png,webp}",
+  {
+    query: "?url",
+    import: "default",
+    eager: true,
+  },
+);
 const RAW = import.meta.glob<string>("./crests/*.svg", { query: "?raw", import: "default", eager: true });
 
 export { SMALL_MAX, variantFor, type CrestVariant } from "./sizes.ts";
@@ -32,7 +53,9 @@ export type CrestSource =
 
 const EXTENSIONS = ["svg", "png", "webp"] as const;
 
-function fileUrl(folder: "crests" | "marks", base: string): string | undefined {
+type Folder = "crests" | "marks" | "licensed/marks" | "supplied/marks" | "supplied/crests";
+
+function fileUrl(folder: Folder, base: string): string | undefined {
   for (const ext of EXTENSIONS) {
     const url = URLS[`./${folder}/${base}.${ext}`];
     if (url) return url;
@@ -55,8 +78,13 @@ function warnMissing(slug: string, name: string): void {
  *  (grey shield, its initials) and a build warning; the build carries on. */
 export function crestSource(slug: string, name: string, variant: CrestVariant): CrestSource {
   const base = variant === "small" ? `${slug}-small` : slug;
-  // A club with only a full crest (an official file, say) uses it at every size.
-  const src = fileUrl("crests", base) ?? fileUrl("crests", slug);
+  // Supplied artwork first, then TableTalk's own file for this size; a club
+  // with only a full crest (an official file, say) uses it at every size.
+  const src =
+    fileUrl("supplied/crests", base) ??
+    fileUrl("crests", base) ??
+    fileUrl("supplied/crests", slug) ??
+    fileUrl("crests", slug);
   if (src) return { kind: "file", src };
   warnMissing(slug, name);
   return { kind: "fallback", svg: renderCrest(fallbackDesign(name, variant), `c-fallback-${slug}`) };
@@ -64,8 +92,10 @@ export function crestSource(slug: string, name: string, variant: CrestVariant): 
 
 /** The crest's SVG markup, for writing straight into a page (the team-page
  *  hero: no extra request before it paints). Undefined if the club's crest
- *  isn't an SVG of ours (a raster official file): use crestSource instead. */
+ *  isn't an SVG of ours (a supplied or official image file): use crestSource instead. */
 export function crestInline(slug: string, name: string): string | undefined {
+  // A supplied full crest is an image file: never write TableTalk's SVG instead.
+  if (fileUrl("supplied/crests", slug)) return undefined;
   const raw = RAW[`./crests/${slug}.svg`];
   if (raw) return raw.trim();
   const source = crestSource(slug, name, "full");
@@ -86,7 +116,36 @@ export function svgElement(svg: string, size: number, cls: string, label?: strin
     .replace("<svg ", `<svg class="${cls}" ${a11y} focusable="false" `);
 }
 
-/** A league's mark file, or undefined for a league with no mark. */
+/** Where a league mark's file came from. */
+export type MarkSource = "licensed" | "supplied" | "generated";
+
+export interface LeagueMarkFile {
+  source: MarkSource;
+  /** The file for light themes (and every theme, without `darkSrc`). */
+  src: string;
+  /** The file for dark themes, where the artwork has one. */
+  darkSrc?: string;
+}
+
+const MARK_FOLDERS: readonly [MarkSource, Folder][] = [
+  ["licensed", "licensed/marks"],
+  ["supplied", "supplied/marks"],
+  ["generated", "marks"],
+];
+
+/** A league's mark: a licensed file, else supplied artwork, else TableTalk's
+ *  own mark; undefined for a league with none. */
+export function leagueMark(leagueSlug: string): LeagueMarkFile | undefined {
+  for (const [source, folder] of MARK_FOLDERS) {
+    const src = fileUrl(folder, leagueSlug);
+    if (!src) continue;
+    const darkSrc = fileUrl(folder, `${leagueSlug}-dark`);
+    return darkSrc ? { source, src, darkSrc } : { source, src };
+  }
+  return undefined;
+}
+
+/** The address of a league's mark for light themes (see leagueMark). */
 export function leagueMarkUrl(leagueSlug: string): string | undefined {
-  return fileUrl("marks", leagueSlug);
+  return leagueMark(leagueSlug)?.src;
 }

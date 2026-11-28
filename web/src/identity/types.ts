@@ -61,6 +61,11 @@ export interface ClubIdentity {
    *  never drifts back to one template. Not set on the Premier League crests,
    *  which were approved before it was added. */
   composition?: string;
+  /** Where the design direction came from, when it isn't TableTalk's own:
+   *  "Custom club-inspired artwork — user supplied, AI-generated design
+   *  reference" for crests redrawn from the owner's references. Never an
+   *  official or licensed source. */
+  reference?: string;
   looks: Looks;
   /** The crest above 24 px (assets.ts SMALL_MAX). */
   full: Design;

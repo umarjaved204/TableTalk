@@ -42,7 +42,14 @@ export type ShapeName =
   | "catalan"
   | "tall-diamond"
   | "tapered"
-  | "egg";
+  | "egg"
+  | "rhombus"
+  | "soft-diamond"
+  | "peaked"
+  | "block"
+  | "plate"
+  | "medallion"
+  | "flag";
 
 const r1 = (v: number) => String(Math.round(v * 10) / 10);
 const pts = (list: [number, number][]) => list.map(([x, y]) => `${r1(x)} ${r1(y)}`).join("L");
@@ -198,6 +205,74 @@ export const SHAPES: Readonly<Record<ShapeName, (i: number) => string>> = {
     );
   },
 
+  // A landscape rectangle, about 3:2, with barely rounded corners: a flag,
+  // for Hamburg's blue field in its traditional proportions.
+  flag(i) {
+    const [l, r, t, b] = [4 + i, BOX - 4 - i, 21 + i, BOX - 21 - i];
+    const q = Math.max(1, 2.5 - i * 0.3);
+    return (
+      `M${r1(l + q)} ${r1(t)}L${r1(r - q)} ${r1(t)}Q${r1(r)} ${r1(t)} ${r1(r)} ${r1(t + q)}` +
+      `L${r1(r)} ${r1(b - q)}Q${r1(r)} ${r1(b)} ${r1(r - q)} ${r1(b)}L${r1(l + q)} ${r1(b)}` +
+      `Q${r1(l)} ${r1(b)} ${r1(l)} ${r1(b - q)}L${r1(l)} ${r1(t + q)}Q${r1(l)} ${r1(t)} ${r1(l + q)} ${r1(t)}Z`
+    );
+  },
+  // A square block with slightly rounded corners: Hamburg's blue field.
+  block(i) {
+    const a = 8 + i;
+    const b = BOX - a;
+    const r = Math.max(1.5, 4 - i * 0.5);
+    return (
+      `M${r1(a + r)} ${r1(a)}L${r1(b - r)} ${r1(a)}Q${r1(b)} ${r1(a)} ${r1(b)} ${r1(a + r)}` +
+      `L${r1(b)} ${r1(b - r)}Q${r1(b)} ${r1(b)} ${r1(b - r)} ${r1(b)}L${r1(a + r)} ${r1(b)}` +
+      `Q${r1(a)} ${r1(b)} ${r1(a)} ${r1(b - r)}L${r1(a)} ${r1(a + r)}Q${r1(a)} ${r1(a)} ${r1(a + r)} ${r1(a)}Z`
+    );
+  },
+  // A slanted horizontal plate across the lower half of the box, for a
+  // lettering-led emblem (Union Berlin) rather than a shield or roundel.
+  plate(i) {
+    const top = 58 + i;
+    const bottom = 102 - i;
+    const slant = 10;
+    return `M${r1(4 + slant + i)} ${r1(top)}L${r1(116 - i)} ${r1(top)}L${r1(116 - slant - i)} ${r1(bottom)}L${r1(4 + i)} ${r1(bottom)}Z`;
+  },
+  // A small medallion in the middle of the box, for a badge whose supporters
+  // and banners stand outside it (Leverkusen).
+  medallion(i) {
+    const r = 26 - i;
+    const cy = 56;
+    return `M${r1(C - r)} ${cy}A${r1(r)} ${r1(r)} 0 1 1 ${r1(C + r)} ${cy}A${r1(r)} ${r1(r)} 0 1 1 ${r1(C - r)} ${cy}Z`;
+  },
+  // A tall rhombus filling the box's height: Gladbach's traditional outline.
+  rhombus(i) {
+    const e = i * 1.25;
+    return `M60 ${r1(3 + e)}L${r1(103 - i * 0.8)} 60L60 ${r1(117 - e)}L${r1(17 + i * 0.8)} 60Z`;
+  },
+  // A square-on diamond with rounded corners: Werder Bremen's outline.
+  "soft-diamond"(i) {
+    const e = 5 + i * 1.4;
+    const k = 7 - i * 0.25;
+    const p = (x: number, y: number) => `${r1(x)} ${r1(y)}`;
+    return (
+      `M${p(60 - k, e + k)}Q60 ${r1(e - 1)} ${p(60 + k, e + k)}L${p(BOX - e - k, 60 - k)}` +
+      `Q${r1(BOX - e + 1)} 60 ${p(BOX - e - k, 60 + k)}L${p(60 + k, BOX - e - k)}` +
+      `Q60 ${r1(BOX - e + 1)} ${p(60 - k, BOX - e - k)}L${p(e + k, 60 + k)}` +
+      `Q${r1(e - 1)} 60 ${p(e + k, 60 - k)}Z`
+    );
+  },
+  // A shield rising to a point at the top centre, with sloping shoulders,
+  // sides that swell and a point below: Hoffenheim's traditional outline.
+  peaked(i) {
+    const top = 5 + i * 1.3;
+    const l = 7 + i;
+    const r = BOX - l;
+    const sh = 28 + i * 0.4;
+    const tip = 116 - i * 1.5;
+    return (
+      `M60 ${r1(top)}Q${r1(C + 24)} ${r1(top + 14)} ${r1(r)} ${r1(sh)}` +
+      `C${r1(r + 2)} ${r1(60)} ${r1(r - 4)} 86 ${r1(C + 16)} 100L60 ${r1(tip)}L${r1(C - 16)} 100` +
+      `C${r1(l + 4)} 86 ${r1(l - 2)} 60 ${r1(l)} ${r1(sh)}Q${r1(C - 24)} ${r1(top + 14)} 60 ${r1(top)}Z`
+    );
+  },
   // A tall, narrow diamond set low, for a crown above and a circle behind it.
   "tall-diamond"(i) {
     const e = i * 1.6;

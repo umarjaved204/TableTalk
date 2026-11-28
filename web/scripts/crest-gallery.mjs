@@ -36,6 +36,7 @@ import { LEAGUES } from "../src/data/leagues.ts";
 import { teamSlug } from "../src/data/teams.ts";
 import { identityFiles } from "../src/identity/build.ts";
 import { CLUBS } from "../src/identity/clubs/index.ts";
+import { SUPPLIED_CRESTS, SUPPLIED_LABEL } from "../src/identity/supplied.ts";
 import { fallbackDesign, renderCrest } from "../src/identity/crest.ts";
 import { LEAGUE_IDENTITIES, leagueMarkDesign } from "../src/identity/leagues.ts";
 import { SMALL_MAX, variantFor } from "../src/identity/sizes.ts";
@@ -94,14 +95,27 @@ function define(key, svgDocument) {
 const use = (key, size, label) =>
   `<svg class="cr" width="${size}" height="${size}" ${label ? `role="img" aria-label="${esc(label)}"` : `aria-hidden="true"`}><use href="#s-${key}"/></svg>`;
 
-const crestKey = (club, variant) =>
+/** A club's supplied full crest (an image file) as a data: address, if it has one. */
+const suppliedCrest = (slug) => dataUrl(`src/identity/supplied/crests/${slug}`);
+/** TableTalk's own drawing of a club's crest. */
+const ownKey = (club, variant) =>
   define(
-    `${club.slug}-${variant}`,
+    `${club.slug}-own-${variant}`,
     renderCrest(
       variant === "small" ? club.small : club.full,
       `c-${club.slug}${variant === "small" ? "-s" : ""}`,
     ),
   );
+/** The crest the site shows: a supplied full crest where there is one
+ *  (assets.ts uses the same rule), otherwise TableTalk's own. */
+const crestKey = (club, variant) => {
+  const supplied = variant === "full" ? suppliedCrest(club.slug) : undefined;
+  if (!supplied) return ownKey(club, variant);
+  return define(
+    `${club.slug}-supplied`,
+    `<svg viewBox="0 0 120 120"><image href="${supplied}" width="120" height="120"/></svg>`,
+  );
+};
 const altKey = (club, n, variant) =>
   define(
     `${club.slug}-alt${n}-${variant}`,
@@ -175,6 +189,31 @@ function fixtures(id, count = 6) {
 
 /** Groups of clubs whose crests could be confused, and what tells them apart. */
 const CLASHES = [
+  {
+    title: "Three diamonds",
+    slugs: ["werder-bremen", "hamburger-sv", "borussia-monchengladbach"],
+    note: "All three clubs have worn a diamond for generations, so all three keep it. Werder: square-on green diamond with rounded corners and a white W. HSV: a blue landscape flag with a white diamond and a solid black diamond inside, no letter. Gladbach: tall narrow rhombus, black edge, a green band and a black B.",
+  },
+  {
+    title: "Red roundels",
+    slugs: ["bayern-munich", "mainz-05", "union-berlin"],
+    note: "Bayern: a red ring of lettering round blue and white lozenges. Mainz: solid red with a large white 05. Union is no longer a roundel: a slanted red plate with yellow italic UNION, 1.FC above and the bear in a ringed medallion.",
+  },
+  {
+    title: "Blue and white",
+    slugs: ["schalke-04", "paderborn-07", "tsg-hoffenheim"],
+    note: "Schalke: a solid royal blue roundel with white S04. Paderborn: a roundel white above and blue below, a black bar between, SC and 07. Hoffenheim: not a roundel but a peaked blue shield crossed by a white band.",
+  },
+  {
+    title: "Black, white and a ring",
+    slugs: ["eintracht-frankfurt", "sv-elversberg", "bayer-leverkusen", "sc-freiburg"],
+    note: "Frankfurt: a crowned red eagle with an E shield in a red and white roundel lettered EINTRACHT FRANKFURT. Elversberg: black SVE on white inside a black ring with a gold edge. Leverkusen: two black-outlined red lions holding a white 04 medallion between yellow banners, with no enclosing roundel. Freiburg: an upright oval divided black and white, with a raptor's head and SCF.",
+  },
+  {
+    title: "Red and white shields",
+    slugs: ["1-fc-koln", "vfb-stuttgart", "fc-augsburg", "rb-leipzig"],
+    note: "Köln: a white goat leaping onto a red roundel with KÖLN on a slanting white band and a black cathedral. Stuttgart: a white heater with Gothic red VfB, STUTTGART, and a small gold shield of antlers between 18 and 93. Augsburg: round-bottomed, red and white halves, a green pine cone. Leipzig: a white pointed shield with a navy edge, two red bulls charging at a football, navy RBL and a red base.",
+  },
   {
     title: "Red and white stripes",
     slugs: ["atletico-madrid", "athletic-bilbao"],
@@ -294,6 +333,11 @@ function clubCard(club) {
     .join("");
   const b = club.band;
   const band = `<div class="band" style="background:${b.bg};color:${b.ink};border-color:${b.accent}">${use(crestKey(club, "full"), 48)}<div><p class="bname">${esc(club.name)}</p><p style="color:${b.muted}">Hero band: ${esc(club.nickname)}, founded ${club.founded}</p></div></div>`;
+  const supplied = SUPPLIED_CRESTS[club.slug];
+  const suppliedBlock = supplied
+    ? `<p class="res res-${supplied.resemblance.level}"><b>Full crest in use: ${esc(supplied.label)}.</b> ${esc(supplied.provenance)} ${esc(supplied.changes)}<br><b>Resemblance: ${supplied.resemblance.level}.</b> ${esc(supplied.resemblance.note)}</p>
+<div class="alt"><h4>TableTalk's own drawing (kept as an alternative)</h4><p>The design below the supplied crest: still drawn and checked, and the small crest the site uses at 24 px and below.</p>${variantsBlock(ownKey(club, "full"), ownKey(club, "small"), `${club.name}, TableTalk drawing`)}<p class="looks"><b>Full:</b> ${esc(club.looks.full)}<br><b>Small:</b> ${esc(club.looks.small)}</p><p class="res res-${club.resemblance.level}"><b>Resemblance of this drawing: ${club.resemblance.level}.</b> ${esc(club.resemblance.note)}</p></div>`
+    : "";
   const alts = (club.alternatives ?? [])
     .map(
       (alt, n) =>
@@ -303,31 +347,84 @@ function clubCard(club) {
   return `<article class="club" id="club-${club.slug}">
 <header><h3>${esc(club.name)}</h3><p class="meta">${esc(club.nickname)} · founded ${club.founded} · <code>${club.short}</code> · <code>${club.slug}</code></p></header>
 ${variantsBlock(crestKey(club, "full"), crestKey(club, "small"), club.name)}
-<p class="looks"><b>Full crest:</b> ${esc(club.looks.full)}<br><b>Small crest:</b> ${esc(club.looks.small)}</p>
+${
+  supplied
+    ? suppliedBlock
+    : `<p class="looks"><b>Full crest:</b> ${esc(club.looks.full)}<br><b>Small crest:</b> ${esc(club.looks.small)}</p>
+<p class="res res-${club.resemblance.level}"><b>Resemblance to the official badge: ${LEVEL_TEXT[club.resemblance.level]}</b><br>${esc(club.resemblance.note)}</p>`
+}
 <p><b>Inspiration:</b> ${esc(club.inspiration)}</p>
-<p class="res res-${club.resemblance.level}"><b>Resemblance to the official badge: ${LEVEL_TEXT[club.resemblance.level]}</b><br>${esc(club.resemblance.note)}</p>
 <ul class="colours">${swatches}</ul>
 ${band}
 ${alts}
 </article>`;
 }
 
+const APPROACH = {
+  competition: "Competition-inspired",
+  cultural: "Cultural",
+  brand: "Modern brand-inspired",
+};
+
+/** A file as a data: address (the gallery is one file), or undefined. */
+function dataUrl(base) {
+  for (const [ext, type] of [
+    ["svg", "image/svg+xml"],
+    ["png", "image/png"],
+    ["webp", "image/webp"],
+  ]) {
+    const path = `${base}.${ext}`;
+    if (existsSync(path)) return `data:${type};base64,${readFileSync(path).toString("base64")}`;
+  }
+  return undefined;
+}
+
+/** The mark shown for a league when it isn't TableTalk's own drawing: a
+ *  licensed file, else supplied artwork (assets.ts uses the same order). */
+function fileMark(slug) {
+  for (const [folder, label] of [
+    ["licensed", "Licensed official logo"],
+    ["supplied", SUPPLIED_LABEL],
+  ]) {
+    const light = dataUrl(`src/identity/${folder}/marks/${slug}`);
+    if (light) return { label, light, dark: dataUrl(`src/identity/${folder}/marks/${slug}-dark`) ?? light };
+  }
+  return undefined;
+}
+
 function leagueSection() {
-  // For each league: the cultural mark and each alternative concept side by
-  // side, so one direction can be chosen per league.
+  // For each league: the mark in use, then every other direction side by side.
   return LEAGUE_IDENTITIES.map((l) => {
     const name = LEAGUES.find((x) => x.id === l.leagueId).name;
+    const file = fileMark(l.slug);
+    const fileCell = file
+      ? `<div class="option"><h4>${esc(file.label)} (the mark in use)</h4><div class="pair">${THEMES.map(
+          (t, i) =>
+            `<div class="theme ${t.cls} sizes">${[96, 40, 24, 20, 16]
+              .map(
+                (s, n) =>
+                  `<img src="${i ? file.dark : file.light}" width="${s}" height="${s}" alt="${n ? "" : esc(`${name}: ${file.label}`)}">`,
+              )
+              .join("")}</div>`,
+        ).join("")}</div>
+${
+  l.supplied
+    ? `<p class="looks"><b>Source:</b> ${esc(l.supplied.provenance)}<br><b>Changes:</b> ${esc(l.supplied.changes)}</p>
+<p class="res res-${l.supplied.resemblance.level}"><b>Resemblance to the competition's logo: ${l.supplied.resemblance.level}.</b> ${esc(l.supplied.resemblance.note)}</p>`
+    : ""
+}</div>`
+      : "";
     const options = [
       {
         key: markKey(l),
-        title: "Cultural",
+        title: `${APPROACH[l.approach]}: ${l.title}${file ? "" : " (the mark in use)"}`,
         inspiration: l.inspiration,
         looks: l.looks,
         resemblance: l.resemblance,
       },
       ...l.alternatives.map((c, n) => ({
         key: define(`mark-${l.slug}-alt${n}`, renderCrest(c.mark, `m-${l.slug}-a${n}`)),
-        title: c.approach === "competition" ? `Competition-inspired: ${c.title}` : `Cultural: ${c.title}`,
+        title: `${APPROACH[c.approach]}: ${c.title}`,
         inspiration: c.inspiration,
         looks: c.looks,
         resemblance: c.resemblance,
@@ -343,7 +440,7 @@ function leagueSection() {
 <p class="res res-${o.resemblance.level}"><b>Resemblance to the competition's logo: ${o.resemblance.level}.</b> ${esc(o.resemblance.note)}</p></div>`,
       )
       .join("");
-    return `<article class="club"><header><h3>${esc(name)}</h3></header><div class="options">${cells}</div></article>`;
+    return `<article class="club"><header><h3>${esc(name)}</h3></header><div class="options">${fileCell}${cells}</div></article>`;
   }).join("");
 }
 
@@ -471,9 +568,14 @@ function sizesTable() {
   const rows = SHOWN.slice()
     .sort((a, b) => a.name.localeCompare(b.name, "en"))
     .map((c) => {
-      const [f, fz] = size(`src/identity/crests/${c.slug}.svg`);
+      // A supplied full crest is a WebP image, already compressed: its size
+      // is shown twice, as served.
+      const webp = `src/identity/supplied/crests/${c.slug}.webp`;
+      const [f, fz] = existsSync(webp)
+        ? [readFileSync(webp).length, readFileSync(webp).length]
+        : size(`src/identity/crests/${c.slug}.svg`);
       const [s, sz] = size(`src/identity/crests/${c.slug}-small.svg`);
-      return `<tr><td>${esc(c.name)}</td><td class="num">${kb(f)}</td><td class="num">${kb(fz)}</td><td class="num">${kb(s)}</td><td class="num">${kb(sz)}</td></tr>`;
+      return `<tr><td>${esc(c.name)}${existsSync(webp) ? " (full: supplied WebP)" : ""}</td><td class="num">${kb(f)}</td><td class="num">${kb(fz)}</td><td class="num">${kb(s)}</td><td class="num">${kb(sz)}</td></tr>`;
     })
     .join("");
   const marks = LEAGUE_IDENTITIES.map((l) => {
@@ -508,7 +610,7 @@ const dataLine = source
 const body = `
 <header class="top"><h1>TableTalk crest gallery</h1>
 <p>${args.league ? `The ${esc(LEAGUES.find((l) => l.id === args.league)?.name ?? args.league)} crests, for this league's review` : "Every crest in the registry, for review"} before any page uses them. ${SHOWN.length} clubs shown (${CLUBS.length} drawn so far), ${SHOWN.reduce((n, c) => n + (c.alternatives?.length ?? 0), 0)} alternative designs. Each picture is also described in words.</p>
-<ul class="chips"><li>Original drawings, no official artwork</li><li>Small crest at ${SMALL_MAX} px and below, full crest above</li><li>Light: Matchday · Dark: Floodlights</li><li>Not legal clearance</li></ul></header>
+<ul class="chips"><li>Club crests: original drawings, no official artwork</li><li>Small crest at ${SMALL_MAX} px and below, full crest above</li><li>Light: Matchday · Dark: Floodlights</li><li>Not legal clearance</li></ul></header>
 ${status}
 <section><h2>How to read this page</h2>
 <ul>
@@ -518,7 +620,7 @@ ${status}
 <li><b>${dataLine}</b></li>
 </ul></section>
 ${comparisonSection()}
-<section><h2>League marks</h2><p>Two directions for each league, side by side, to choose one per league. <b>Cultural</b>: an idea from the country's football culture. <b>Competition-inspired</b>: built on what supporters already connect with the competition, drawn new with its own silhouette, lettering and composition. Neither copies or traces an official logo, but the competition-inspired ones are meant to be recognised, so their resemblance is higher. Each is shown at 96, 24 and 16 px on the light and dark themes.</p>${leagueSection()}</section>
+<section><h2>League marks</h2><p>Up to three directions for each league, side by side. <b>${SUPPLIED_LABEL}</b>: the mark in use for the Premier League, Bundesliga, La Liga and Ligue 1 from 28 Nov, chosen by the owner. Not official or licensed files; their resemblance is recorded with each. <b>Competition-inspired</b> (chosen 27 Nov; the mark in use for Serie A): built on what supporters connect with the competition, drawn new. <b>Cultural</b>: an idea from the country's football culture. <b>Modern brand-inspired</b> (Premier League, Bundesliga, La Liga, Ligue 1): a standalone modern mark in the competition's design language. None of TableTalk's drawings copies or traces an official logo; the brand-inspired marks are deliberately closest in spirit, so their resemblance is high. Each is shown at 96, 24 and 16 px on the light and dark themes.</p>${leagueSection()}</section>
 ${covered
   .map((id) => {
     const league = LEAGUES.find((l) => l.id === id);

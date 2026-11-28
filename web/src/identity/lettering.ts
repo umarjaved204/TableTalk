@@ -155,6 +155,10 @@ export interface LineOptions {
   tracking?: number;
   /** The text is narrowed (never below 0.8 of its width) and then shrunk to fit. */
   maxWidth?: number;
+  /** Set the text as written instead of in capitals: only for lowercase
+   *  letters the glyph file has (the f of VfB). Off by default, so mixed-case
+   *  text such as "Brentford" is still set in capitals. */
+  keepCase?: boolean;
 }
 
 export interface SetText {
@@ -170,7 +174,7 @@ export function lineText(text: string, o: LineOptions): SetText {
   let cap = o.cap;
   let scale = cap / f.capHeight;
   const tracking = (o.tracking ?? OPTICAL.tracking) * f.capHeight;
-  const { placed, width } = layout(text.toUpperCase(), f, tracking);
+  const { placed, width } = layout(o.keepCase ? text : text.toUpperCase(), f, tracking);
   // Fit: narrow the letters a little first (condensed faces take it well),
   // then make them smaller.
   let squeeze = 1;

@@ -14,8 +14,9 @@ import type { Resemblance } from "./types.ts";
 export interface LeagueConcept {
   title: string;
   /** "competition": built on the competition's own recognisable idea;
-   *  "cultural": built on the country's football culture. */
-  approach: "competition" | "cultural";
+   *  "cultural": built on the country's football culture;
+   *  "brand": a modern brand mark in the competition's design language. */
+  approach: "competition" | "cultural" | "brand";
   inspiration: string;
   looks: string;
   resemblance: { level: Resemblance; note: string };
@@ -240,5 +241,195 @@ export const COMPETITION_CONCEPTS: Readonly<Record<string, LeagueConcept>> = {
       note: "L1 is the competition's own short name. The letters here are plain Barlow Condensed, side by side, with no shared strokes or cut-out shapes, unlike the official monogram.",
     },
     mark: (k) => ligue1Initials(k.clip),
+  },
+};
+
+// Modern brand-inspired concepts (28 Nov 2026): a third direction, treating
+// each league mark as a modern brand mark rather than a crest, built on the
+// competition's design language (its colour, its kind of symbol, its use of
+// lettering) without its geometry. Standalone marks with no container, a
+// white keyline so each holds on dark themes. Serie A is not part of this
+// round.
+
+/** Premier League: a standalone lion's head, front on, in deep purple: a
+ *  full mane of pointed locks (longer below, like a beard), a broad brow
+ *  narrowing to the muzzle, and the face drawn in white angular cuts (brow,
+ *  eyes, nose, mouth). Symmetrical and uncrowned. No container. */
+function premierLeagueBrand(): string[] {
+  const purple = "#3d185c";
+  // The mane: locks round the right side from the top to the chin, each with
+  // its point swept downwards and outwards like a falling mane, then mirrored.
+  const right: OutlinePoint[] = [];
+  for (let k = 0; k < 6; k++) {
+    const base = -90 + k * 30;
+    const at = (deg: number, r: number) => {
+      const a = (deg * Math.PI) / 180;
+      return [60 + r * Math.cos(a), 62 + r * 1.04 * Math.sin(a)] as const;
+    };
+    const [vx, vy] = at(base, 41);
+    const [tx, ty] = at(base + 22, 58);
+    right.push([vx, vy], [tx, ty, 1]);
+  }
+  const mane: OutlinePoint[] = [
+    ...right,
+    [60, 116, 1],
+    ...right
+      .slice()
+      .reverse()
+      .map((p): OutlinePoint => (p.length === 3 ? [120 - p[0], p[1], 1] : [120 - p[0], p[1]])),
+  ];
+  const d = outline(mane);
+  return [
+    // One path for the mane: the white keyline is its stroke, painted behind the fill.
+    `<path d="${d}" fill="${purple}" stroke="${WHITE}" stroke-width="6" stroke-linejoin="round" paint-order="stroke"/>`,
+    // The face, a little larger than the mane's centre, so it holds its own.
+    `<g transform="translate(60 72) scale(1.14) translate(-60 -72)">`,
+    // An M-shaped brow and slanted eyes.
+    `<path d="M34 44L54 51L60 46L66 51L86 44" fill="none" stroke="${WHITE}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`,
+    `<path d="M39 56L53 58L45 63Z M81 56L67 58L75 63Z" fill="${WHITE}"/>`,
+    // The bridge of the nose widening to a broad triangular nose.
+    `<path d="M57 54L63 54L66 72L54 72Z M47 72L73 72L60 83Z" fill="${WHITE}"/>`,
+    // Two rounded whisker pads either side of the mouth, and the chin.
+    `<path d="M60 83L60 88" stroke="${WHITE}" stroke-width="2.4" stroke-linecap="round"/>`,
+    `<path d="M60 88C56 95 44 96 42 88C42 84 46 82 50 84M60 88C64 95 76 96 78 88C78 84 74 82 70 84" fill="none" stroke="${WHITE}" stroke-width="2.6" stroke-linecap="round"/>`,
+    `<path d="M54 99L66 99L60 105Z" fill="${WHITE}"/>`,
+    `</g>`,
+  ];
+}
+
+/** Bundesliga: a footballer striking a volley, drawn as one athletic
+ *  silhouette in white on a red disc: torso leaning back, the kicking leg
+ *  driven forward at hip height to a white ball, the standing leg bent, the
+ *  back arm raised and the front arm out for balance. */
+function bundesligaBrand(): string[] {
+  const red = "#d20515";
+  const player: OutlinePoint[] = [
+    [79, 29],
+    [85, 31],
+    [96, 22],
+    [102, 13, 1],
+    [106, 17],
+    [99, 29],
+    [88, 39],
+    [85, 48],
+    [82, 60],
+    [86, 68],
+    [93, 78],
+    [90, 90],
+    [87, 99],
+    [86, 103, 1],
+    [72, 103, 1],
+    [73, 99],
+    [80, 95],
+    [83, 82],
+    [77, 72],
+    [70, 68],
+    [56, 68],
+    [42, 64],
+    [30, 60],
+    [20, 59],
+    [15, 57, 1],
+    [18, 53],
+    [30, 53],
+    [41, 56],
+    [55, 58],
+    [66, 56],
+    [66, 48],
+    [64, 44],
+    [54, 48],
+    [43, 44, 1],
+    [46, 39],
+    [56, 40],
+    [66, 34],
+    [71, 30],
+  ];
+  return [
+    `<circle cx="60" cy="60" r="56" fill="${WHITE}" stroke="${WHITE}" stroke-width="5"/>`,
+    `<circle cx="60" cy="60" r="56" fill="${red}"/>`,
+    `<path d="${outline(player)}" fill="${WHITE}"/>`,
+    `<circle cx="76" cy="21" r="8" fill="${WHITE}"/>`,
+    `<circle cx="12" cy="44" r="7.5" fill="${WHITE}"/>`,
+  ];
+}
+
+/** La Liga: a standalone monogram of two italic, angular Ls stepped on a
+ *  diagonal, the second rising behind the first, with a gap of white between
+ *  them. Coral red. */
+function laLigaBrand(): string[] {
+  const coral = "#ff4b44";
+  const first = "M20 26L40 26L32 82L66 82L62 104L6 104Z";
+  const second = "M58 8L78 8L71 58L108 58L104 80L48 80Z";
+  return [
+    `<path d="${first + second}" fill="${WHITE}" stroke="${WHITE}" stroke-width="10" stroke-linejoin="round"/>`,
+    `<path d="${second}" fill="${coral}"/>`,
+    `<path d="${first}" fill="${coral}" stroke="${WHITE}" stroke-width="4" stroke-linejoin="round" paint-order="stroke"/>`,
+  ];
+}
+
+/** Ligue 1: a standalone condensed monogram, an upright L with its foot cut
+ *  at an angle, and a 1 standing close beside it with a sharp flag. Black, with a white
+ *  keyline so it holds on dark themes. */
+function ligue1Brand(): string[] {
+  // The L, its foot angled up at the end, then the 1 standing apart with its flag.
+  const d = "M18 8L36 8L36 92L58 92L62 110L18 110ZM70 32L62 38L62 22L74 8L90 8L90 110L70 110Z";
+  return [
+    `<path d="${d}" fill="${WHITE}" stroke="${WHITE}" stroke-width="6" stroke-linejoin="round"/>`,
+    `<path d="${d}" fill="#111"/>`,
+  ];
+}
+
+/** The modern brand-inspired concept for each league that has one, by league id. */
+export const BRAND_CONCEPTS: Readonly<Record<string, LeagueConcept>> = {
+  premier_league: {
+    title: "Lion's head brand mark",
+    approach: "brand",
+    inspiration:
+      "The Premier League's language as a modern brand: a single lion's head in deep purple standing on its own, no crown and no container, with the face drawn in white lines. Seen front on and symmetrical.",
+    looks:
+      "A deep purple lion's head seen front on, with no container, outlined in white. A full mane of large locks, each point swept down and outwards, frames the face; an M-shaped brow, slanted eyes, a nose bridge widening to a broad triangular nose, two rounded whisker pads and a small chin are drawn in white.",
+    resemblance: {
+      level: "high",
+      note: "A purple lion's head with white facial features, standing alone, is the official mark's language. Ours is symmetrical and seen front on, with no crown and a swept mane of large locks, unlike the crowned official lion turned to one side, but it is deliberately close in spirit.",
+    },
+    mark: () => premierLeagueBrand(),
+  },
+  bundesliga: {
+    title: "Volley on red",
+    approach: "brand",
+    inspiration:
+      "The Bundesliga's language as a modern brand: red and white, a footballer in action, here an original volley on a red disc rather than a strike on a rectangle.",
+    looks:
+      "A red disc outlined in white. A white footballer, drawn as one athletic silhouette, leans back to strike a volley: the kicking leg driven forward at hip height towards a white ball on the left, the standing leg bent, the back arm raised and the front arm out for balance.",
+    resemblance: {
+      level: "high",
+      note: "A white player silhouette on red is the official mark's idea. The pose (a volley at hip height, facing left), the disc and the drawing differ, but the language is the same.",
+    },
+    mark: () => bundesligaBrand(),
+  },
+  la_liga: {
+    title: "Stepped LL",
+    approach: "brand",
+    inspiration:
+      "La Liga's language as a modern brand: a bold, angular LL monogram in coral red, the two letters stepped on a diagonal for movement, with white space between them.",
+    looks:
+      "Two italic, angular coral-red letters L, the second set higher and to the right behind the first, separated by a white gap, standing alone with a white outline.",
+    resemblance: {
+      level: "high",
+      note: "A coral-red angular LL monogram is the official mark's language. These letters are stepped on a diagonal, both upright Ls, rather than one turned against the other, but the idea is close. The sol y sombra disc and the LL disc stay as alternatives.",
+    },
+    mark: () => laLigaBrand(),
+  },
+  ligue_1: {
+    title: "Condensed L1",
+    approach: "brand",
+    inspiration:
+      "Ligue 1's language as a modern brand: a condensed, angular L1 monogram in black, here an upright, condensed pair with the L's foot cut at an angle beside the 1.",
+    looks:
+      "A black monogram outlined in white: a tall condensed L, its foot cut at an angle, and close beside it a tall 1 with a sharp flag at its top.",
+    resemblance: {
+      level: "high",
+      note: "A black angular L1 monogram is the official mark's language. This one is upright, two separate condensed letters, not slanted with the official joined, negative-space construction, but the idea is close.",
+    },
+    mark: () => ligue1Brand(),
   },
 };

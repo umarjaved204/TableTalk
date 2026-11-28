@@ -8,21 +8,37 @@
 //   - every SVG is safe to serve and inside its size budget;
 //   - every band's text passes WCAG contrast, like the theme colours;
 //   - a design that may look close to an official badge has an alternative.
-import { readFileSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LEAGUES } from "../../src/data/leagues.ts";
 import { SLUG_PATTERN, teamSlug } from "../../src/data/teams.ts";
-import { crestSource, svgElement, variantFor } from "../../src/identity/assets.ts";
-import { identityFiles } from "../../src/identity/build.ts";
+import {
+  crestInline,
+  crestSource,
+  leagueMark,
+  leagueMarkUrl,
+  svgElement,
+  variantFor,
+} from "../../src/identity/assets.ts";
+import { DARK_THEMES, identityFiles } from "../../src/identity/build.ts";
 import { CLUBS, clubIdentity, slugMatchesName } from "../../src/identity/clubs/index.ts";
 import { fallbackDesign, initials, renderCrest } from "../../src/identity/crest.ts";
 import { LEAGUE_IDENTITIES } from "../../src/identity/leagues.ts";
+import {
+  SUPPLIED_CREST_BUDGET,
+  SUPPLIED_CREST_LABEL,
+  SUPPLIED_CRESTS,
+  SUPPLIED_LABEL,
+  SUPPLIED_MARKS,
+  SUPPLIED_RASTER_BUDGET,
+} from "../../src/identity/supplied.ts";
 import { LetteringError, arcText, lineText, mapPath } from "../../src/identity/lettering.ts";
 import type { BandColours } from "../../src/identity/types.ts";
 
 /** Leagues whose crests are drawn so far; the rest follow league by league. */
-const COVERED = ["premier_league", "la_liga"];
+const COVERED = ["premier_league", "la_liga", "bundesliga"];
 
 const SEASON = JSON.parse(readFileSync(resolve("tests/fixtures/clubs-2026-27.json"), "utf8")) as {
   leagues: Record<string, string[]>;
@@ -124,7 +140,7 @@ describe("club registry", () => {
 
   it("finds a club by slug, and nothing for a club with no entry", () => {
     expect(clubIdentity("arsenal")?.name).toBe("Arsenal");
-    expect(clubIdentity("hamburger-sv")).toBeUndefined();
+    expect(clubIdentity("ac-milan")).toBeUndefined();
   });
 });
 
@@ -149,6 +165,45 @@ describe("generated files", () => {
 
   it("are exactly what the designs draw (run node scripts/make-crests.mjs after a change)", () => {
     for (const [path, text] of files) expect(readFileSync(resolve(path), "utf8"), path).toBe(text);
+  });
+
+  it("leave every approved crest exactly as approved", () => {
+    // A shared change (lettering, shapes, symbols) must not alter an
+    // approved crest. A deliberate, re-approved revision updates the fixture.
+    const approved = JSON.parse(readFileSync(resolve("tests/fixtures/approved-crests.json"), "utf8")) as {
+      files: Record<string, string>;
+    };
+    for (const [name, hash] of Object.entries(approved.files)) {
+      // Supplied artwork is fingerprinted as the file's bytes; TableTalk's
+      // own crests as the text the designs draw. Supplied artwork is private
+      // (kept out of the public repository until it is cleared), so it is
+      // checked wherever it is present: on the owner's machine, not in CI.
+      if (name.startsWith("supplied/") && !existsSync(resolve("src/identity", name))) continue;
+      const content = name.startsWith("supplied/")
+        ? readFileSync(resolve("src/identity", name))
+        : files.get(`src/identity/crests/${name}`);
+      expect(content, name).toBeDefined();
+      expect(
+        createHash("sha256")
+          .update(content ?? "")
+          .digest("hex"),
+        name,
+      ).toBe(hash);
+    }
+  });
+
+  it("fingerprint every crest of every finally approved league, full and small", () => {
+    // Add a league here, and its crests to the fixture, once its artwork is
+    // finally approved. Leagues still in review are left out on purpose.
+    const APPROVED_LEAGUES = ["premier_league", "la_liga", "bundesliga"];
+    const approved = JSON.parse(readFileSync(resolve("tests/fixtures/approved-crests.json"), "utf8")) as {
+      files: Record<string, string>;
+    };
+    const clubs = CLUBS.filter((c) => APPROVED_LEAGUES.includes(c.leagueId));
+    expect(clubs).toHaveLength(58);
+    for (const club of clubs)
+      for (const name of [`${club.slug}.svg`, `${club.slug}-small.svg`])
+        expect(approved.files[name], name).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it("include nothing the registry doesn't make", () => {
@@ -177,11 +232,27 @@ describe("generated files", () => {
     },
   );
 
+  // A crest whose identity is its lettering (BVB, S04, the W, the 05) needs no
+  // symbol: its composition says so. A crest whose identity is a pattern of
+  // its own is listed here, with the reason. Every other crest needs one.
+  const LETTERING = /monogram|letter|numerals|lettering/;
+  const PATTERN_IS_THE_EMBLEM: Record<string, string> = {
+    "hamburger-sv": "the black and white quartered diamond, the Raute, is the club's emblem",
+  };
+  const clubOf = (path: string) =>
+    CLUBS.find((c) => path.endsWith(`/${c.slug}.svg`) || path.endsWith(`/${c.slug}-small.svg`));
+
   it.each(svgs.filter(([p]) => p.includes("/crests/")).map(([p, t]) => [p, t]))(
-    "%s has the white keyline and at least one symbol",
-    (_, text) => {
+    "%s has the white keyline and an identifying symbol, lettering or emblem",
+    (path, text) => {
       expect(text).toContain('stroke="#fff" stroke-width="5"');
-      // A small crest keeps an identifying symbol, not just a coloured shield.
+      // A small crest keeps an identifying element, not just a coloured shield.
+      const club = clubOf(path);
+      if (club && (LETTERING.test(club.composition ?? "") || PATTERN_IS_THE_EMBLEM[club.slug])) {
+        // Lettering crests must actually carry more than the shield's own paths.
+        expect(text.match(/<path /g)?.length ?? 0, path).toBeGreaterThan(3);
+        return;
+      }
       expect(text).toMatch(/<g transform="translate\(/);
     },
   );
@@ -310,12 +381,151 @@ describe("the review gallery script", () => {
   });
 });
 
+describe("supplied club crests", () => {
+  const dir = "src/identity/supplied/crests";
+  const names = readdirSync(resolve(dir)).filter((n) => n !== "README.md");
+  const approved = JSON.parse(readFileSync(resolve("tests/fixtures/approved-crests.json"), "utf8")) as {
+    files: Record<string, string>;
+  };
+
+  it("are kept out of the public repository until cleared", () => {
+    const ignore = readFileSync(resolve(".gitignore"), "utf8");
+    expect(ignore).toContain("src/identity/supplied/crests/*.webp");
+    expect(ignore).toContain("src/identity/supplied/marks/*.webp");
+  });
+
+  it("are listed in supplied.ts, labelled as such and never as official", () => {
+    // Every file present is listed. The files are private, so a public
+    // checkout has none and those clubs show TableTalk's own crests.
+    for (const n of names) expect(Object.keys(SUPPLIED_CRESTS), n).toContain(n.replace(/\.\w+$/, ""));
+    for (const [slug, crest] of Object.entries(SUPPLIED_CRESTS)) {
+      expect(clubIdentity(slug), slug).toBeDefined();
+      expect(crest.label, slug).toBe(SUPPLIED_CREST_LABEL);
+      expect(crest.provenance, slug).toContain("Not an official or licensed file");
+      expect(crest.resemblance.note, slug).toContain("not automatically legally cleared");
+    }
+  });
+
+  it.each(names.map((n) => [n]))(
+    "%s is a 240 px or larger square WebP within its budget, and fingerprinted",
+    (name) => {
+      const bytes = readFileSync(resolve(dir, name));
+      expect(bytes.length, "bytes").toBeLessThanOrEqual(SUPPLIED_CREST_BUDGET);
+      expect(bytes.subarray(8, 16).toString("latin1")).toBe("WEBPVP8X");
+      const width = bytes.readUIntLE(24, 3) + 1;
+      expect(bytes.readUIntLE(27, 3) + 1).toBe(width);
+      expect(width).toBeGreaterThanOrEqual(240);
+      expect(approved.files[`supplied/crests/${name}`], name).toMatch(/^[0-9a-f]{64}$/);
+    },
+  );
+
+  it("take the place of the full crest only, where present; the small crest stays TableTalk's own", () => {
+    for (const slug of Object.keys(SUPPLIED_CRESTS)) {
+      const club = clubIdentity(slug);
+      const full = crestSource(slug, club?.name ?? slug, "full");
+      const small = crestSource(slug, club?.name ?? slug, "small");
+      if (!names.includes(`${slug}.webp`)) {
+        // Without the private file, the club shows TableTalk's own crest.
+        expect(full.kind === "file" && full.src, slug).not.toMatch(/supplied/);
+        continue;
+      }
+      expect(full.kind === "file" && full.src, slug).toMatch(/supplied\/crests|^data:image\/webp/);
+      expect(small.kind === "file" && small.src, slug).not.toMatch(/supplied/);
+      expect(crestInline(slug, club?.name ?? slug), slug).toBeUndefined();
+    }
+  });
+});
+
+describe("league marks from files", () => {
+  const IMAGE = /^([a-z0-9-]+?)(-dark)?\.(svg|png|webp)$/;
+  const images = (dir: string) => readdirSync(resolve(dir)).filter((n) => n !== "README.md");
+  const supplied = images("src/identity/supplied/marks");
+  const licensed = images("src/identity/licensed/marks");
+  const slugs = new Set(LEAGUE_IDENTITIES.map((l) => l.slug));
+
+  it("are named after a league and are images the site can serve", () => {
+    for (const name of [...supplied, ...licensed]) {
+      const m = IMAGE.exec(name);
+      expect(m, name).not.toBeNull();
+      expect(slugs.has(m?.[1] ?? ""), name).toBe(true);
+    }
+  });
+
+  it("supplied artwork is listed in supplied.ts, labelled as such and never as official", () => {
+    const files = new Set(supplied.map((n) => n.replace(/\.\w+$/, "")));
+    // Every file present is listed. The files are private, so a public
+    // checkout has none and its leagues show TableTalk's own marks.
+    for (const f of files) expect(Object.keys(SUPPLIED_MARKS), f).toContain(f.replace(/-dark$/, ""));
+    for (const [slug, art] of Object.entries(SUPPLIED_MARKS)) {
+      expect(art.label, slug).toBe(SUPPLIED_LABEL);
+      expect(art.provenance, slug).toContain("Not an official or licensed file");
+      if (files.has(slug)) expect(files.has(`${slug}-dark`), `${slug}-dark`).toBe(art.darkVariant);
+      // Resemblance is recorded, and close artwork says it isn't cleared.
+      expect(art.resemblance.note.length, slug).toBeGreaterThan(40);
+      if (art.resemblance.level === "high")
+        expect(art.resemblance.note, slug).toContain("not automatically legally cleared");
+      expect(LEAGUE_IDENTITIES.find((l) => l.slug === slug)?.supplied, slug).toBe(art);
+    }
+  });
+
+  it.each(supplied.map((n) => [n]))("supplied %s is a 192 px or larger WebP within its budget", (name) => {
+    const bytes = readFileSync(resolve("src/identity/supplied/marks", name));
+    expect(bytes.length, "bytes").toBeLessThanOrEqual(SUPPLIED_RASTER_BUDGET);
+    // RIFF....WEBPVP8X: the extended format, which carries the alpha channel
+    // and the canvas size (24-bit, minus one) at bytes 24 and 27.
+    expect(bytes.subarray(0, 4).toString("latin1")).toBe("RIFF");
+    expect(bytes.subarray(8, 16).toString("latin1")).toBe("WEBPVP8X");
+    const width = bytes.readUIntLE(24, 3) + 1;
+    const height = bytes.readUIntLE(27, 3) + 1;
+    expect(width).toBe(height);
+    expect(width).toBeGreaterThanOrEqual(192);
+  });
+
+  it("are picked licensed first, then supplied, then TableTalk's own mark", () => {
+    const has = (names: string[], slug: string, suffix = "") =>
+      names.some((n) => n.replace(/\.\w+$/, "") === `${slug}${suffix}`);
+    for (const l of LEAGUE_IDENTITIES) {
+      const mark = leagueMark(l.slug);
+      const expected = has(licensed, l.slug) ? "licensed" : has(supplied, l.slug) ? "supplied" : "generated";
+      expect(mark?.source, l.slug).toBe(expected);
+      const folder = expected === "licensed" ? licensed : supplied;
+      expect(mark?.darkSrc !== undefined, `${l.slug} dark`).toBe(
+        expected !== "generated" && has(folder, l.slug, "-dark"),
+      );
+      expect(leagueMarkUrl(l.slug), l.slug).toBe(mark?.src);
+    }
+    expect(leagueMark("serie-a")?.source).toBe("generated");
+    if (has(supplied, "ligue-1")) expect(leagueMark("ligue-1")?.darkSrc).toBeDefined();
+  });
+
+  it("switch to the dark variant on exactly the dark themes", () => {
+    const dir = resolve("src/styles/themes");
+    const dark = readdirSync(dir)
+      .filter((f) => /color-scheme:\s*dark/.test(readFileSync(resolve(dir, f), "utf8")))
+      .map((f) => f.replace(/\.css$/, ""))
+      .sort();
+    expect([...DARK_THEMES].sort()).toEqual(dark);
+    const css = readFileSync(resolve("src/styles/identity.css"), "utf8");
+    const rule = (sel: string) =>
+      [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].find((m) => m[1]?.trim().endsWith(sel))?.[1] ?? "";
+    // Hidden by default (light themes, and no data-theme without JavaScript)…
+    expect(css).toContain(".league-mark--dark {\n  display: none;\n}");
+    // …and swapped in on every dark theme, nowhere else.
+    const hidesLight = [...rule(".league-mark--light").matchAll(/data-theme="([\w-]+)"/g)].map((m) => m[1]);
+    expect(hidesLight.sort()).toEqual(dark);
+    const shown = [...css.matchAll(/([^{}]+)\{\s*display: inline;/g)].map((m) => m[1] ?? "");
+    expect(shown).toHaveLength(1);
+    expect([...(shown[0] ?? "").matchAll(/data-theme="([\w-]+)"/g)].map((m) => m[1]).sort()).toEqual(dark);
+  });
+});
+
 describe("league concepts", () => {
-  it("rates every league mark and offers a competition-inspired concept beside it", () => {
+  it("uses the competition-inspired mark and keeps the cultural one beside it, all rated", () => {
     for (const league of LEAGUE_IDENTITIES) {
+      expect(league.approach, league.slug).toBe("competition");
       expect(league.resemblance.note.length, league.slug).toBeGreaterThan(30);
       expect(
-        league.alternatives.some((c) => c.approach === "competition"),
+        league.alternatives.some((c) => c.approach === "cultural"),
         league.slug,
       ).toBe(true);
       for (const c of league.alternatives) {
@@ -324,6 +534,16 @@ describe("league concepts", () => {
         expect(c.inspiration.length).toBeGreaterThan(30);
       }
     }
+  });
+
+  it("offers a modern brand-inspired concept for the four leagues in this round", () => {
+    const withBrand = LEAGUE_IDENTITIES.filter((l) => l.alternatives.some((c) => c.approach === "brand"));
+    expect(withBrand.map((l) => l.leagueId).sort()).toEqual([
+      "bundesliga",
+      "la_liga",
+      "ligue_1",
+      "premier_league",
+    ]);
   });
 
   it.each(

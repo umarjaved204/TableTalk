@@ -50,7 +50,12 @@ const EDGE_SHARE = "45%";
  * High Contrast keeps its own black-and-white band for every club: club
  * colours would undo the reason for choosing it.
  */
+/** The themes with a dark page (color-scheme: dark in src/styles/themes/);
+ *  tests/unit/identity.test.ts checks the list against the theme files. */
+export const DARK_THEMES = ["floodlights", "tactics", "nightgame", "terrace", "contrast"] as const;
+
 export function identityCss(): string {
+  const onDark = (cls: string) => DARK_THEMES.map((t) => `[data-theme="${t}"] ${cls}`).join(",\n");
   const rule = (selector: string, b: { bg: string; ink: string; muted: string; accent: string }) =>
     `${selector} {\n` +
     `  --club-1: ${hex(b.bg)};\n` +
@@ -65,6 +70,11 @@ export function identityCss(): string {
       "   script. Never edited by hand; tests/unit/identity.test.ts checks it. */\n",
     ...CLUBS.map((club) => rule(`[data-club="${club.slug}"]`, club.band)),
     ...LEAGUE_IDENTITIES.map((league) => rule(`[data-league="${league.slug}"]`, league.band)),
+    `/* A league mark with a dark-theme variant (LeagueMark.astro): one image\n` +
+      `   per theme. Without data-theme (no JavaScript) the light one shows. */\n` +
+      `.league-mark--dark {\n  display: none;\n}\n\n` +
+      `${onDark(".league-mark--light")} {\n  display: none;\n}\n\n` +
+      `${onDark(".league-mark--dark")} {\n  display: inline;\n}\n`,
     `[data-theme="contrast"] :is([data-club], [data-league]) {\n` +
       `  --club-1: var(--band-bg);\n` +
       `  --club-2: var(--band-accent);\n` +

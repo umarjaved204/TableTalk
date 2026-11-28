@@ -322,6 +322,150 @@
   --band-edge: color-mix(in srgb, #8ec2ff 45%, transparent);
 }
 
+[data-club="bayern-munich"] {
+  --club-1: #a8001e;
+  --club-2: #9fcbff;
+  --club-ink: #fff;
+  --club-muted: #ffe1e6;
+  --band-edge: color-mix(in srgb, #9fcbff 45%, transparent);
+}
+
+[data-club="borussia-dortmund"] {
+  --club-1: #111;
+  --club-2: #fde100;
+  --club-ink: #fde100;
+  --club-muted: #f1e8a6;
+  --band-edge: color-mix(in srgb, #fde100 45%, transparent);
+}
+
+[data-club="rb-leipzig"] {
+  --club-1: #0c2043;
+  --club-2: #f2b500;
+  --club-ink: #fff;
+  --club-muted: #d9e0ee;
+  --band-edge: color-mix(in srgb, #f2b500 45%, transparent);
+}
+
+[data-club="werder-bremen"] {
+  --club-1: #0a4f2c;
+  --club-2: #8fdcb0;
+  --club-ink: #fff;
+  --club-muted: #d3ecdd;
+  --band-edge: color-mix(in srgb, #8fdcb0 45%, transparent);
+}
+
+[data-club="hamburger-sv"] {
+  --club-1: #083d75;
+  --club-2: #9cc4f2;
+  --club-ink: #fff;
+  --club-muted: #d6e3f3;
+  --band-edge: color-mix(in srgb, #9cc4f2 45%, transparent);
+}
+
+[data-club="1-fc-koln"] {
+  --club-1: #b30015;
+  --club-2: #fff;
+  --club-ink: #fff;
+  --club-muted: #ffdfe2;
+  --band-edge: color-mix(in srgb, #fff 45%, transparent);
+}
+
+[data-club="eintracht-frankfurt"] {
+  --club-1: #151515;
+  --club-2: #ff5a5a;
+  --club-ink: #fff;
+  --club-muted: #dcdcdc;
+  --band-edge: color-mix(in srgb, #ff5a5a 45%, transparent);
+}
+
+[data-club="vfb-stuttgart"] {
+  --club-1: #b5150f;
+  --club-2: #ffd54a;
+  --club-ink: #fff;
+  --club-muted: #ffe2dd;
+  --band-edge: color-mix(in srgb, #ffd54a 45%, transparent);
+}
+
+[data-club="schalke-04"] {
+  --club-1: #004d9d;
+  --club-2: #a9cdf5;
+  --club-ink: #fff;
+  --club-muted: #dbe7f6;
+  --band-edge: color-mix(in srgb, #a9cdf5 45%, transparent);
+}
+
+[data-club="sc-freiburg"] {
+  --club-1: #141414;
+  --club-2: #ff4d5e;
+  --club-ink: #fff;
+  --club-muted: #ddd;
+  --band-edge: color-mix(in srgb, #ff4d5e 45%, transparent);
+}
+
+[data-club="bayer-leverkusen"] {
+  --club-1: #151515;
+  --club-2: #ff5c5c;
+  --club-ink: #fff;
+  --club-muted: #dcdcdc;
+  --band-edge: color-mix(in srgb, #ff5c5c 45%, transparent);
+}
+
+[data-club="fc-augsburg"] {
+  --club-1: #8f2a27;
+  --club-2: #e3b23c;
+  --club-ink: #fff;
+  --club-muted: #f8e0de;
+  --band-edge: color-mix(in srgb, #e3b23c 45%, transparent);
+}
+
+[data-club="tsg-hoffenheim"] {
+  --club-1: #154f94;
+  --club-2: #a9cbf5;
+  --club-ink: #fff;
+  --club-muted: #dce8f7;
+  --band-edge: color-mix(in srgb, #a9cbf5 45%, transparent);
+}
+
+[data-club="paderborn-07"] {
+  --club-1: #004a8f;
+  --club-2: #9cc8f2;
+  --club-ink: #fff;
+  --club-muted: #d6e5f4;
+  --band-edge: color-mix(in srgb, #9cc8f2 45%, transparent);
+}
+
+[data-club="union-berlin"] {
+  --club-1: #b00018;
+  --club-2: #ffd500;
+  --club-ink: #fff;
+  --club-muted: #ffe9ad;
+  --band-edge: color-mix(in srgb, #ffd500 45%, transparent);
+}
+
+[data-club="borussia-monchengladbach"] {
+  --club-1: #141414;
+  --club-2: #3fd07c;
+  --club-ink: #fff;
+  --club-muted: #ddd;
+  --band-edge: color-mix(in srgb, #3fd07c 45%, transparent);
+}
+
+[data-club="sv-elversberg"] {
+  --club-1: #141414;
+  --club-2: #c8ae7d;
+  --club-ink: #fff;
+  --club-muted: #ddd;
+  --band-edge: color-mix(in srgb, #c8ae7d 45%, transparent);
+}
+
+[data-club="mainz-05"] {
+  --club-1: #a8101a;
+  --club-2: #fff;
+  --club-ink: #fff;
+  --club-muted: #ffdfe1;
+  --band-edge: color-mix(in srgb, #fff 45%, transparent);
+}
+
 [data-league="premier-league"] {
   --club-1: #2b1442;
   --club-2: #ff6b81;
@@ -360,6 +504,28 @@
   --club-ink: #fff;
   --club-muted: #d8e0ef;
   --band-edge: color-mix(in srgb, #ff6b81 45%, transparent);
+}
+
+/* A league mark with a dark-theme variant (LeagueMark.astro): one image
+   per theme. Without data-theme (no JavaScript) the light one shows. */
+.league-mark--dark {
+  display: none;
+}
+
+[data-theme="floodlights"] .league-mark--light,
+[data-theme="tactics"] .league-mark--light,
+[data-theme="nightgame"] .league-mark--light,
+[data-theme="terrace"] .league-mark--light,
+[data-theme="contrast"] .league-mark--light {
+  display: none;
+}
+
+[data-theme="floodlights"] .league-mark--dark,
+[data-theme="tactics"] .league-mark--dark,
+[data-theme="nightgame"] .league-mark--dark,
+[data-theme="terrace"] .league-mark--dark,
+[data-theme="contrast"] .league-mark--dark {
+  display: inline;
 }
 
 [data-theme="contrast"] :is([data-club], [data-league]) {
