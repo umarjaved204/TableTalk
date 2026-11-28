@@ -55,7 +55,8 @@ export type ShapeName =
   | "notched"
   | "escutcheon"
   | "broad-oval"
-  | "compact";
+  | "compact"
+  | "milan-oval";
 
 const r1 = (v: number) => String(Math.round(v * 10) / 10);
 const pts = (list: [number, number][]) => list.map(([x, y]) => `${r1(x)} ${r1(y)}`).join("L");
@@ -385,6 +386,13 @@ export const SHAPES: Readonly<Record<ShapeName, (i: number) => string>> = {
       `M${r1(l)} ${r1(top)}L${r1(r)} ${r1(top)}L${r1(r)} 66` +
       `C${r1(r)} 92 ${r1(C + 22)} 106 60 ${r1(tip)}C${r1(C - 22)} 106 ${r1(l)} 92 ${r1(l)} 66Z`
     );
+  },
+  // An oval a little taller than wide, between "oval" and "broad-oval":
+  // Milan's outline after the first review.
+  "milan-oval"(i) {
+    const rx = 48.5 - i;
+    const ry = 57 - i;
+    return `M${r1(C - rx)} 60A${r1(rx)} ${r1(ry)} 0 1 1 ${r1(C + rx)} 60A${r1(rx)} ${r1(ry)} 0 1 1 ${r1(C - rx)} 60Z`;
   },
   // A rounded rectangle, a little taller than wide.
   tablet(i) {

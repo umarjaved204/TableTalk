@@ -658,7 +658,7 @@ function bullRampant({ main, ground }: Ink): string {
 
 // --- Cagliari: a Moor's head in profile, with the white headband ------------
 
-function moorHead({ main, accent }: Ink, lite = false): string {
+function moorHeadV1({ main, accent }: Ink, lite = false): string {
   const simple: OutlinePoint[] = [
     [40, 14],
     [30, 28],
@@ -700,6 +700,79 @@ function moorHead({ main, accent }: Ink, lite = false): string {
     path("M28 30Q54 24 82 30L82 40Q54 34 30 40Z", accent) +
     path("M80 32L94 40L90 46L80 40Z", accent) +
     path("M80 38L90 52L84 56L78 42Z", accent)
+  );
+}
+
+// The refined Moor's head (second round): a fuller profile with a brow,
+// the bridge of the nose, lips and chin, curled hair at the back, and the
+// headband on the brow, knotted behind with two loose ends.
+function moorHead({ main, accent, ground }: Ink, lite = false): string {
+  const profile: OutlinePoint[] = lite
+    ? [
+        [52, 8],
+        [34, 18],
+        [28, 36],
+        [20, 54, 1],
+        [27, 60],
+        [26, 66],
+        [28, 76],
+        [42, 80],
+        [42, 96, 1],
+        [74, 96, 1],
+        [86, 56],
+        [76, 18],
+      ]
+    : [
+        [52, 8],
+        [38, 14],
+        [31, 24],
+        [29, 34],
+        [27.5, 39],
+        [29, 42],
+        [26, 47],
+        [20, 55, 1],
+        [24, 57],
+        [27, 58],
+        [25, 61],
+        [28, 63, 1],
+        [25.5, 65],
+        [28.5, 68],
+        [27, 73],
+        [32, 78],
+        [41, 80],
+        [44, 86],
+        [42, 96, 1],
+        [72, 96, 1],
+        [70, 86],
+        [76, 76],
+        [84, 64],
+        [86, 48],
+        [82, 28],
+        [70, 13],
+      ];
+  // Tight curls along the back of the head.
+  const curls = lite
+    ? ""
+    : [
+        [79, 72],
+        [84, 61],
+        [86, 49],
+        [84, 37],
+        [78, 25],
+        [68, 15],
+      ]
+        .map(([x, y]) => `M${(x ?? 0) - 5.5} ${y}a5.5 5.5 0 1 0 11 0a5.5 5.5 0 1 0 -11 0`)
+        .join("");
+  return (
+    shape(profile, main) +
+    (curls ? path(curls, main) : "") +
+    // The band across the brow, above the eye, following the skull.
+    path("M30 24Q56 16 86 27L87 36Q57 26 29 33Z", accent) +
+    // The knot behind and its two loose ends.
+    circle(88, 31.5, lite ? 5 : 4.2, accent) +
+    path("M88 33L99 46L94 49L85 36Z", accent) +
+    path("M87 34L93 54L87 55L84 37Z", accent) +
+    (lite ? "" : path("M30 41Q33 39.5 35.5 41Q33 42.5 30 41Z", ground))
   );
 }
 
@@ -934,6 +1007,9 @@ export const SERIE_A_SYMBOLS = {
   "oak-wolf-lite": (ink: Ink) => oakWolf(ink, true),
   "eagle-raised-lite": (ink: Ink) => eagleRaised(ink, true),
   "moor-head-lite": (ink: Ink) => moorHead(ink, true),
+  /** The first-gallery Moor's head, kept for Cagliari's earlier design. */
+  "moor-head-v1": (ink: Ink) => moorHeadV1(ink),
+  "moor-head-v1-lite": (ink: Ink) => moorHeadV1(ink, true),
   /** The steel prow of a gondola, its six teeth Venice's six districts. */
   ferro,
 } satisfies Record<string, Draw>;

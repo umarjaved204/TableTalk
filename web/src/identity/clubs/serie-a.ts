@@ -118,6 +118,36 @@ const IM = (w: number) =>
   `M${60 - w / 2} 24H${60 + w / 2}V96H${60 - w / 2}Z` +
   `M${30 - w / 2} 30H${30 + w / 2}L60 ${70 - w}L${90 - w / 2} 30H${90 + w / 2}V90H${90 - w / 2}V${48 + w}L60 ${80}L${30 + w / 2} ${48 + w}V90H${30 - w / 2}Z`;
 
+// Inter's IM (second round): an M whose diagonals meet in a visible V,
+// and a serifed I standing in the M's notch, its lower serif resting on
+// the V and cut free of it by a blue gap, so both letters stay whole.
+const IM_M = "M25 32H37L60 62L83 32H95V90H84V50L60 80L36 50V90H25Z";
+const IM_I = "M47 16H73V24H65V48H71V56H49V48H55V24H47Z";
+const IM_M_SMALL = "M23 32H38L60 60L82 32H97V90H83V54L60 82L37 54V90H23Z";
+const IM_I_SMALL = "M44 14H76V25H67V45H73V55H47V45H53V25H44Z";
+
+// Juventus's connected J (second round, kept as an alternative): one
+// letter, a cap reaching left at the top, split down its length by a white
+// channel. The owner chose the first two-stroke J for the crest itself.
+const J_CAP = "M34 8H70V22H34Z";
+const J_BODY = "M56 8H84V78C84 100 68 113 42 115L34 102C48 100 56 92 56 78Z";
+const J_CHANNEL = "M70 24V78C70 94 60 104 38 108";
+
+// Venezia (second round): an angular lion's head facing left in the
+// notch of the V, its mane running into the right arm, which becomes the
+// wing, with slanted feather cuts and stepped tips on its outer edge.
+const V_LION =
+  "M48 45L52 40L56 39L57 32L61 37L64 30L67 37L72 33L72 40L77 41L72 49L70 66L62 69L55 66L51 61L46 59L50 56L45 53L45 49Z";
+const V_LION_EYE = "M51 45L55 44L54 47Z";
+const V_WING = "M64 60L78 38H112L72 114H60L60 90Z";
+const featherCut = (y: number, w: number) => {
+  const inner = 78 - ((y - 38) * 18) / 52 + 5;
+  const outer = 112 - ((y - 10 - 38) * 40) / 76 + 4;
+  return `M${inner.toFixed(1)} ${y}L${outer.toFixed(1)} ${y - 10}L${outer.toFixed(1)} ${y - 10 + w}L${inner.toFixed(1)} ${y + w}Z`;
+};
+const V_FEATHER_CUTS = [70, 81, 92].map((y) => featherCut(y, 3.2)).join("");
+const V_FEATHER_CUTS_SMALL = [74, 90].map((y) => featherCut(y, 5)).join("");
+
 export const SERIE_A: readonly ClubIdentity[] = [
   {
     slug: "ac-milan",
@@ -140,27 +170,53 @@ export const SERIE_A: readonly ClubIdentity[] = [
     },
     composition: "halved oval under a lettered band",
     looks: {
-      full: "A broad white oval with a black edge. A black band across the top carries 1899 and ACM in white; below it the left half is red and black vertical stripes and the right half white with a red cross.",
+      full: "A white oval, a little taller than wide, with a black edge. A shallow black band across the top carries ACM in white with a smaller, widely spaced 1899 beneath it, over a fine red line; below it the left half is red and black vertical stripes and the right half white with a red cross.",
       small:
-        "The broad oval with a plain black band, red and black stripes on the left and a red cross on white on the right.",
+        "The oval with a shallow plain black band, red and black stripes on the left and a red cross on white on the right.",
     },
     full: (k) => [
-      k.shield("broad-oval", { rim: BLACK, field: WHITE, rimWidth: 3 }),
-      cut("M0 40H60V120H0Z", BLACK, k.clip),
-      cut(stripes(14, 56, 8, 40), MIL.red, k.clip),
-      cut("M80 40H90V120H80ZM60 70H120V80H60Z", MIL.red, k.clip),
-      k.pattern({ kind: "chief", colour: BLACK, height: 40 }),
-      text("1899", { x: 60, baseline: 16, cap: 6, fill: WHITE, tracking: 0.2 }),
-      text("ACM", { x: 60, baseline: 34, cap: 15, fill: WHITE, tracking: 0.18 }),
+      k.shield("milan-oval", { rim: BLACK, field: WHITE, rimWidth: 3 }),
+      cut("M0 35H60V120H0Z", BLACK, k.clip),
+      cut(stripes(16, 56, 8, 35), MIL.red, k.clip),
+      cut("M80 35H89V120H80ZM60 68H120V77H60Z", MIL.red, k.clip),
+      k.pattern({ kind: "chief", colour: BLACK, height: 34 }),
+      k.rule(34.6, MIL.red, 1.6),
+      text("ACM", { x: 60, baseline: 22.5, cap: 11, fill: WHITE, tracking: 0.22 }),
+      text("1899", { x: 60, baseline: 31, cap: 6, fill: WHITE, tracking: 0.34 }),
     ],
     small: (k) => [
-      k.shield("broad-oval", { rim: BLACK, field: WHITE, rimWidth: 7 }),
-      cut("M0 40H60V120H0Z", BLACK, k.clip),
-      cut(stripes(18, 54, 12, 40), MIL.red, k.clip),
-      cut("M78 40H92V120H78ZM60 68H120V82H60Z", MIL.red, k.clip),
-      k.pattern({ kind: "chief", colour: BLACK, height: 40 }),
+      k.shield("milan-oval", { rim: BLACK, field: WHITE, rimWidth: 7 }),
+      cut("M0 35H60V120H0Z", BLACK, k.clip),
+      cut(stripes(20, 56, 12, 35), MIL.red, k.clip),
+      cut("M78 35H91V120H78ZM60 66H120V79H60Z", MIL.red, k.clip),
+      k.pattern({ kind: "chief", colour: BLACK, height: 33 }),
     ],
     alternatives: [
+      {
+        title: "First-gallery design",
+        note: "The design from the first gallery, kept for comparison: a broader oval under a deeper black band with 1899 above a larger ACM.",
+        looks: {
+          full: "A broad white oval with a black edge. A deep black band across the top carries 1899 and ACM in white; below it the left half is red and black vertical stripes and the right half white with a red cross.",
+          small:
+            "The broad oval with a plain black band, red and black stripes on the left and a red cross on white on the right.",
+        },
+        full: (k) => [
+          k.shield("broad-oval", { rim: BLACK, field: WHITE, rimWidth: 3 }),
+          cut("M0 40H60V120H0Z", BLACK, k.clip),
+          cut(stripes(14, 56, 8, 40), MIL.red, k.clip),
+          cut("M80 40H90V120H80ZM60 70H120V80H60Z", MIL.red, k.clip),
+          k.pattern({ kind: "chief", colour: BLACK, height: 40 }),
+          text("1899", { x: 60, baseline: 16, cap: 6, fill: WHITE, tracking: 0.2 }),
+          text("ACM", { x: 60, baseline: 34, cap: 15, fill: WHITE, tracking: 0.18 }),
+        ],
+        small: (k) => [
+          k.shield("broad-oval", { rim: BLACK, field: WHITE, rimWidth: 7 }),
+          cut("M0 40H60V120H0Z", BLACK, k.clip),
+          cut(stripes(18, 54, 12, 40), MIL.red, k.clip),
+          cut("M78 40H92V120H78ZM60 68H120V82H60Z", MIL.red, k.clip),
+          k.pattern({ kind: "chief", colour: BLACK, height: 40 }),
+        ],
+      },
       {
         title: "Striped shield with the cross",
         note: "The rossoneri stripes fill a pointed shield and Milan's cross sits in a white corner, with no oval or lettered band: the club's colours and city, away from the official layout.",
@@ -327,8 +383,9 @@ export const SERIE_A: readonly ClubIdentity[] = [
     },
     composition: "regional flag in a split-edged shield",
     looks: {
-      full: "A shield with raised top corners, its wide edge red on the left and navy on the right, CAGLIARI in white across the top. The white field holds a thin red cross with a navy Moor's head in each quarter, each in profile facing left with a white headband.",
-      small: "The red and navy edged shield with the red cross and four navy heads on white.",
+      full: "A shield with raised top corners, its wide edge red on the left and navy on the right, CAGLIARI in white across the top. The white field holds a thin red cross with a navy Moor's head in each quarter, in profile facing left: brow, nose, lips and chin drawn, tight curls at the back of the head, and a white band on the brow knotted behind with two loose ends.",
+      small:
+        "The red and navy edged shield with the red cross and four navy heads on white, each with its white headband and knot.",
     },
     full: (k) => [
       clipDef(`${k.clip}-r`, "M60 0H120V120H60Z"),
@@ -340,10 +397,10 @@ export const SERIE_A: readonly ClubIdentity[] = [
       text("CAGLIARI", { x: 60, baseline: 32, cap: 9.5, fill: WHITE, maxWidth: 80, tracking: 0.08 }),
       cut("M57 36H63V120H57ZM0 66H120V72H0Z", CAG.red, k.clip),
       ...[
-        [36, 51, 29],
-        [83, 51, 29],
-        [39, 88, 26],
-        [80, 88, 26],
+        [35, 51, 29],
+        [82, 51, 29],
+        [38, 88, 26],
+        [79, 88, 26],
       ].map(([x, y, size]) =>
         k.symbol(
           "moor-head",
@@ -359,10 +416,10 @@ export const SERIE_A: readonly ClubIdentity[] = [
       `<path d="${SHAPES.horned(10)}" fill="${WHITE}"/>`,
       cut("M55 0H65V120H55ZM0 62H120V72H0Z", CAG.red, k.clip),
       ...[
-        [37, 45],
-        [83, 45],
-        [39, 88],
-        [81, 88],
+        [36, 45],
+        [82, 45],
+        [38, 88],
+        [80, 88],
       ].map(([x, y]) =>
         k.symbol(
           "moor-head-lite",
@@ -372,6 +429,55 @@ export const SERIE_A: readonly ClubIdentity[] = [
       ),
     ],
     alternatives: [
+      {
+        title: "First-gallery design",
+        note: "The heads from the first gallery, kept for comparison: simpler profiles with the headband low across the eyes.",
+        looks: {
+          full: "The same shield with the four navy heads drawn as simple profiles, the white band low across the eyes like a blindfold.",
+          small: "The red and navy edged shield with the red cross and four simpler navy heads.",
+        },
+        full: (k) => [
+          clipDef(`${k.clip}-r`, "M60 0H120V120H60Z"),
+          k.shield("horned", { rim: CAG.red, field: WHITE, rimWidth: 7 }),
+          `<path d="${SHAPES.horned(0)}" fill="${CAG.navy}" clip-path="url(#${k.clip}-r)"/>`,
+          `<path d="${SHAPES.horned(7)}" fill="${WHITE}"/>`,
+          cut("M0 0H60V36H0Z", CAG.red, k.clip),
+          cut("M60 0H120V36H60Z", CAG.navy, k.clip),
+          text("CAGLIARI", { x: 60, baseline: 32, cap: 9.5, fill: WHITE, maxWidth: 80, tracking: 0.08 }),
+          cut("M57 36H63V120H57ZM0 66H120V72H0Z", CAG.red, k.clip),
+          ...[
+            [36, 51, 29],
+            [83, 51, 29],
+            [39, 88, 26],
+            [80, 88, 26],
+          ].map(([x, y, size]) =>
+            k.symbol(
+              "moor-head-v1",
+              { x: x ?? 0, y: y ?? 0, size: size ?? 0 },
+              { main: CAG.navy, accent: WHITE, ground: WHITE },
+            ),
+          ),
+        ],
+        small: (k) => [
+          clipDef(`${k.clip}-r`, "M60 0H120V120H60Z"),
+          k.shield("horned", { rim: CAG.red, field: WHITE, rimWidth: 10 }),
+          `<path d="${SHAPES.horned(0)}" fill="${CAG.navy}" clip-path="url(#${k.clip}-r)"/>`,
+          `<path d="${SHAPES.horned(10)}" fill="${WHITE}"/>`,
+          cut("M55 0H65V120H55ZM0 62H120V72H0Z", CAG.red, k.clip),
+          ...[
+            [37, 45],
+            [83, 45],
+            [39, 88],
+            [81, 88],
+          ].map(([x, y]) =>
+            k.symbol(
+              "moor-head-v1-lite",
+              { x: x ?? 0, y: y ?? 0, size: 30 },
+              { main: CAG.navy, accent: WHITE, ground: WHITE },
+            ),
+          ),
+        ],
+      },
       {
         title: "One Moor in a roundel",
         note: "A single Moor's head from Sardinia's arms in a white disc, on a roundel halved red and navy: the island's heritage and the club's colours without the four-quartered flag or the shield.",
@@ -668,22 +774,41 @@ export const SERIE_A: readonly ClubIdentity[] = [
       "Inter's modern identity: the letters I and M (Internazionale Milano) drawn as one monogram in white on blue, inside a black ring: the nerazzurri's black and blue.",
     resemblance: {
       level: "high",
-      note: "A white IM monogram in a blue disc inside a black ring is the club's current identity. The letters here are straight bars with the M's diagonals meeting low behind the I, not the official curved strokes. The striped roundel with a star is the lower-resemblance alternative.",
+      note: "A white IM monogram in a blue disc inside a black ring is the club's current identity. Here the I has square serifs and stands in the notch of a straight-legged M, cut free of it by a blue gap, not the official curved strokes. The striped roundel with a star is the lower-resemblance alternative.",
     },
     composition: "monogram in a ringed roundel",
     looks: {
-      full: "A roundel with a wide black ring round a royal blue disc, and a white monogram: a tall I in the middle between the two legs of an M whose diagonals meet low behind it.",
-      small: "The black-ringed blue roundel with a heavier white IM monogram.",
+      full: "A roundel with a wide black ring round a royal blue disc. A white capital M, its diagonals meeting in a V low in the centre, and a white capital I with square serifs standing in the M's notch, rising above the M, its lower serif resting on the V; a thin blue gap round the I separates the two letters where they touch.",
+      small:
+        "The black-ringed blue roundel with the white serifed I standing in the notch of a heavier white M.",
     },
     full: (k) => [
       k.shield("roundel", { rim: BLACK, field: INT.blue, rimWidth: 9 }),
-      `<path d="${IM(9)}" fill="${WHITE}"/>`,
+      `<path d="${IM_M}" fill="${WHITE}"/>`,
+      `<path d="${IM_I}" fill="${WHITE}" stroke="${INT.blue}" stroke-width="5" stroke-linejoin="miter" paint-order="stroke"/>`,
     ],
     small: (k) => [
-      k.shield("roundel", { rim: BLACK, field: INT.blue, rimWidth: 11 }),
-      `<path d="${IM(13)}" fill="${WHITE}"/>`,
+      k.shield("roundel", { rim: BLACK, field: INT.blue, rimWidth: 10 }),
+      `<path d="${IM_M_SMALL}" fill="${WHITE}"/>`,
+      `<path d="${IM_I_SMALL}" fill="${WHITE}" stroke="${INT.blue}" stroke-width="5" stroke-linejoin="miter" paint-order="stroke"/>`,
     ],
     alternatives: [
+      {
+        title: "First-gallery design",
+        note: "The monogram from the first gallery, kept for comparison: a plain bar through the middle of an M, which reads too much like NM.",
+        looks: {
+          full: "A roundel with a wide black ring round a royal blue disc, and a white monogram: a plain bar in the middle between the two legs of an M whose diagonals meet low behind it.",
+          small: "The black-ringed blue roundel with a heavier white monogram.",
+        },
+        full: (k) => [
+          k.shield("roundel", { rim: BLACK, field: INT.blue, rimWidth: 9 }),
+          `<path d="${IM(9)}" fill="${WHITE}"/>`,
+        ],
+        small: (k) => [
+          k.shield("roundel", { rim: BLACK, field: INT.blue, rimWidth: 11 }),
+          `<path d="${IM(13)}" fill="${WHITE}"/>`,
+        ],
+      },
       {
         title: "Nerazzurri stripes with a star",
         note: "Black and blue stripes in a roundel with a gold star (the club's league titles) and INTER on a black ring: the colours and the name without the IM monogram.",
@@ -736,6 +861,28 @@ export const SERIE_A: readonly ClubIdentity[] = [
       keylined("M70 8H86V80C86 100 68 113 44 115L42 106C62 102 70 94 70 80Z", BLACK),
     ],
     alternatives: [
+      {
+        title: "Connected J (second round)",
+        note: "The refinement from the second round, kept as an option: one J with a shared cap, split lengthwise by a white channel, so the two bands read as one letter.",
+        looks: {
+          full: "No shield: one tall black J, its cap reaching left at the top, split down its whole length by a thin white channel that runs from just under the cap round the curve of the foot. A white outline keeps it visible on dark themes.",
+          small: "The same single black J with a wider white channel, so the two bands stay apart at 16 px.",
+        },
+        full: () => [
+          `<path d="${J_CAP}" fill="#fff" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>`,
+          `<path d="${J_BODY}" fill="#fff" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>`,
+          `<path d="${J_CAP}" fill="${BLACK}"/>`,
+          `<path d="${J_BODY}" fill="${BLACK}"/>`,
+          `<path d="${J_CHANNEL}" fill="none" stroke="${WHITE}" stroke-width="4.5"/>`,
+        ],
+        small: () => [
+          `<path d="${J_CAP}" fill="#fff" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>`,
+          `<path d="${J_BODY}" fill="#fff" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>`,
+          `<path d="${J_CAP}" fill="${BLACK}"/>`,
+          `<path d="${J_BODY}" fill="${BLACK}"/>`,
+          `<path d="${J_CHANNEL}" fill="none" stroke="${WHITE}" stroke-width="7"/>`,
+        ],
+      },
       {
         title: "Striped oval with a star",
         note: "The bianconeri stripes in an upright oval under a white cap lettered JUVE, with a gold star: the colours and the name without the J.",
@@ -1351,29 +1498,54 @@ export const SERIE_A: readonly ClubIdentity[] = [
     ],
     band: { bg: "#151515", ink: WHITE, muted: "#e8e8e8", accent: "#f58a4b" },
     inspiration:
-      "Venezia's modern identity: a black V with an orange block over one arm and a green block over the other (the colours of the 1987 merger with Mestre), the feathers of Saint Mark's winged lion cut into its right arm.",
+      "Venezia's modern identity: a black V with an orange block over one arm and a green block over the other (the colours of the 1987 merger with Mestre), with Saint Mark's winged lion drawn into the letter: its head in the notch, its wing in the right arm.",
     resemblance: {
       level: "high",
-      note: "A black V with an orange and a green block above its arms, a winged lion suggested in the letter, is the idea of the club's current identity. Here the lion is only its feathers, with no stepped head. The gondola prow shield is the lower-resemblance alternative.",
+      note: "A black V with an orange and a green block above its arms, a winged lion suggested in the letter, is the idea of the club's current identity. Here the lion is an angular head of TableTalk's own facing left in the V's notch, its mane running into a feathered right arm. The gondola prow shield is the lower-resemblance alternative.",
     },
     composition: "standalone letter emblem",
     looks: {
-      full: "No shield: a heavy black V, an orange slanted block above its left arm and a green one above its right, four white slits cut across the right arm like feathers. A white outline keeps it visible on dark themes.",
-      small: "The black V with the orange and green blocks and three wider feather slits.",
+      full: "No shield: a heavy black V with an orange slanted block above its left arm and a green one above its right. In the notch of the V, an angular black lion's head facing left, with a square muzzle and a jagged mane that joins the right arm, which becomes the wing: three slanted white cuts and stepped tips along its outer edge, like flight feathers. A white outline keeps it visible on dark themes.",
+      small:
+        "The black V with the orange and green blocks, the angular lion's head in the notch and two wider feather cuts in the wing.",
     },
     full: () => [
       keylined(V_ARMS, BLACK),
       keylined(V_ORANGE, VEN.orange),
       keylined(V_GREEN, VEN.green),
-      `<path d="${V_FEATHERS}" fill="${WHITE}"/>`,
+      `<path d="${V_LION}" fill="${BLACK}" stroke="#fff" stroke-width="3" stroke-linejoin="round" paint-order="stroke"/>`,
+      `<path d="${V_WING}" fill="${BLACK}"/>`,
+      `<path d="${V_FEATHER_CUTS}${V_LION_EYE}" fill="${WHITE}"/>`,
     ],
     small: () => [
       keylined(V_ARMS, BLACK),
       keylined("M8 10H44L48 32H12Z", VEN.orange),
       keylined("M76 10H112L108 32H72Z", VEN.green),
-      `<path d="M78 52H112V58H76ZM73 66H112V72H71ZM68 80H112V86H66Z" fill="${WHITE}"/>`,
+      `<path d="${V_LION}" fill="${BLACK}" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke"/>`,
+      `<path d="${V_WING}" fill="${BLACK}"/>`,
+      `<path d="${V_FEATHER_CUTS_SMALL}" fill="${WHITE}"/>`,
     ],
     alternatives: [
+      {
+        title: "First-gallery design",
+        note: "The V from the first gallery, kept for comparison: four straight slits across the right arm, with no lion's head.",
+        looks: {
+          full: "No shield: a heavy black V, an orange slanted block above its left arm and a green one above its right, four straight white slits cut across the right arm.",
+          small: "The black V with the orange and green blocks and three wider straight slits.",
+        },
+        full: () => [
+          keylined(V_ARMS, BLACK),
+          keylined(V_ORANGE, VEN.orange),
+          keylined(V_GREEN, VEN.green),
+          `<path d="${V_FEATHERS}" fill="${WHITE}"/>`,
+        ],
+        small: () => [
+          keylined(V_ARMS, BLACK),
+          keylined("M8 10H44L48 32H12Z", VEN.orange),
+          keylined("M76 10H112L108 32H72Z", VEN.green),
+          `<path d="M78 52H112V58H76ZM73 66H112V72H71ZM68 80H112V86H66Z" fill="${WHITE}"/>`,
+        ],
+      },
       {
         title: "Gondola prow",
         note: "The ferro, the steel prow of a gondola whose six teeth stand for Venice's six districts, in white on a shield of orange, black and green: the city's emblem without the V.",
