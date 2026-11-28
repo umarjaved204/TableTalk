@@ -9,7 +9,7 @@
 //   - every band's text passes WCAG contrast, like the theme colours;
 //   - a design that may look close to an official badge has an alternative.
 import { createHash } from "node:crypto";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LEAGUES } from "../../src/data/leagues.ts";
@@ -175,7 +175,10 @@ describe("generated files", () => {
     };
     for (const [name, hash] of Object.entries(approved.files)) {
       // Supplied artwork is fingerprinted as the file's bytes; TableTalk's
-      // own crests as the text the designs draw.
+      // own crests as the text the designs draw. Supplied artwork is private
+      // (kept out of the public repository until it is cleared), so it is
+      // checked wherever it is present: on the owner's machine, not in CI.
+      if (name.startsWith("supplied/") && !existsSync(resolve("src/identity", name))) continue;
       const content = name.startsWith("supplied/")
         ? readFileSync(resolve("src/identity", name))
         : files.get(`src/identity/crests/${name}`);
@@ -385,8 +388,16 @@ describe("supplied club crests", () => {
     files: Record<string, string>;
   };
 
+  it("are kept out of the public repository until cleared", () => {
+    const ignore = readFileSync(resolve(".gitignore"), "utf8");
+    expect(ignore).toContain("src/identity/supplied/crests/*.webp");
+    expect(ignore).toContain("src/identity/supplied/marks/*.webp");
+  });
+
   it("are listed in supplied.ts, labelled as such and never as official", () => {
-    expect(names.map((n) => n.replace(/\.\w+$/, "")).sort()).toEqual(Object.keys(SUPPLIED_CRESTS).sort());
+    // Every file present is listed. The files are private, so a public
+    // checkout has none and those clubs show TableTalk's own crests.
+    for (const n of names) expect(Object.keys(SUPPLIED_CRESTS), n).toContain(n.replace(/\.\w+$/, ""));
     for (const [slug, crest] of Object.entries(SUPPLIED_CRESTS)) {
       expect(clubIdentity(slug), slug).toBeDefined();
       expect(crest.label, slug).toBe(SUPPLIED_CREST_LABEL);
@@ -408,11 +419,16 @@ describe("supplied club crests", () => {
     },
   );
 
-  it("take the place of the full crest only; the small crest stays TableTalk's own", () => {
+  it("take the place of the full crest only, where present; the small crest stays TableTalk's own", () => {
     for (const slug of Object.keys(SUPPLIED_CRESTS)) {
       const club = clubIdentity(slug);
       const full = crestSource(slug, club?.name ?? slug, "full");
       const small = crestSource(slug, club?.name ?? slug, "small");
+      if (!names.includes(`${slug}.webp`)) {
+        // Without the private file, the club shows TableTalk's own crest.
+        expect(full.kind === "file" && full.src, slug).not.toMatch(/supplied/);
+        continue;
+      }
       expect(full.kind === "file" && full.src, slug).toMatch(/supplied\/crests|^data:image\/webp/);
       expect(small.kind === "file" && small.src, slug).not.toMatch(/supplied/);
       expect(crestInline(slug, club?.name ?? slug), slug).toBeUndefined();
@@ -437,11 +453,13 @@ describe("league marks from files", () => {
 
   it("supplied artwork is listed in supplied.ts, labelled as such and never as official", () => {
     const files = new Set(supplied.map((n) => n.replace(/\.\w+$/, "")));
-    expect([...files].filter((f) => !f.endsWith("-dark")).sort()).toEqual(Object.keys(SUPPLIED_MARKS).sort());
+    // Every file present is listed. The files are private, so a public
+    // checkout has none and its leagues show TableTalk's own marks.
+    for (const f of files) expect(Object.keys(SUPPLIED_MARKS), f).toContain(f.replace(/-dark$/, ""));
     for (const [slug, art] of Object.entries(SUPPLIED_MARKS)) {
       expect(art.label, slug).toBe(SUPPLIED_LABEL);
       expect(art.provenance, slug).toContain("Not an official or licensed file");
-      expect(files.has(`${slug}-dark`), `${slug}-dark`).toBe(art.darkVariant);
+      if (files.has(slug)) expect(files.has(`${slug}-dark`), `${slug}-dark`).toBe(art.darkVariant);
       // Resemblance is recorded, and close artwork says it isn't cleared.
       expect(art.resemblance.note.length, slug).toBeGreaterThan(40);
       if (art.resemblance.level === "high")
@@ -477,7 +495,7 @@ describe("league marks from files", () => {
       expect(leagueMarkUrl(l.slug), l.slug).toBe(mark?.src);
     }
     expect(leagueMark("serie-a")?.source).toBe("generated");
-    expect(leagueMark("ligue-1")?.darkSrc).toBeDefined();
+    if (has(supplied, "ligue-1")) expect(leagueMark("ligue-1")?.darkSrc).toBeDefined();
   });
 
   it("switch to the dark variant on exactly the dark themes", () => {

@@ -13,3 +13,9 @@ quality 75, within the supplied crest budget (`SUPPLIED_CREST_BUDGET`).
 
 Only the full crest comes from here. At 24 px and below the club's own
 small SVG crest is used, because a detailed image turns to noise that small.
+
+**Private until cleared.** The image files here are ignored by git and never
+committed: the repository is public, and this artwork has no legal basis for
+publication yet. They are used when present on the owner's machine; a public
+checkout (and CI) has none, so these clubs and leagues show TableTalk's own
+SVG artwork instead. Keep the originals somewhere safe outside the repository.

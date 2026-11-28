@@ -12,6 +12,10 @@
 // <league-slug>-dark.webp where the artwork has a variant for dark themes.
 // assets.ts picks a licensed file first, then a supplied one, then
 // TableTalk's own mark.
+//
+// The supplied image files are private: ignored by git and never committed to
+// the public repository until a legal basis for publishing them exists. This
+// metadata is public; without the files, the site uses TableTalk's own art.
 import type { Resemblance } from "./types.ts";
 
 /** How every supplied file is described wherever it is shown or listed. */

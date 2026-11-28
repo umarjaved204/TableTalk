@@ -11,6 +11,8 @@
 // (src/identity/supplied/crests/<slug>, described in supplied.ts) takes the
 // place of TableTalk's full crest. At 24 px and below the club's own small
 // SVG crest is still used, unless a supplied <slug>-small file exists.
+// Supplied files are private (git-ignored): a public checkout has none and
+// falls back to TableTalk's own crests and marks with no other change.
 //
 // League marks come from one of three places, first match wins:
 //   1. src/identity/licensed/marks/  genuinely official or licensed files
