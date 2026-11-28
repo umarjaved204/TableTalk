@@ -1020,6 +1020,18 @@
    "recorded_at": "2026-11-08T07:56:29Z",
    "season": "2026-27"
   },
+  "bundesliga|2026-27|Werder Bremen|Borussia Mönchengladbach": {
+   "away_goals": 3,
+   "away_team": "Borussia Mönchengladbach",
+   "competition": "bundesliga",
+   "date": "2026-11-27",
+   "home_goals": 3,
+   "home_team": "Werder Bremen",
+   "kickoff_utc": "2026-11-27T19:30:00Z",
+   "match_id": "fdorg:565869",
+   "recorded_at": "2026-11-28T09:25:27Z",
+   "season": "2026-27"
+  },
   "bundesliga|2026-27|Werder Bremen|FC Augsburg": {
    "away_goals": 2,
    "away_team": "FC Augsburg",
@@ -1834,6 +1846,18 @@
    "kickoff_utc": "2026-11-23T20:00:00Z",
    "match_id": "fdorg:564757",
    "recorded_at": "2026-11-24T11:36:03Z",
+   "season": "2026-27"
+  },
+  "la_liga|2026-27|Levante|Racing Santander": {
+   "away_goals": 3,
+   "away_team": "Racing Santander",
+   "competition": "la_liga",
+   "date": "2026-11-27",
+   "home_goals": 1,
+   "home_team": "Levante",
+   "kickoff_utc": "2026-11-27T20:00:00Z",
+   "match_id": "fdorg:564765",
+   "recorded_at": "2026-11-28T09:25:27Z",
    "season": "2026-27"
   },
   "la_liga|2026-27|Levante|Real Betis": {
@@ -2794,6 +2818,18 @@
    "kickoff_utc": "2026-10-23T18:45:00Z",
    "match_id": "fdorg:559654",
    "recorded_at": "2026-10-24T06:26:16Z",
+   "season": "2026-27"
+  },
+  "ligue_1|2026-27|Brest|Paris FC": {
+   "away_goals": 0,
+   "away_team": "Paris FC",
+   "competition": "ligue_1",
+   "date": "2026-11-27",
+   "home_goals": 1,
+   "home_team": "Brest",
+   "kickoff_utc": "2026-11-27T19:45:00Z",
+   "match_id": "fdorg:559616",
+   "recorded_at": "2026-11-28T09:25:27Z",
    "season": "2026-27"
   },
   "ligue_1|2026-27|Brest|Paris Saint-Germain": {
@@ -4956,6 +4992,18 @@
    "recorded_at": "2026-10-20T17:50:20Z",
    "season": "2026-27"
   },
+  "premier_league|2026-27|Nottingham Forest|Chelsea": {
+   "away_goals": 2,
+   "away_team": "Chelsea",
+   "competition": "premier_league",
+   "date": "2026-11-27",
+   "home_goals": 3,
+   "home_team": "Nottingham Forest",
+   "kickoff_utc": "2026-11-27T20:00:00Z",
+   "match_id": "fdorg:560658",
+   "recorded_at": "2026-11-28T09:25:27Z",
+   "season": "2026-27"
+  },
   "premier_league|2026-27|Nottingham Forest|Coventry City": {
    "away_goals": 1,
    "away_team": "Coventry City",
@@ -6502,6 +6550,18 @@
    "kickoff_utc": "2026-10-31T17:00:00Z",
    "match_id": "fdorg:558542",
    "recorded_at": "2026-11-01T08:07:09Z",
+   "season": "2026-27"
+  },
+  "serie_a|2026-27|Venezia|Bologna": {
+   "away_goals": 0,
+   "away_team": "Bologna",
+   "competition": "serie_a",
+   "date": "2026-11-27",
+   "home_goals": 0,
+   "home_team": "Venezia",
+   "kickoff_utc": "2026-11-27T19:45:00Z",
+   "match_id": "fdorg:558515",
+   "recorded_at": "2026-11-28T09:25:27Z",
    "season": "2026-27"
   },
   "serie_a|2026-27|Venezia|Fiorentina": {
