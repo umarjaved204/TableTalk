@@ -36,6 +36,7 @@ import { LEAGUES } from "../src/data/leagues.ts";
 import { teamSlug } from "../src/data/teams.ts";
 import { identityFiles } from "../src/identity/build.ts";
 import { CLUBS } from "../src/identity/clubs/index.ts";
+import { SUPPLIED_LABEL } from "../src/identity/supplied.ts";
 import { fallbackDesign, renderCrest } from "../src/identity/crest.ts";
 import { LEAGUE_IDENTITIES, leagueMarkDesign } from "../src/identity/leagues.ts";
 import { SMALL_MAX, variantFor } from "../src/identity/sizes.ts";
@@ -312,22 +313,71 @@ ${alts}
 </article>`;
 }
 
+const APPROACH = {
+  competition: "Competition-inspired",
+  cultural: "Cultural",
+  brand: "Modern brand-inspired",
+};
+
+/** A file as a data: address (the gallery is one file), or undefined. */
+function dataUrl(base) {
+  for (const [ext, type] of [
+    ["svg", "image/svg+xml"],
+    ["png", "image/png"],
+    ["webp", "image/webp"],
+  ]) {
+    const path = `${base}.${ext}`;
+    if (existsSync(path)) return `data:${type};base64,${readFileSync(path).toString("base64")}`;
+  }
+  return undefined;
+}
+
+/** The mark shown for a league when it isn't TableTalk's own drawing: a
+ *  licensed file, else supplied artwork (assets.ts uses the same order). */
+function fileMark(slug) {
+  for (const [folder, label] of [
+    ["licensed", "Licensed official logo"],
+    ["supplied", SUPPLIED_LABEL],
+  ]) {
+    const light = dataUrl(`src/identity/${folder}/marks/${slug}`);
+    if (light) return { label, light, dark: dataUrl(`src/identity/${folder}/marks/${slug}-dark`) ?? light };
+  }
+  return undefined;
+}
+
 function leagueSection() {
-  // For each league: the cultural mark and each alternative concept side by
-  // side, so one direction can be chosen per league.
+  // For each league: the mark in use, then every other direction side by side.
   return LEAGUE_IDENTITIES.map((l) => {
     const name = LEAGUES.find((x) => x.id === l.leagueId).name;
+    const file = fileMark(l.slug);
+    const fileCell = file
+      ? `<div class="option"><h4>${esc(file.label)} (the mark in use)</h4><div class="pair">${THEMES.map(
+          (t, i) =>
+            `<div class="theme ${t.cls} sizes">${[96, 40, 24, 20, 16]
+              .map(
+                (s, n) =>
+                  `<img src="${i ? file.dark : file.light}" width="${s}" height="${s}" alt="${n ? "" : esc(`${name}: ${file.label}`)}">`,
+              )
+              .join("")}</div>`,
+        ).join("")}</div>
+${
+  l.supplied
+    ? `<p class="looks"><b>Source:</b> ${esc(l.supplied.provenance)}<br><b>Changes:</b> ${esc(l.supplied.changes)}</p>
+<p class="res res-${l.supplied.resemblance.level}"><b>Resemblance to the competition's logo: ${l.supplied.resemblance.level}.</b> ${esc(l.supplied.resemblance.note)}</p>`
+    : ""
+}</div>`
+      : "";
     const options = [
       {
         key: markKey(l),
-        title: "Cultural",
+        title: `${APPROACH[l.approach]}: ${l.title}${file ? "" : " (the mark in use)"}`,
         inspiration: l.inspiration,
         looks: l.looks,
         resemblance: l.resemblance,
       },
       ...l.alternatives.map((c, n) => ({
         key: define(`mark-${l.slug}-alt${n}`, renderCrest(c.mark, `m-${l.slug}-a${n}`)),
-        title: c.approach === "competition" ? `Competition-inspired: ${c.title}` : `Cultural: ${c.title}`,
+        title: `${APPROACH[c.approach]}: ${c.title}`,
         inspiration: c.inspiration,
         looks: c.looks,
         resemblance: c.resemblance,
@@ -343,7 +393,7 @@ function leagueSection() {
 <p class="res res-${o.resemblance.level}"><b>Resemblance to the competition's logo: ${o.resemblance.level}.</b> ${esc(o.resemblance.note)}</p></div>`,
       )
       .join("");
-    return `<article class="club"><header><h3>${esc(name)}</h3></header><div class="options">${cells}</div></article>`;
+    return `<article class="club"><header><h3>${esc(name)}</h3></header><div class="options">${fileCell}${cells}</div></article>`;
   }).join("");
 }
 
@@ -508,7 +558,7 @@ const dataLine = source
 const body = `
 <header class="top"><h1>TableTalk crest gallery</h1>
 <p>${args.league ? `The ${esc(LEAGUES.find((l) => l.id === args.league)?.name ?? args.league)} crests, for this league's review` : "Every crest in the registry, for review"} before any page uses them. ${SHOWN.length} clubs shown (${CLUBS.length} drawn so far), ${SHOWN.reduce((n, c) => n + (c.alternatives?.length ?? 0), 0)} alternative designs. Each picture is also described in words.</p>
-<ul class="chips"><li>Original drawings, no official artwork</li><li>Small crest at ${SMALL_MAX} px and below, full crest above</li><li>Light: Matchday · Dark: Floodlights</li><li>Not legal clearance</li></ul></header>
+<ul class="chips"><li>Club crests: original drawings, no official artwork</li><li>Small crest at ${SMALL_MAX} px and below, full crest above</li><li>Light: Matchday · Dark: Floodlights</li><li>Not legal clearance</li></ul></header>
 ${status}
 <section><h2>How to read this page</h2>
 <ul>
@@ -518,7 +568,7 @@ ${status}
 <li><b>${dataLine}</b></li>
 </ul></section>
 ${comparisonSection()}
-<section><h2>League marks</h2><p>Two directions for each league, side by side, to choose one per league. <b>Cultural</b>: an idea from the country's football culture. <b>Competition-inspired</b>: built on what supporters already connect with the competition, drawn new with its own silhouette, lettering and composition. Neither copies or traces an official logo, but the competition-inspired ones are meant to be recognised, so their resemblance is higher. Each is shown at 96, 24 and 16 px on the light and dark themes.</p>${leagueSection()}</section>
+<section><h2>League marks</h2><p>Up to three directions for each league, side by side. <b>${SUPPLIED_LABEL}</b>: the mark in use for the Premier League, Bundesliga, La Liga and Ligue 1 from 28 Nov, chosen by the owner. Not official or licensed files; their resemblance is recorded with each. <b>Competition-inspired</b> (chosen 27 Nov; the mark in use for Serie A): built on what supporters connect with the competition, drawn new. <b>Cultural</b>: an idea from the country's football culture. <b>Modern brand-inspired</b> (Premier League, Bundesliga, La Liga, Ligue 1): a standalone modern mark in the competition's design language. None of TableTalk's drawings copies or traces an official logo; the brand-inspired marks are deliberately closest in spirit, so their resemblance is high. Each is shown at 96, 24 and 16 px on the light and dark themes.</p>${leagueSection()}</section>
 ${covered
   .map((id) => {
     const league = LEAGUES.find((l) => l.id === id);

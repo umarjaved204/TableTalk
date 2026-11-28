@@ -1,13 +1,21 @@
-// The five league identities: a band for league headers, a mark, and the
-// alternative concepts to choose from (league-concepts.ts).
+// The five league identities: a band for league headers, the mark in use,
+// and the alternative concepts (league-concepts.ts).
 //
-// These are TableTalk's own marks, not the competitions' logos. Each one
-// takes an idea from its country's football culture, and each has its own
-// outline (tile, disc, diamond, shield, hexagon), so the five stay apart at
-// 16 px by shape as well as colour. They share the crests' construction: a
-// white keyline round the outside, a ground colour, and one clear symbol.
+// These are TableTalk's own marks, not the competitions' logos. Three design
+// directions exist for each league: cultural (an idea from the country's
+// football culture, defined below), competition-inspired (built on the
+// competition's own recognisable idea) and, for four leagues, a modern
+// brand-inspired mark. The competition-inspired direction was chosen on
+// 27 Nov 2026 and is the mark in use; the others are kept as alternatives.
+// On 28 Nov 2026 the owner chose their own supplied artwork as the mark shown
+// for the Premier League, Bundesliga, La Liga and Ligue 1 (supplied.ts:
+// custom competition-inspired artwork, not official files); Serie A shows
+// its competition-inspired mark. The LeagueMark component only asks
+// assets.ts for a league's file, so a licensed logo can replace any of them
+// later without other changes.
 import type { Design } from "./crest.ts";
-import { COMPETITION_CONCEPTS, type LeagueConcept } from "./league-concepts.ts";
+import { BRAND_CONCEPTS, COMPETITION_CONCEPTS, type LeagueConcept } from "./league-concepts.ts";
+import { SUPPLIED_MARKS, type SuppliedArtwork } from "./supplied.ts";
 import type { BandColours, Resemblance } from "./types.ts";
 
 export interface LeagueIdentity {
@@ -26,9 +34,13 @@ export interface LeagueIdentity {
    *  marks use national ideas, not the competition's, so all are low). */
   resemblance: { level: Resemblance; note: string };
   mark: Design;
-  /** Other concepts to choose from, shown beside the mark in the gallery:
-   *  the competition-inspired concept (league-concepts.ts). */
+  /** The direction and name of the mark in use. */
+  approach: LeagueConcept["approach"];
+  title: string;
+  /** The other directions, shown beside the mark in the gallery. */
   alternatives: readonly LeagueConcept[];
+  /** Supplied artwork shown in place of `mark`, where the owner chose it. */
+  supplied?: SuppliedArtwork;
 }
 
 const WHITE = "#fff";
@@ -208,7 +220,8 @@ function ligue1(clip: string): string[] {
   ];
 }
 
-export const LEAGUE_IDENTITIES: readonly LeagueIdentity[] = [
+/** Each league's cultural design, which was the mark in use until the competition-inspired direction was chosen. */
+const CULTURAL: readonly Omit<LeagueIdentity, "approach" | "title" | "alternatives">[] = [
   {
     leagueId: "premier_league",
     slug: "premier-league",
@@ -224,7 +237,6 @@ export const LEAGUE_IDENTITIES: readonly LeagueIdentity[] = [
       note: "A floodlight pylon belongs to English football in general, not to the competition's lion logo.",
     },
     mark: (k) => premierLeague(k.clip),
-    alternatives: [COMPETITION_CONCEPTS["premier_league"]].filter((c): c is LeagueConcept => c !== undefined),
   },
   {
     leagueId: "bundesliga",
@@ -241,7 +253,6 @@ export const LEAGUE_IDENTITIES: readonly LeagueIdentity[] = [
       note: "The oak leaf and the flag's colours are national ideas, not the competition's player logo.",
     },
     mark: (k) => bundesliga(k.clip),
-    alternatives: [COMPETITION_CONCEPTS["bundesliga"]].filter((c): c is LeagueConcept => c !== undefined),
   },
   {
     leagueId: "la_liga",
@@ -258,7 +269,6 @@ export const LEAGUE_IDENTITIES: readonly LeagueIdentity[] = [
       note: "Sun and shade are a feature of Spanish grounds, not of the competition's logo.",
     },
     mark: (k) => laLiga(k.clip),
-    alternatives: [COMPETITION_CONCEPTS["la_liga"]].filter((c): c is LeagueConcept => c !== undefined),
   },
   {
     leagueId: "serie_a",
@@ -275,7 +285,6 @@ export const LEAGUE_IDENTITIES: readonly LeagueIdentity[] = [
       note: "The shield takes the scudetto tradition, not the competition's letter A logo; the sash and star are drawn new.",
     },
     mark: (k) => serieA(k.clip),
-    alternatives: [COMPETITION_CONCEPTS["serie_a"]].filter((c): c is LeagueConcept => c !== undefined),
   },
   {
     leagueId: "ligue_1",
@@ -292,9 +301,34 @@ export const LEAGUE_IDENTITIES: readonly LeagueIdentity[] = [
       note: "The hexagon and tricolour are national ideas, not the competition's L1 monogram.",
     },
     mark: (k) => ligue1(k.clip),
-    alternatives: [COMPETITION_CONCEPTS["ligue_1"]].filter((c): c is LeagueConcept => c !== undefined),
   },
 ];
+
+/** The leagues as used: the competition-inspired mark, with the cultural
+ *  design and any brand-inspired concept as alternatives. */
+export const LEAGUE_IDENTITIES: readonly LeagueIdentity[] = CULTURAL.map((league) => {
+  const cultural: LeagueConcept = {
+    title: "National football culture",
+    approach: "cultural",
+    inspiration: league.inspiration,
+    looks: league.looks,
+    resemblance: league.resemblance,
+    mark: league.mark,
+  };
+  const chosen = COMPETITION_CONCEPTS[league.leagueId] ?? cultural;
+  const brand = BRAND_CONCEPTS[league.leagueId];
+  return {
+    ...league,
+    approach: chosen.approach,
+    title: chosen.title,
+    inspiration: chosen.inspiration,
+    looks: chosen.looks,
+    resemblance: chosen.resemblance,
+    mark: chosen.mark,
+    alternatives: [cultural, ...(brand ? [brand] : [])],
+    ...(SUPPLIED_MARKS[league.slug] ? { supplied: SUPPLIED_MARKS[league.slug] } : {}),
+  };
+});
 
 export function leagueIdentity(leagueId: string): LeagueIdentity | undefined {
   return LEAGUE_IDENTITIES.find((league) => league.leagueId === leagueId);

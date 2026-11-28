@@ -1,8 +1,10 @@
 ---
-// A league's mark (src/identity/leagues.ts): TableTalk's own tile with the
-// league's initials, not the competition's logo. Decorative by default, as
+// A league's mark, from whichever file assets.ts finds (licensed, supplied
+// artwork, or TableTalk's own). Artwork with a dark-theme variant is two
+// images, and identity.css shows the one for the current theme; the hidden
+// one is lazy, so it isn't downloaded. Decorative by default, as
 // the league's name is written beside it; pass `label` where it stands alone.
-import { leagueMarkUrl } from "../identity/assets.ts";
+import { leagueMark } from "../identity/assets.ts";
 
 interface Props {
   /** The league's URL slug ("premier-league"). */
@@ -14,8 +16,32 @@ interface Props {
 }
 
 const { slug, name, size, label = false, class: extra } = Astro.props;
-const src = leagueMarkUrl(slug);
+const mark = leagueMark(slug);
 const cls = ["league-mark", extra].filter(Boolean).join(" ");
 ---
 
-{src && <img class={cls} src={src} width={size} height={size} alt={label ? name : ""} decoding="async" />}
+{mark &&
+  (mark.darkSrc ? (
+    <>
+      <img
+        class={`${cls} league-mark--light`}
+        src={mark.src}
+        width={size}
+        height={size}
+        alt={label ? name : ""}
+        loading="lazy"
+        decoding="async"
+      />
+      <img
+        class={`${cls} league-mark--dark`}
+        src={mark.darkSrc}
+        width={size}
+        height={size}
+        alt={label ? name : ""}
+        loading="lazy"
+        decoding="async"
+      />
+    </>
+  ) : (
+    <img class={cls} src={mark.src} width={size} height={size} alt={label ? name : ""} decoding="async" />
+  ))}

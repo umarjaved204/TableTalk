@@ -362,6 +362,28 @@
   --band-edge: color-mix(in srgb, #ff6b81 45%, transparent);
 }
 
+/* A league mark with a dark-theme variant (LeagueMark.astro): one image
+   per theme. Without data-theme (no JavaScript) the light one shows. */
+.league-mark--dark {
+  display: none;
+}
+
+[data-theme="floodlights"] .league-mark--light,
+[data-theme="tactics"] .league-mark--light,
+[data-theme="nightgame"] .league-mark--light,
+[data-theme="terrace"] .league-mark--light,
+[data-theme="contrast"] .league-mark--light {
+  display: none;
+}
+
+[data-theme="floodlights"] .league-mark--dark,
+[data-theme="tactics"] .league-mark--dark,
+[data-theme="nightgame"] .league-mark--dark,
+[data-theme="terrace"] .league-mark--dark,
+[data-theme="contrast"] .league-mark--dark {
+  display: inline;
+}
+
 [data-theme="contrast"] :is([data-club], [data-league]) {
   --club-1: var(--band-bg);
   --club-2: var(--band-accent);

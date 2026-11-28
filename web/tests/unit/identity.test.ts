@@ -13,11 +13,12 @@ import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LEAGUES } from "../../src/data/leagues.ts";
 import { SLUG_PATTERN, teamSlug } from "../../src/data/teams.ts";
-import { crestSource, svgElement, variantFor } from "../../src/identity/assets.ts";
-import { identityFiles } from "../../src/identity/build.ts";
+import { crestSource, leagueMark, leagueMarkUrl, svgElement, variantFor } from "../../src/identity/assets.ts";
+import { DARK_THEMES, identityFiles } from "../../src/identity/build.ts";
 import { CLUBS, clubIdentity, slugMatchesName } from "../../src/identity/clubs/index.ts";
 import { fallbackDesign, initials, renderCrest } from "../../src/identity/crest.ts";
 import { LEAGUE_IDENTITIES } from "../../src/identity/leagues.ts";
+import { SUPPLIED_LABEL, SUPPLIED_MARKS, SUPPLIED_RASTER_BUDGET } from "../../src/identity/supplied.ts";
 import { LetteringError, arcText, lineText, mapPath } from "../../src/identity/lettering.ts";
 import type { BandColours } from "../../src/identity/types.ts";
 
@@ -310,12 +311,94 @@ describe("the review gallery script", () => {
   });
 });
 
+describe("league marks from files", () => {
+  const IMAGE = /^([a-z0-9-]+?)(-dark)?\.(svg|png|webp)$/;
+  const images = (dir: string) => readdirSync(resolve(dir)).filter((n) => n !== "README.md");
+  const supplied = images("src/identity/supplied/marks");
+  const licensed = images("src/identity/licensed/marks");
+  const slugs = new Set(LEAGUE_IDENTITIES.map((l) => l.slug));
+
+  it("are named after a league and are images the site can serve", () => {
+    for (const name of [...supplied, ...licensed]) {
+      const m = IMAGE.exec(name);
+      expect(m, name).not.toBeNull();
+      expect(slugs.has(m?.[1] ?? ""), name).toBe(true);
+    }
+  });
+
+  it("supplied artwork is listed in supplied.ts, labelled as such and never as official", () => {
+    const files = new Set(supplied.map((n) => n.replace(/\.\w+$/, "")));
+    expect([...files].filter((f) => !f.endsWith("-dark")).sort()).toEqual(Object.keys(SUPPLIED_MARKS).sort());
+    for (const [slug, art] of Object.entries(SUPPLIED_MARKS)) {
+      expect(art.label, slug).toBe(SUPPLIED_LABEL);
+      expect(art.provenance, slug).toContain("Not an official or licensed file");
+      expect(files.has(`${slug}-dark`), `${slug}-dark`).toBe(art.darkVariant);
+      // Resemblance is recorded, and close artwork says it isn't cleared.
+      expect(art.resemblance.note.length, slug).toBeGreaterThan(40);
+      if (art.resemblance.level === "high")
+        expect(art.resemblance.note, slug).toContain("not automatically legally cleared");
+      expect(LEAGUE_IDENTITIES.find((l) => l.slug === slug)?.supplied, slug).toBe(art);
+    }
+  });
+
+  it.each(supplied.map((n) => [n]))("supplied %s is a 192 px or larger WebP within its budget", (name) => {
+    const bytes = readFileSync(resolve("src/identity/supplied/marks", name));
+    expect(bytes.length, "bytes").toBeLessThanOrEqual(SUPPLIED_RASTER_BUDGET);
+    // RIFF....WEBPVP8X: the extended format, which carries the alpha channel
+    // and the canvas size (24-bit, minus one) at bytes 24 and 27.
+    expect(bytes.subarray(0, 4).toString("latin1")).toBe("RIFF");
+    expect(bytes.subarray(8, 16).toString("latin1")).toBe("WEBPVP8X");
+    const width = bytes.readUIntLE(24, 3) + 1;
+    const height = bytes.readUIntLE(27, 3) + 1;
+    expect(width).toBe(height);
+    expect(width).toBeGreaterThanOrEqual(192);
+  });
+
+  it("are picked licensed first, then supplied, then TableTalk's own mark", () => {
+    const has = (names: string[], slug: string, suffix = "") =>
+      names.some((n) => n.replace(/\.\w+$/, "") === `${slug}${suffix}`);
+    for (const l of LEAGUE_IDENTITIES) {
+      const mark = leagueMark(l.slug);
+      const expected = has(licensed, l.slug) ? "licensed" : has(supplied, l.slug) ? "supplied" : "generated";
+      expect(mark?.source, l.slug).toBe(expected);
+      const folder = expected === "licensed" ? licensed : supplied;
+      expect(mark?.darkSrc !== undefined, `${l.slug} dark`).toBe(
+        expected !== "generated" && has(folder, l.slug, "-dark"),
+      );
+      expect(leagueMarkUrl(l.slug), l.slug).toBe(mark?.src);
+    }
+    expect(leagueMark("serie-a")?.source).toBe("generated");
+    expect(leagueMark("ligue-1")?.darkSrc).toBeDefined();
+  });
+
+  it("switch to the dark variant on exactly the dark themes", () => {
+    const dir = resolve("src/styles/themes");
+    const dark = readdirSync(dir)
+      .filter((f) => /color-scheme:\s*dark/.test(readFileSync(resolve(dir, f), "utf8")))
+      .map((f) => f.replace(/\.css$/, ""))
+      .sort();
+    expect([...DARK_THEMES].sort()).toEqual(dark);
+    const css = readFileSync(resolve("src/styles/identity.css"), "utf8");
+    const rule = (sel: string) =>
+      [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].find((m) => m[1]?.trim().endsWith(sel))?.[1] ?? "";
+    // Hidden by default (light themes, and no data-theme without JavaScript)…
+    expect(css).toContain(".league-mark--dark {\n  display: none;\n}");
+    // …and swapped in on every dark theme, nowhere else.
+    const hidesLight = [...rule(".league-mark--light").matchAll(/data-theme="([\w-]+)"/g)].map((m) => m[1]);
+    expect(hidesLight.sort()).toEqual(dark);
+    const shown = [...css.matchAll(/([^{}]+)\{\s*display: inline;/g)].map((m) => m[1] ?? "");
+    expect(shown).toHaveLength(1);
+    expect([...(shown[0] ?? "").matchAll(/data-theme="([\w-]+)"/g)].map((m) => m[1]).sort()).toEqual(dark);
+  });
+});
+
 describe("league concepts", () => {
-  it("rates every league mark and offers a competition-inspired concept beside it", () => {
+  it("uses the competition-inspired mark and keeps the cultural one beside it, all rated", () => {
     for (const league of LEAGUE_IDENTITIES) {
+      expect(league.approach, league.slug).toBe("competition");
       expect(league.resemblance.note.length, league.slug).toBeGreaterThan(30);
       expect(
-        league.alternatives.some((c) => c.approach === "competition"),
+        league.alternatives.some((c) => c.approach === "cultural"),
         league.slug,
       ).toBe(true);
       for (const c of league.alternatives) {
@@ -324,6 +407,16 @@ describe("league concepts", () => {
         expect(c.inspiration.length).toBeGreaterThan(30);
       }
     }
+  });
+
+  it("offers a modern brand-inspired concept for the four leagues in this round", () => {
+    const withBrand = LEAGUE_IDENTITIES.filter((l) => l.alternatives.some((c) => c.approach === "brand"));
+    expect(withBrand.map((l) => l.leagueId).sort()).toEqual([
+      "bundesliga",
+      "la_liga",
+      "ligue_1",
+      "premier_league",
+    ]);
   });
 
   it.each(

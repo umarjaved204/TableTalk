@@ -7,6 +7,17 @@
 // under the same name (<slug>.svg, or .png/.webp at 240 x 240 or larger) and
 // nothing else changes: components, pages and layouts stay as they are.
 //
+// League marks come from one of three places, first match wins:
+//   1. src/identity/licensed/marks/  genuinely official or licensed files
+//                                    (none today; see the README there)
+//   2. src/identity/supplied/marks/  artwork supplied by the site's owner
+//                                    (supplied.ts: what it is, resemblance)
+//   3. src/identity/marks/           TableTalk's own marks (make-crests.mjs,
+//                                    which clears that folder of anything it
+//                                    doesn't make, hence the separate folders)
+// Each is <league-slug>.svg/.png/.webp, with an optional <league-slug>-dark
+// file shown on dark themes instead (identity.css switches them).
+//
 // Files are imported through Vite, so they are copied to /_astro/ with a
 // content hash in the name and cached for a year (public/_headers). Vite
 // would normally write small files into the page as data: addresses instead;
@@ -15,7 +26,7 @@
 import { fallbackDesign, renderCrest } from "./crest.ts";
 import type { CrestVariant } from "./sizes.ts";
 
-const URLS = import.meta.glob<string>("./{crests,marks}/*.{svg,png,webp}", {
+const URLS = import.meta.glob<string>("./{crests,marks,licensed/marks,supplied/marks}/*.{svg,png,webp}", {
   query: "?url",
   import: "default",
   eager: true,
@@ -32,7 +43,9 @@ export type CrestSource =
 
 const EXTENSIONS = ["svg", "png", "webp"] as const;
 
-function fileUrl(folder: "crests" | "marks", base: string): string | undefined {
+type Folder = "crests" | "marks" | "licensed/marks" | "supplied/marks";
+
+function fileUrl(folder: Folder, base: string): string | undefined {
   for (const ext of EXTENSIONS) {
     const url = URLS[`./${folder}/${base}.${ext}`];
     if (url) return url;
@@ -86,7 +99,36 @@ export function svgElement(svg: string, size: number, cls: string, label?: strin
     .replace("<svg ", `<svg class="${cls}" ${a11y} focusable="false" `);
 }
 
-/** A league's mark file, or undefined for a league with no mark. */
+/** Where a league mark's file came from. */
+export type MarkSource = "licensed" | "supplied" | "generated";
+
+export interface LeagueMarkFile {
+  source: MarkSource;
+  /** The file for light themes (and every theme, without `darkSrc`). */
+  src: string;
+  /** The file for dark themes, where the artwork has one. */
+  darkSrc?: string;
+}
+
+const MARK_FOLDERS: readonly [MarkSource, Folder][] = [
+  ["licensed", "licensed/marks"],
+  ["supplied", "supplied/marks"],
+  ["generated", "marks"],
+];
+
+/** A league's mark: a licensed file, else supplied artwork, else TableTalk's
+ *  own mark; undefined for a league with none. */
+export function leagueMark(leagueSlug: string): LeagueMarkFile | undefined {
+  for (const [source, folder] of MARK_FOLDERS) {
+    const src = fileUrl(folder, leagueSlug);
+    if (!src) continue;
+    const darkSrc = fileUrl(folder, `${leagueSlug}-dark`);
+    return darkSrc ? { source, src, darkSrc } : { source, src };
+  }
+  return undefined;
+}
+
+/** The address of a league's mark for light themes (see leagueMark). */
 export function leagueMarkUrl(leagueSlug: string): string | undefined {
-  return fileUrl("marks", leagueSlug);
+  return leagueMark(leagueSlug)?.src;
 }
